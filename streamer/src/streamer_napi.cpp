@@ -115,3 +115,9 @@ Napi::Value StreamerWrap::Close(const Napi::CallbackInfo& info) {
     }
     return info.Env().Undefined();
 }
+
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    return StreamerWrap::Init(env, exports);
+}
+
+NODE_API_MODULE(streamer, Init)

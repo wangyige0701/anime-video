@@ -1,3 +1,5 @@
+// File: src/Streamer.h
+
 #pragma once
 
 #include <string>

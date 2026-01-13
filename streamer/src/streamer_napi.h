@@ -1,3 +1,5 @@
+// File: src/streamer_napi.h
+
 #pragma once
 #include <napi.h>
 #include "streamer_capi.h"

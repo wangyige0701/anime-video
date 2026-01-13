@@ -1,3 +1,5 @@
+// File: src/read_packet_worker.h
+
 #pragma once
 #include <napi.h>
 #include "streamer_capi.h"

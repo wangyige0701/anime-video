@@ -1,3 +1,5 @@
+// File: src/streamer_capi.h
+
 #pragma once
 
 #include <stdint.h>

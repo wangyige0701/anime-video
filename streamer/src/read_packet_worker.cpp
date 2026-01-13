@@ -1,3 +1,5 @@
+// File: src/read_packet_worker.cpp
+
 #include "read_packet_worker.h"
 
 extern "C" {
@@ -10,7 +12,9 @@ ReadPacketWorker::ReadPacketWorker(
     StreamerRef* ref,
     Napi::Env env,
     Napi::Promise::Deferred deferred
-) : Napi::AsyncWorker(env), ref_(ref), deferred_(deferred), buffer_(BUF_SIZE) {}
+) : Napi::AsyncWorker(env), ref_(ref), deferred_(deferred), buffer_(BUF_SIZE) {
+    ref->refCount++;
+}
 
 void ReadPacketWorker::Execute() {
     if (ref_->closing || !ref_->handle) {

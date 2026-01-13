@@ -1,3 +1,5 @@
+// File: src/streamer_napi.cpp
+
 #include "streamer_napi.h"
 #include "read_packet_worker.h"
 
@@ -18,6 +20,7 @@ StreamerWrap::StreamerWrap(const Napi::CallbackInfo& info) : Napi::ObjectWrap<St
 }
 
 StreamerWrap::~StreamerWrap() {
+    printf("~StreamerWrap called\n");
     if (ref_) {
         ref_->closing = true;
         if (ref_->refCount == 0) {
@@ -39,8 +42,11 @@ Napi::Value StreamerWrap::Open(const Napi::CallbackInfo& info) {
     std::string path = info[0].As<Napi::String>().Utf8Value();
 
     if (ref_) {
-        streamer_destroy(ref_->handle);
-        delete ref_;
+        ref_->closing = true;
+        if (ref_->refCount == 0) {
+            streamer_destroy(ref_->handle);
+            delete ref_;
+        }
         ref_ = nullptr;
     }
 
@@ -52,7 +58,8 @@ Napi::Value StreamerWrap::Open(const Napi::CallbackInfo& info) {
         streamer_destroy(ref_->handle);
         delete ref_;
         ref_ = nullptr;
-        return Napi::Number::New(env, ret);
+        Napi::Error::New(env, "failed to open streamer").ThrowAsJavaScriptException();
+        return env.Null();
     }
 
     return env.Undefined();
@@ -69,7 +76,6 @@ Napi::Value StreamerWrap::ReadPacket(const Napi::CallbackInfo& info) {
         Napi::Error::New(env, "streamer not opened").ThrowAsJavaScriptException();
         return env.Null();
     }
-    ref_->refCount++;
 
     auto deferred = Napi::Promise::Deferred::New(env);
 
@@ -98,7 +104,7 @@ Napi::Value StreamerWrap::Seek(const Napi::CallbackInfo& info) {
 
     int streamIndex = info[1].As<Napi::Number>().Int32Value();
 
-    int ret = streamer_seek(handle_, timestamp, streamIndex);
+    int ret = streamer_seek(ref_->handle, timestamp, streamIndex);
     return Napi::Number::New(env, ret);
 }
 

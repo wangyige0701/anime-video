@@ -1,9 +1,10 @@
 // remux_napi.h
 
 #pragma once
+#include <thread>
+#include <atomic>
 #include <napi.h>
 #include <Remux.h>
-#include <JsHttpResponse.h>
 
 class RemuxNapi : public Napi::ObjectWrap<RemuxNapi> {
 public:
@@ -30,6 +31,9 @@ public:
     }
 
 private:
+    std::atomic<bool> seeking{ false };
+
+    std::thread worker;
     Remux* remux = nullptr;
 
     Napi::String inputPath;
@@ -40,4 +44,6 @@ private:
     Napi::Value start(const Napi::CallbackInfo& info);
     Napi::Value seek(const Napi::CallbackInfo& info);
     Napi::Value stop(const Napi::CallbackInfo& info);
+
+    void createWorker();
 };

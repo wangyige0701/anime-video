@@ -6,6 +6,7 @@ extern "C" {
 }
 
 #include <string>
+#include <atomic>
 #include <JsHttpResponse.h>
 
 class Remux {
@@ -14,10 +15,13 @@ public:
     ~Remux();
 
     void open(double seekSeconds = -1.0);
+    void stop();
 
     void stream();
 
 private:
+    std::atomic<bool> stopped{ false };
+
     std::string inputPath;
     JsHttpResponse* response = nullptr;
 

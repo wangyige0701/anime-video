@@ -2,7 +2,6 @@
 
 #include <string>
 #include <remux_napi.h>
-#include <JsHttpResponse.h>
 
 Napi::Object RemuxNapi::Init(Napi::Env env, Napi::Object exports) {
     Napi::Function ctor = DefineClass(env, "Remux", {
@@ -39,7 +38,7 @@ RemuxNapi::RemuxNapi(const Napi::CallbackInfo& info) : Napi::ObjectWrap<RemuxNap
     } else {
         writeFunc = Napi::Function::New(env, [](const Napi::CallbackInfo& info) {
             return info.Env().Undefined();
-            });
+        });
     }
 
     if (options.Has("end")) {
@@ -47,7 +46,7 @@ RemuxNapi::RemuxNapi(const Napi::CallbackInfo& info) : Napi::ObjectWrap<RemuxNap
     } else {
         endFunc = Napi::Function::New(env, [](const Napi::CallbackInfo& info) {
             return info.Env().Undefined();
-            });
+        });
     }
 }
 
@@ -57,16 +56,24 @@ RemuxNapi::~RemuxNapi() {
 Napi::Value RemuxNapi::start(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
-    if (remux != nullptr) {
-        Napi::TypeError::New(info.Env(), "Already started").ThrowAsJavaScriptException();
+    if (remux) {
+        Napi::TypeError::New(env, "Already started").ThrowAsJavaScriptException();
         return env.Undefined();
     }
 
-    remux = new Remux(std::string(inputPath.Utf8Value()), RemuxNapi::createJsHttpResponse(env, writeFunc, endFunc));
-    remux->open(seekSeconds.DoubleValue());
-    remux->stream();
+    auto* resp = createJsHttpResponse(env, writeFunc, endFunc);
+    remux = new Remux(inputPath.Utf8Value(), resp);
+
+    createWorker();
 
     return env.Undefined();
+}
+
+Napi::Value RemuxNapi::stop(const Napi::CallbackInfo& info) {
+    if (worker.joinable()) {
+        worker.join();
+    }
+    return info.Env().Undefined();
 }
 
 Napi::Value RemuxNapi::seek(const Napi::CallbackInfo& info) {
@@ -78,8 +85,41 @@ Napi::Value RemuxNapi::seek(const Napi::CallbackInfo& info) {
     }
 
     seekSeconds = info[0].As<Napi::Number>();
+    double newSeek = seekSeconds.DoubleValue();
+
+    // 停止当前 remux
+    if (remux) {
+        remux->stop();
+    }
+
+    // 等 worker 退出
+    if (worker.joinable()) {
+        worker.join();
+    }
+
+    // 销毁旧实例
+    delete remux;
+    remux = nullptr;
+
+    // 创建新的 remux
+    auto* resp = createJsHttpResponse(env, writeFunc, endFunc);
+    remux = new Remux(inputPath.Utf8Value(), resp);
+
+    // 重新启动 worker
+    createWorker();
 
     return env.Undefined();
+}
+
+void RemuxNapi::createWorker() {
+    double seek = seekSeconds.DoubleValue();
+    worker = std::thread([this, seek]() {
+        try {
+            remux->open(seek);
+            remux->stream();
+        } catch (const std::exception& e) {
+        }
+    });
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {

@@ -14,7 +14,7 @@ Remux::~Remux() {
     cleanup();
 }
 
-void Remux::open(double seekSeconds = -1.0) {
+void Remux::open(double seekSeconds) {
     openInput();
     openOutput();
 
@@ -25,29 +25,37 @@ void Remux::open(double seekSeconds = -1.0) {
     writeHeader();
 }
 
+void Remux::stop() {
+    stopped.store(true);
+}
+
 void Remux::stream() {
-    AVPacket pkt;
-    av_init_packet(&pkt);
+    AVPacket* pkt = av_packet_alloc();
 
-    while (av_read_frame(ifmt, &pkt) >= 0) {
-        AVStream* in = ifmt->streams[pkt.stream_index];
+    if (!pkt) {
+        return;
+    }
 
-        if (pkt.stream_index >= ofmt->nb_streams) {
-            av_packet_unref(&pkt);
+    while (!stopped && av_read_frame(ifmt, pkt) >= 0) {
+        AVStream* in = ifmt->streams[pkt->stream_index];
+
+        if (pkt->stream_index >= ofmt->nb_streams) {
+            av_packet_unref(pkt);
             continue;
         }
 
-        AVStream* out = ofmt->streams[pkt.stream_index];
+        AVStream* out = ofmt->streams[pkt->stream_index];
 
-        pkt.pts = av_rescale_q_rnd(pkt.pts, in->time_base, out->time_base, (AVRounding) (AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-        pkt.dts = av_rescale_q_rnd(pkt.dts, in->time_base, out->time_base, (AVRounding) (AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
-        pkt.duration = av_rescale_q(pkt.duration, in->time_base, out->time_base);
-        pkt.pos = -1;
+        pkt->pts = av_rescale_q_rnd(pkt->pts, in->time_base, out->time_base, (AVRounding) (AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+        pkt->dts = av_rescale_q_rnd(pkt->dts, in->time_base, out->time_base, (AVRounding) (AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+        pkt->duration = av_rescale_q(pkt->duration, in->time_base, out->time_base);
+        pkt->pos = -1;
 
-        av_interleaved_write_frame(ofmt, &pkt);
-        av_packet_unref(&pkt);
+        av_interleaved_write_frame(ofmt, pkt);
+        av_packet_unref(pkt);
     }
 
+    av_packet_free(&pkt);
     av_write_trailer(ofmt);
     response->end();
 }
@@ -103,7 +111,7 @@ void Remux::writeHeader() {
 
 void Remux::seek(double seconds) {
     int64_t ts = seconds * AV_TIME_BASE;
-    av_seek_frame(ifmt, -1, ts, AVSEEK_FLAG_BACKWARD);
+    av_seek_frame(ifmt, -1, ts, AVSEEK_FLAG_BACKWARD | AVSEEK_FLAG_ANY);
     avformat_flush(ifmt);
 }
 

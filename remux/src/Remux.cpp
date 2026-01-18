@@ -1,0 +1,130 @@
+// Remux.cpp
+
+#include <string>
+#include <iostream>
+#include <stdexcept>
+
+#include <Remux.h>
+
+Remux::Remux(const std::string& path, JsHttpResponse* response)
+    : inputPath(path), response(response) {
+}
+
+Remux::~Remux() {
+    cleanup();
+}
+
+void Remux::open(double seekSeconds = -1.0) {
+    openInput();
+    openOutput();
+
+    if (seekSeconds >= 0) {
+        seek(seekSeconds);
+    }
+
+    writeHeader();
+}
+
+void Remux::stream() {
+    AVPacket pkt;
+    av_init_packet(&pkt);
+
+    while (av_read_frame(ifmt, &pkt) >= 0) {
+        AVStream* in = ifmt->streams[pkt.stream_index];
+
+        if (pkt.stream_index >= ofmt->nb_streams) {
+            av_packet_unref(&pkt);
+            continue;
+        }
+
+        AVStream* out = ofmt->streams[pkt.stream_index];
+
+        pkt.pts = av_rescale_q_rnd(pkt.pts, in->time_base, out->time_base, (AVRounding) (AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+        pkt.dts = av_rescale_q_rnd(pkt.dts, in->time_base, out->time_base, (AVRounding) (AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+        pkt.duration = av_rescale_q(pkt.duration, in->time_base, out->time_base);
+        pkt.pos = -1;
+
+        av_interleaved_write_frame(ofmt, &pkt);
+        av_packet_unref(&pkt);
+    }
+
+    av_write_trailer(ofmt);
+    response->end();
+}
+
+void Remux::openInput() {
+    if (avformat_open_input(&ifmt, inputPath.c_str(), nullptr, nullptr) < 0) {
+        throw std::runtime_error("Failed to open input file");
+    }
+
+    if (avformat_find_stream_info(ifmt, nullptr) < 0) {
+        throw std::runtime_error("Failed to find stream info");
+    }
+}
+
+void Remux::openOutput() {
+    avformat_alloc_output_context2(&ofmt, nullptr, "mp4", nullptr);
+    if (!ofmt) {
+        throw std::runtime_error("Failed to allocate output context");
+    }
+
+    // 复制流
+    for (unsigned i = 0; i < ifmt->nb_streams; i++) {
+        AVStream* in = ifmt->streams[i];
+
+        if (in->codecpar->codec_type != AVMEDIA_TYPE_VIDEO && in->codecpar->codec_type != AVMEDIA_TYPE_AUDIO) {
+            continue;
+        }
+
+        AVStream* out = avformat_new_stream(ofmt, nullptr);
+        avcodec_parameters_copy(out->codecpar, in->codecpar);
+        out->codecpar->codec_tag = 0;
+        out->time_base = in->time_base;
+    }
+
+    // 自定义 IO
+    avioBuffer = (uint8_t*) av_malloc(32768);
+    avio = avio_alloc_context(avioBuffer, 32768, 1, this, nullptr, &Remux::writePacket, nullptr);
+
+    ofmt->pb = avio;
+    ofmt->flags |= AVFMT_FLAG_CUSTOM_IO;
+}
+
+void Remux::writeHeader() {
+    AVDictionary* opts = nullptr;
+    av_dict_set(&opts, "movflags", "frag_keyframe+empty_moov+default_base_moof", 0);
+
+    if (avformat_write_header(ofmt, &opts) < 0) {
+        throw std::runtime_error("Failed to write header");
+    }
+
+    av_dict_free(&opts);
+}
+
+void Remux::seek(double seconds) {
+    int64_t ts = seconds * AV_TIME_BASE;
+    av_seek_frame(ifmt, -1, ts, AVSEEK_FLAG_BACKWARD);
+    avformat_flush(ifmt);
+}
+
+void Remux::cleanup() {
+    if (ifmt) {
+        avformat_close_input(&ifmt);
+    }
+
+    if (ofmt) {
+        avformat_free_context(ofmt);
+    }
+
+    if (avio) {
+        avio_context_free(&avio);
+    }
+
+    avioBuffer = nullptr;
+}
+
+int Remux::writePacket(void* opaque, const uint8_t* buf, int size) {
+    Remux* self = static_cast<Remux*>(opaque);
+    self->response->write(buf, size);
+    return size;
+}

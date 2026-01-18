@@ -31,6 +31,8 @@ add_definitions(-DNAPI_VERSION=8)
 # =========
 add_library(remux SHARED
     src/Remux.cpp
+    src/JsHttpResponse.cpp
+    src/remux_napi.cpp
 )
 
 # Node addon 后缀 & 前缀

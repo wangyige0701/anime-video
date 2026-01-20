@@ -21,9 +21,9 @@ public:
 
 private:
     std::atomic<bool> stopped{ false };
+    std::unique_ptr<JsHttpResponse> response;
 
     std::string inputPath;
-    JsHttpResponse* response = nullptr;
 
     AVFormatContext* ifmt = nullptr;
     AVFormatContext* ofmt = nullptr;
@@ -40,4 +40,5 @@ private:
      * AVIO 写回调
      */
     static int writePacket(void* opaque, const uint8_t* buf, int size);
+    static int interruptCallback(void* opaque);
 };

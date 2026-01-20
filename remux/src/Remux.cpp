@@ -12,6 +12,7 @@ Remux::Remux(const std::string& path, JsHttpResponse* response)
 
 Remux::~Remux() {
     cleanup();
+    response.reset();
 }
 
 void Remux::open(double seekSeconds) {
@@ -61,6 +62,10 @@ void Remux::stream() {
 }
 
 void Remux::openInput() {
+    ifmt = avformat_alloc_context();
+    ifmt->interrupt_callback.callback = &Remux::interruptCallback;
+    ifmt->interrupt_callback.opaque = this;
+
     if (avformat_open_input(&ifmt, inputPath.c_str(), nullptr, nullptr) < 0) {
         throw std::runtime_error("Failed to open input file");
     }
@@ -85,6 +90,8 @@ void Remux::openOutput() {
         }
 
         AVStream* out = avformat_new_stream(ofmt, nullptr);
+        out->codecpar->extradata = nullptr;
+        out->codecpar->extradata_size = 0;
         avcodec_parameters_copy(out->codecpar, in->codecpar);
         out->codecpar->codec_tag = 0;
         out->time_base = in->time_base;
@@ -133,6 +140,14 @@ void Remux::cleanup() {
 
 int Remux::writePacket(void* opaque, const uint8_t* buf, int size) {
     Remux* self = static_cast<Remux*>(opaque);
+    if (self->stopped) {
+        return AVERROR_EOF;
+    }
     self->response->write(buf, size);
     return size;
+}
+
+int Remux::interruptCallback(void* opaque) {
+    Remux* self = static_cast<Remux*>(opaque);
+    return self->stopped.load() ? 1 : 0;
 }

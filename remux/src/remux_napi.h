@@ -31,15 +31,13 @@ public:
     }
 
 private:
+    std::thread worker;
     std::atomic<bool> seeking{ false };
 
-    std::thread worker;
-    Remux* remux = nullptr;
-
-    Napi::String inputPath;
-    Napi::Number seekSeconds = Napi::Number::New(Env(), -1);
-    Napi::Function writeFunc;
-    Napi::Function endFunc;
+    std::string inputPath;
+    double seekSeconds = -1.0;
+    std::unique_ptr<Remux> remux;
+    std::unique_ptr<JsHttpResponse> response;
 
     Napi::Value start(const Napi::CallbackInfo& info);
     Napi::Value seek(const Napi::CallbackInfo& info);

@@ -50,6 +50,15 @@ void Remux::stream() {
         pkt->pts = av_rescale_q_rnd(pkt->pts, in->time_base, out->time_base, (AVRounding) (AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
         pkt->dts = av_rescale_q_rnd(pkt->dts, in->time_base, out->time_base, (AVRounding) (AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
         pkt->duration = av_rescale_q(pkt->duration, in->time_base, out->time_base);
+
+        if (pkt->duration <= 0) {
+            if (in->avg_frame_rate.num > 0) {
+                pkt->duration = av_rescale_q(1, av_inv_q(in->avg_frame_rate), out->time_base);
+            } else {
+                pkt->duration = 1;
+            }
+        }
+
         pkt->pos = -1;
 
         av_interleaved_write_frame(ofmt, pkt);

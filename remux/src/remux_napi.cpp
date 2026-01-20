@@ -27,30 +27,36 @@ RemuxNapi::RemuxNapi(const Napi::CallbackInfo& info) : Napi::ObjectWrap<RemuxNap
         Napi::TypeError::New(env, "Path is required").ThrowAsJavaScriptException();
         return;
     }
-    inputPath = options.Get("path").As<Napi::String>();
+    inputPath = options.Get("path").As<Napi::String>().Utf8Value();
 
     if (options.Has("seek")) {
-        seekSeconds = options.Get("seek").As<Napi::Number>();
+        seekSeconds = options.Get("seek").As<Napi::Number>().DoubleValue();
     }
 
-    if (options.Has("write")) {
-        writeFunc = options.Get("write").As<Napi::Function>();
-    } else {
-        writeFunc = Napi::Function::New(env, [](const Napi::CallbackInfo& info) {
-            return info.Env().Undefined();
-        });
+    if (!options.Has("write")) {
+        Napi::TypeError::New(env, "Write function is required").ThrowAsJavaScriptException();
+        return;
     }
+    Napi::Function writeFunc = options.Get("write").As<Napi::Function>();
 
-    if (options.Has("end")) {
-        endFunc = options.Get("end").As<Napi::Function>();
-    } else {
-        endFunc = Napi::Function::New(env, [](const Napi::CallbackInfo& info) {
-            return info.Env().Undefined();
-        });
+    if (!options.Has("end")) {
+        Napi::TypeError::New(env, "End function is required").ThrowAsJavaScriptException();
+        return;
     }
+    Napi::Function endFunc = options.Get("end").As<Napi::Function>();
+
+    response = std::make_unique<JsHttpResponse>(env, writeFunc, endFunc);
 }
 
 RemuxNapi::~RemuxNapi() {
+    if (remux) {
+        remux->stop();
+    }
+    if (worker.joinable()) {
+        worker.join();
+    }
+    remux.reset();
+    response.reset();
 }
 
 Napi::Value RemuxNapi::start(const Napi::CallbackInfo& info) {
@@ -61,18 +67,20 @@ Napi::Value RemuxNapi::start(const Napi::CallbackInfo& info) {
         return env.Undefined();
     }
 
-    auto* resp = createJsHttpResponse(env, writeFunc, endFunc);
-    remux = new Remux(inputPath.Utf8Value(), resp);
-
+    remux = std::make_unique<Remux>(inputPath, response.get());
     createWorker();
 
     return env.Undefined();
 }
 
 Napi::Value RemuxNapi::stop(const Napi::CallbackInfo& info) {
+    if (remux) {
+        remux->stop();
+    }
     if (worker.joinable()) {
         worker.join();
     }
+    remux.reset();
     return info.Env().Undefined();
 }
 
@@ -84,8 +92,7 @@ Napi::Value RemuxNapi::seek(const Napi::CallbackInfo& info) {
         return env.Null();
     }
 
-    seekSeconds = info[0].As<Napi::Number>();
-    double newSeek = seekSeconds.DoubleValue();
+    seekSeconds = info[0].As<Napi::Number>().DoubleValue();
 
     // 停止当前 remux
     if (remux) {
@@ -98,13 +105,10 @@ Napi::Value RemuxNapi::seek(const Napi::CallbackInfo& info) {
     }
 
     // 销毁旧实例
-    delete remux;
-    remux = nullptr;
+    remux.reset();
 
     // 创建新的 remux
-    auto* resp = createJsHttpResponse(env, writeFunc, endFunc);
-    remux = new Remux(inputPath.Utf8Value(), resp);
-
+    remux = std::make_unique<Remux>(inputPath, response.get());
     // 重新启动 worker
     createWorker();
 
@@ -112,10 +116,10 @@ Napi::Value RemuxNapi::seek(const Napi::CallbackInfo& info) {
 }
 
 void RemuxNapi::createWorker() {
-    double seek = seekSeconds.DoubleValue();
+    double seek = seekSeconds;
     worker = std::thread([this, seek]() {
         try {
-            remux->open(seek);
+            remux->open(seekSeconds);
             remux->stream();
         } catch (const std::exception& e) {
         }

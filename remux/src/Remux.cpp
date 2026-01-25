@@ -70,6 +70,27 @@ void Remux::stream() {
     response->end();
 }
 
+double Remux::getDuration(const std::string& path) {
+    AVFormatContext* fmt = nullptr;
+
+    if (avformat_open_input(&fmt, path.c_str(), nullptr, nullptr) < 0) {
+        return -1;
+    }
+
+    if (avformat_find_stream_info(fmt, nullptr) < 0) {
+        avformat_close_input(&fmt);
+        return -1;
+    }
+
+    double duration = -1;
+    if (fmt->duration != AV_NOPTS_VALUE) {
+        duration = (double) fmt->duration / AV_TIME_BASE;
+    }
+
+    avformat_close_input(&fmt);
+    return duration;
+}
+
 void Remux::openInput() {
     ifmt = avformat_alloc_context();
     ifmt->interrupt_callback.callback = &Remux::interruptCallback;

@@ -25,9 +25,10 @@ public:
     static JsHttpResponse* createJsHttpResponse(
         Napi::Env env,
         Napi::Function writeFunc,
-        Napi::Function endFunc
+        Napi::Function endFunc,
+        Napi::Function errorFunc
     ) {
-        return new JsHttpResponse(env, writeFunc, endFunc);
+        return new JsHttpResponse(env, writeFunc, endFunc, errorFunc);
     }
 
 private:
@@ -42,6 +43,11 @@ private:
     Napi::Value start(const Napi::CallbackInfo& info);
     Napi::Value seek(const Napi::CallbackInfo& info);
     Napi::Value stop(const Napi::CallbackInfo& info);
+
+    /**
+     * 暴露出去的获取时长的静态方法
+     */
+    static Napi::Value getDuration(const Napi::CallbackInfo& info);
 
     void createWorker();
 };

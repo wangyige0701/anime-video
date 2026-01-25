@@ -18,6 +18,10 @@ public:
     void stop();
 
     void stream();
+    /**
+     * 返回输入文件的时长，单位秒
+     */
+    static double getDuration(const std::string& path);
 
 private:
     std::atomic<bool> stopped{ false };

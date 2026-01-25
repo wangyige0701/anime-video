@@ -11,6 +11,7 @@ Napi::Object RemuxNapi::Init(Napi::Env env, Napi::Object exports) {
         });
 
     exports.Set("Remux", ctor);
+    exports.Set("getDuration", Napi::Function::New(env, &getDuration));
     return exports;
 }
 
@@ -45,7 +46,13 @@ RemuxNapi::RemuxNapi(const Napi::CallbackInfo& info) : Napi::ObjectWrap<RemuxNap
     }
     Napi::Function endFunc = options.Get("end").As<Napi::Function>();
 
-    response = std::make_unique<JsHttpResponse>(env, writeFunc, endFunc);
+    if (!options.Has("error")) {
+        Napi::TypeError::New(env, "Error function is required").ThrowAsJavaScriptException();
+        return;
+    }
+    Napi::Function errorFunc = options.Get("error").As<Napi::Function>();
+
+    response = std::make_unique<JsHttpResponse>(env, writeFunc, endFunc, errorFunc);
 }
 
 RemuxNapi::~RemuxNapi() {
@@ -57,6 +64,19 @@ RemuxNapi::~RemuxNapi() {
     }
     remux.reset();
     response.reset();
+}
+
+Napi::Value RemuxNapi::getDuration(const Napi::CallbackInfo& info) {
+    if (info.Length() < 1 || !info[0].IsString()) {
+        Napi::TypeError::New(info.Env(), "Path is required").ThrowAsJavaScriptException();
+        return info.Env().Null();
+    }
+
+    Napi::Env env = info.Env();
+    std::string path = info[0].As<Napi::String>().Utf8Value();
+
+    double duration = Remux::getDuration(path);
+    return Napi::Number::New(info.Env(), duration);
 }
 
 Napi::Value RemuxNapi::start(const Napi::CallbackInfo& info) {
@@ -119,9 +139,16 @@ void RemuxNapi::createWorker() {
     double seek = seekSeconds;
     worker = std::thread([this, seek]() {
         try {
-            remux->open(seekSeconds);
+            remux->open(seek);
             remux->stream();
         } catch (const std::exception& e) {
+            if (response) {
+                response->error(e.what());
+            }
+        } catch (...) {
+            if (response) {
+                response->error("Unknown error");
+            }
         }
     });
 }

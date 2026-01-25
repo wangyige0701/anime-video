@@ -1,5 +1,17 @@
 {
 	"cmake.ignoreCMakeListsMissing": true,
 	"cmake.configureOnOpen": false,
-	"cmake.sourceDirectory": "${workspaceFolder}/streamer"
+	"cmake.sourceDirectory": "${workspaceFolder}/streamer",
+	"files.exclude": {
+		"**/.git": true,
+		"**/.svn": true,
+		"**/.hg": true,
+		"**/.DS_Store": true,
+		"**/Thumbs.db": true,
+		"streamer": true,
+		"remux": true
+	},
+	"[javascript][typescript]": {
+		"editor.formatOnSave": true
+	}
 }

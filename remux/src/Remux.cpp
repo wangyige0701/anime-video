@@ -98,6 +98,11 @@ void Remux::openOutput() {
             continue;
         }
 
+        // EAC3 不进行转封装
+        if (in->codecpar->codec_type == AVMEDIA_TYPE_AUDIO && in->codecpar->codec_id == AV_CODEC_ID_EAC3) {
+            continue;
+        }
+
         AVStream* out = avformat_new_stream(ofmt, nullptr);
         out->codecpar->extradata = nullptr;
         out->codecpar->extradata_size = 0;

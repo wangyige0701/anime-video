@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parsePath } from '../utils/parsePath';
+import { parseRequest } from '../utils/parseReqest';
 
 describe('utils test', () => {
 	it('parse path', () => {
@@ -16,5 +17,39 @@ describe('utils test', () => {
 				key2: 'value2',
 			},
 		});
+	});
+
+	it('parse path with port', () => {
+		expect(parsePath('http://localhost:8080/api/data?param=value')).toEqual(
+			{
+				protocol: 'http:',
+				host: 'localhost',
+				port: '8080',
+				pathname: '/api/data',
+				query: {
+					param: 'value',
+				},
+			},
+		);
+	});
+
+	it('parse request path', () => {
+		expect(
+			parseRequest('/api/v1/users/123').match(
+				'api',
+				'v1',
+				'users',
+				/\d+/,
+			),
+		).toBe(true);
+
+		expect(
+			parseRequest('/api/v1/users/abc').match(
+				'api',
+				'v1',
+				'users',
+				/\d+/,
+			),
+		).toBe(false);
 	});
 });

@@ -1,18 +1,20 @@
 interface ParsedPath {
 	protocol: string;
 	host: string;
+	port: string;
 	pathname: string;
 	query: Record<string, string>;
 }
 
 enum ParseState {
-	Protocol = 0,
-	ProtocolStartSlash = 0.5,
-	ProtocolEndSlash = 0.7,
-	Host = 1,
-	Path = 2,
-	QueryKey = 3,
-	QueryValue = 4,
+	Protocol = 'protocol',
+	ProtocolStartSlash = 'protocolStartSlash',
+	ProtocolEndSlash = 'protocolEndSlash',
+	Host = 'host',
+	Path = 'path',
+	QueryKey = 'queryKey',
+	QueryValue = 'queryValue',
+	Port = 'port',
 }
 
 enum ParseStr {
@@ -26,10 +28,11 @@ enum ParseStr {
 export function parsePath(url: string) {
 	let str = url;
 	let index = 0;
-	let state: ParseState = ParseState.Protocol as ParseState;
+	let state = ParseState.Protocol as ParseState;
 	const result: ParsedPath = {
 		protocol: '',
 		host: '',
+		port: '',
 		pathname: '',
 		query: {},
 	};
@@ -59,28 +62,41 @@ export function parsePath(url: string) {
 				continue;
 			}
 			case ParseState.Host: {
+				if (value === ParseStr.Colon) {
+					state = ParseState.Port;
+					continue;
+				}
 				if (value === ParseStr.Slash) {
 					state = ParseState.Path;
 					index--;
-				} else {
-					result.host += value;
+					continue;
 				}
+				result.host += value;
+				continue;
+			}
+			case ParseState.Port: {
+				if (value === ParseStr.Slash) {
+					state = ParseState.Path;
+					index--;
+					continue;
+				}
+				result.port += value;
 				continue;
 			}
 			case ParseState.Path: {
 				if (value === ParseStr.Question) {
 					state = ParseState.QueryKey;
-				} else {
-					result.pathname += value;
+					continue;
 				}
+				result.pathname += value;
 				continue;
 			}
 			case ParseState.QueryKey: {
 				if (value === ParseStr.Equal) {
 					state = ParseState.QueryValue;
-				} else {
-					queryKey += value;
+					continue;
 				}
+				queryKey += value;
 				continue;
 			}
 			case ParseState.QueryValue: {
@@ -91,9 +107,9 @@ export function parsePath(url: string) {
 					queryKey = '';
 					queryValue = '';
 					state = ParseState.QueryKey;
-				} else {
-					queryValue += value;
+					continue;
 				}
+				queryValue += value;
 				continue;
 			}
 			default: {

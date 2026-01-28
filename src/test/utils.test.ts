@@ -33,23 +33,17 @@ describe('utils test', () => {
 		);
 	});
 
-	it('parse request path', () => {
+	it('parse request path', async () => {
 		expect(
-			parseRequest('/api/v1/users/123').match(
-				'api',
-				'v1',
-				'users',
-				/\d+/,
-			),
-		).toBe(true);
+			await parseRequest('/api/v1/users/123')
+				.match('api', 'v1', 'users', /\d+/)
+				.catch(() => false),
+		).toEqual(['api', 'v1', 'users', '123']);
 
 		expect(
-			parseRequest('/api/v1/users/abc').match(
-				'api',
-				'v1',
-				'users',
-				/\d+/,
-			),
+			await parseRequest('/api/v1/users/abc')
+				.match('api', 'v1', 'users', /\d+/)
+				.catch(() => false),
 		).toBe(false);
 	});
 });

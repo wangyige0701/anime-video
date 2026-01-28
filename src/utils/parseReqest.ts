@@ -53,15 +53,15 @@ export function parseRequest(requestPath: string) {
 				const path = paths[index];
 				if (isRegExp(module)) {
 					if (!module.test(path)) {
-						return false;
+						return Promise.reject(void 0);
 					}
 				} else {
 					if (String(module) !== path) {
-						return false;
+						return Promise.reject(void 0);
 					}
 				}
 			}
-			return true;
+			return Promise.resolve(paths);
 		},
 	};
 }

@@ -6,9 +6,9 @@
 		"strict": true,
 		"types": ["vitest/globals", "node"],
 		"paths": {
-			"@remux": ["./remux/build"],
-			"@server": ["./server/*"],
-			"@www": ["./www/*"]
+			"@remux/*": ["./remux/build/*"],
+			"@server/*": ["./server/*"],
+			"@www/*": ["./www/*"]
 		}
 	},
 	"include": ["server", "test", "dev"],

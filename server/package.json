@@ -3,6 +3,8 @@
 	"version": "1.0.0",
 	"main": "app.ts",
 	"scripts": {
+		"dev": "npx tsx app.ts",
+		"watch": "npx tsx watch app.ts",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [],
@@ -10,7 +12,8 @@
 	"license": "ISC",
 	"description": "",
 	"devDependencies": {
-		"@types/koa": "^3.0.1"
+		"@types/koa": "^3.0.1",
+		"tsx": "^4.21.0"
 	},
 	"dependencies": {
 		"@koa/router": "^15.3.0",

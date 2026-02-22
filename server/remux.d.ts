@@ -3,9 +3,9 @@ declare module '@remux/remux.node' {
 		constructor(options: {
 			path: string;
 			seek?: number;
-			write(data: Buffer): void;
-			end(): void;
-			error(e: Error): void;
+			write?: (data: Buffer) => void;
+			end?: () => void;
+			error?: (e: Error) => void;
 		});
 
 		start(): void;
@@ -13,5 +13,5 @@ declare module '@remux/remux.node' {
 		seek(time: number): void;
 	}
 
-	function getDuration(): number;
+	function getDuration(path: string): number;
 }

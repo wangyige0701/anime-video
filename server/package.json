@@ -1,7 +1,7 @@
 {
-	"name": "anime-video",
+	"name": "@anime-video/server",
 	"version": "1.0.0",
-	"type": "module",
+	"main": "app.ts",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
@@ -10,12 +10,11 @@
 	"license": "ISC",
 	"description": "",
 	"devDependencies": {
-		"@types/node": "^25.3.0",
-		"prettier": "^3.8.1",
-		"typescript": "^5.9.3",
-		"vitest": "^4.0.18"
+		"@types/koa": "^3.0.1"
 	},
 	"dependencies": {
-		"@wang-yige/utils": "^0.0.18"
+		"@koa/router": "^15.3.0",
+		"koa": "^3.1.1",
+		"koa-body": "^7.0.1"
 	}
 }

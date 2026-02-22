@@ -7,10 +7,10 @@
 		"types": ["vitest/globals", "node"],
 		"paths": {
 			"@remux": ["./remux/build"],
-			"@server": ["./src"],
-			"@www": ["./www"]
+			"@server": ["./server/*"],
+			"@www": ["./www/*"]
 		}
 	},
-	"include": ["src", "test"],
+	"include": ["server", "test", "dev"],
 	"exclude": ["node_modules"]
 }

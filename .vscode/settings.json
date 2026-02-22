@@ -10,7 +10,7 @@
 		"**/Thumbs.db": true,
 		"remux": true
 	},
-	"[javascript][typescript]": {
+	"[javascript][typescript][vue][css][html][javascriptreact][typescriptreact][json]": {
 		"editor.formatOnSave": true
 	}
 }

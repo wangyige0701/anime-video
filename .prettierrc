@@ -3,5 +3,5 @@
 	"useTabs": true,
 	"semi": true,
 	"singleQuote": true,
-	"vueIndentScriptAndStyle": true
+	"vueIndentScriptAndStyle": false
 }

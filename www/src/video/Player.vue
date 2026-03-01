@@ -12,12 +12,12 @@
 
 <script setup lang="ts">
 import { useVideoStore } from '@/stores/video';
-import { useTemplateRef, watchEffect } from 'vue';
+import { onMounted, useTemplateRef, watchEffect } from 'vue';
 
 const video = useTemplateRef('video');
 
 watchEffect(() => {
-	const process = useVideoStore().changedProcess;
+	const process = useVideoStore().changedProgress;
 	if (video.value) {
 		video.value.addEventListener(
 			'loadedmetadata',
@@ -49,16 +49,23 @@ function setVideo(
 		video.value.style.opacity = '1';
 		video.value.src = path;
 		useVideoStore().setVideo(name, fullTime, seek);
+	}
+}
 
+onMounted(() => {
+	if (video.value) {
 		video.value.addEventListener('timeupdate', () => {
 			useVideoStore().setCurrentTime(video.value?.currentTime || 0);
 		});
 	}
-}
+});
 
 defineExpose({
 	play,
 	pause,
+	get isPlay() {
+		return !video.value?.paused;
+	},
 	setVideo,
 });
 </script>

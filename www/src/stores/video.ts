@@ -2,60 +2,66 @@ import { ref, computed } from 'vue';
 import { defineStore } from 'pinia';
 
 export const useVideoStore = defineStore('video', () => {
-	const _fullTime = ref(0);
 	const name = ref('');
-	const process = ref(0);
-	const changedProcess = ref(0);
+	const progress = ref(0);
+	const fullTime = ref(0);
+	/** 手动更新进度条后的数据，用于触发视频更新 */
+	const changedProgress = ref(0);
 	// 每1%对应的时间
 	const step = computed(() => {
-		return Number((_fullTime.value / 100).toFixed(2)) || 0;
+		return Number((fullTime.value / 100).toFixed(2)) || 0;
 	});
 	// 当前进度对应的时长
 	const position = computed(() => {
-		if (process.value >= 100) {
-			return _fullTime.value;
+		if (progress.value >= 100) {
+			return fullTime.value;
 		}
-		if (process.value <= 0) {
+		if (progress.value <= 0) {
 			return 0;
 		}
-		return Number((process.value * step.value).toFixed(2)) || 0;
+		return Number((progress.value * step.value).toFixed(2)) || 0;
 	});
 
-	function setVideo(videoName: string, fullTime: number, defaultProcess = 0) {
+	function setVideo(
+		videoName: string,
+		fullTimeValue: number,
+		defaultProcess = 0,
+	) {
 		name.value = videoName;
-		_fullTime.value = fullTime;
-		process.value = defaultProcess;
+		fullTime.value = fullTimeValue;
+		progress.value = defaultProcess;
 	}
 
-	function resetProcess() {
-		process.value = 0;
-		changedProcess.value = 0;
+	function resetProgress() {
+		progress.value = 0;
+		changedProgress.value = 0;
 	}
 
 	/**
 	 * @param value 进度值，范围为0-100
 	 */
-	function setProcess(value: number) {
-		process.value = value;
-		changedProcess.value = value;
+	function setProgress(value: number) {
+		console.log(value);
+		progress.value = value;
+		changedProgress.value = value;
 	}
 
 	function setCurrentTime(time: number) {
-		if (time >= _fullTime.value) {
-			setProcess(100);
+		if (time >= fullTime.value) {
+			setProgress(100);
 			return;
 		}
 		if (time <= 0) {
-			setProcess(0);
+			setProgress(0);
 			return;
 		}
-		setProcess(Number(((time / _fullTime.value) * 100).toFixed(2)) || 0);
+		setProgress(Number(((time / fullTime.value) * 100).toFixed(2)) || 0);
 	}
 
 	return {
 		name,
-		process,
-		changedProcess,
+		progress,
+		changedProgress,
 		position,
 		/**
 		 * 设置视频信息
@@ -64,11 +70,11 @@ export const useVideoStore = defineStore('video', () => {
 		/**
 		 * 重置进度
 		 */
-		resetProcess,
+		resetProgress,
 		/**
 		 * 设置进度
 		 */
-		setProcess,
+		setProgress,
 		setCurrentTime,
 	};
 });

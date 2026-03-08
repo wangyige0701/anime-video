@@ -50,8 +50,6 @@ target_link_libraries(hls
     avformat
     avcodec
     avutil
-    swscale
-    avdevice
     ${CMAKE_CURRENT_SOURCE_DIR}/libnode.dll.a
 )
 

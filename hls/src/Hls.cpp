@@ -97,7 +97,6 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
 
     // 创建输出流
     for (unsigned int i = 0; i < input_ctx->nb_streams; i++) {
-
         AVStream* in_stream = input_ctx->streams[i];
         AVStream* out_stream = avformat_new_stream(output_ctx, nullptr);
 
@@ -119,17 +118,20 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
     output_ctx->pb = pb;
 
     // 写 header
-    avformat_write_header(output_ctx, nullptr);
+    if (avformat_write_header(output_ctx, nullptr) < 0) {
+        avio_close_dyn_buf(pb, nullptr);
+        avformat_free_context(output_ctx);
+        avformat_close_input(&input_ctx);
+        return {};
+    }
 
     AVPacket pkt;
 
     while (av_read_frame(input_ctx, &pkt) >= 0) {
-
         AVStream* in_stream = input_ctx->streams[pkt.stream_index];
         AVStream* out_stream = output_ctx->streams[pkt.stream_index];
 
         if (pkt.pts != AV_NOPTS_VALUE) {
-
             double pts_sec = pkt.pts * av_q2d(in_stream->time_base);
 
             if (pts_sec > end_time) {

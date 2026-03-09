@@ -1,7 +1,6 @@
 // hls_napi.cpp
 
 #include <hls_napi.h>
-#include <hls_m3u8_worker.h>
 #include <hls_ts_worker.h>
 
 Napi::Object HlsNapi::Init(Napi::Env env, Napi::Object exports) {
@@ -45,12 +44,13 @@ HlsNapi::~HlsNapi() {
 Napi::Value HlsNapi::m3u8(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
 
-    auto deferred = Napi::Promise::Deferred::New(env);
+    std::vector<uint8_t> buffer = hls->m3u8();
 
-    auto worker = new M3u8Worker(hls.get(), deferred);
-    worker->Queue();
+    if (buffer.empty()) {
+        return env.Null();
+    }
 
-    return deferred.Promise();
+    return Napi::Buffer<uint8_t>::Copy(env, buffer.data(), buffer.size());
 }
 
 Napi::Value HlsNapi::ts(const Napi::CallbackInfo& info) {
@@ -70,3 +70,9 @@ Napi::Value HlsNapi::ts(const Napi::CallbackInfo& info) {
 
     return deferred.Promise();
 }
+
+Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    return HlsNapi::Init(env, exports);
+}
+
+NODE_API_MODULE(hls, Init)

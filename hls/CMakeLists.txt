@@ -31,6 +31,7 @@ add_definitions(-DNAPI_VERSION=8)
 # =========
 add_library(hls SHARED
     src/Hls.cpp
+    src/hls_napi.cpp
 )
 
 # Node addon 后缀 & 前缀

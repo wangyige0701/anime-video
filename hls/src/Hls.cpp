@@ -87,15 +87,24 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
 
     // 创建输出上下文
     avformat_alloc_output_context2(&output_ctx, nullptr, "mpegts", nullptr);
+
     if (!output_ctx) {
         avformat_close_input(&input_ctx);
         return segment_data;
     }
 
+    std::vector<int> stream_map(input_ctx->nb_streams, -1);
+    int stream_index = 0;
+
     // 创建输出流
     for (unsigned int i = 0; i < input_ctx->nb_streams; i++) {
-
         AVStream* in_stream = input_ctx->streams[i];
+
+        if (in_stream->codecpar->codec_type != AVMEDIA_TYPE_VIDEO &&
+            in_stream->codecpar->codec_type != AVMEDIA_TYPE_AUDIO) {
+            continue;
+        }
+
         AVStream* out_stream = avformat_new_stream(output_ctx, nullptr);
 
         avcodec_parameters_copy(
@@ -104,6 +113,8 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
         );
 
         out_stream->time_base = in_stream->time_base;
+
+        stream_map[i] = stream_index++;
     }
 
     // 打开内存 buffer
@@ -115,18 +126,34 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
 
     output_ctx->pb = pb;
 
+    // resend_headers 确保 SPS/PPS
+    AVDictionary* opts = nullptr;
+    av_dict_set(&opts, "mpegts_flags", "resend_headers", 0);
+
     // 写 header
-    avformat_write_header(output_ctx, nullptr);
+    if (avformat_write_header(output_ctx, &opts) < 0) {
+        av_dict_free(&opts);
+        avio_close_dyn_buf(pb, nullptr);
+        avformat_free_context(output_ctx);
+        avformat_close_input(&input_ctx);
+        return segment_data;
+    }
+
+    av_dict_free(&opts);
 
     AVPacket pkt;
 
     while (av_read_frame(input_ctx, &pkt) >= 0) {
+        int in_index = pkt.stream_index;
+        if (stream_map[in_index] < 0) {
+            av_packet_unref(&pkt);
+            continue;
+        }
 
-        AVStream* in_stream = input_ctx->streams[pkt.stream_index];
-        AVStream* out_stream = output_ctx->streams[pkt.stream_index];
+        AVStream* in_stream = input_ctx->streams[in_index];
+        AVStream* out_stream = output_ctx->streams[stream_map[in_index]];
 
         if (pkt.pts != AV_NOPTS_VALUE) {
-
             double pts_sec = pkt.pts * av_q2d(in_stream->time_base);
 
             if (pts_sec > end_time) {
@@ -161,7 +188,13 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
             out_stream->time_base
         );
 
+        if (pkt.pts != AV_NOPTS_VALUE && pkt.dts != AV_NOPTS_VALUE && pkt.pts < pkt.dts) {
+            pkt.pts = pkt.dts;
+        }
+
         pkt.pos = -1;
+
+        pkt.stream_index = stream_map[in_index];
 
         av_interleaved_write_frame(output_ctx, &pkt);
 

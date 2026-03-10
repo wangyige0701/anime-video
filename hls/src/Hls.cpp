@@ -5,24 +5,16 @@
 #include <cmath>
 #include <algorithm>
 
-Hls::Hls(const std::string& input_path, int target_duration) : input_path(input_path), target_duration(target_duration) {}
-
-Hls::~Hls() = default;
-
-std::vector<uint8_t> Hls::m3u8() {
-    if (!m3u8_cache.empty()) {
-        return m3u8_cache;
-    }
-
+Hls::Hls(const std::string& input_path, int target_duration) : input_path(input_path), target_duration(target_duration) {
     AVFormatContext* input_ctx = nullptr;
 
     if (avformat_open_input(&input_ctx, input_path.c_str(), nullptr, nullptr) < 0) {
-        return std::vector<uint8_t>();
+        return;
     }
 
     if (avformat_find_stream_info(input_ctx, nullptr) < 0) {
         avformat_close_input(&input_ctx);
-        return std::vector<uint8_t>();
+        return;
     }
 
     // HLS 参数
@@ -30,6 +22,14 @@ std::vector<uint8_t> Hls::m3u8() {
     segment_count = static_cast<int>(std::ceil(duration / target_duration));
 
     avformat_close_input(&input_ctx);
+}
+
+Hls::~Hls() = default;
+
+std::vector<uint8_t> Hls::m3u8() {
+    if (!m3u8_cache.empty()) {
+        return m3u8_cache;
+    }
 
     // 构建 m3u8 内容
     std::string playlist;
@@ -63,6 +63,10 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
     AVFormatContext* output_ctx = nullptr;
     AVIOContext* pb = nullptr;
 
+    if (index < 0 || index >= segment_count) {
+        return segment_data;
+    }
+
     // 打开输入文件（每次重新打开，保证线程安全）
     if (avformat_open_input(&input_ctx, input_path.c_str(), nullptr, nullptr) < 0) {
         return segment_data;
@@ -73,15 +77,8 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
         return segment_data;
     }
 
-    double total_duration = input_ctx->duration / (double) AV_TIME_BASE;
-    int total_segments = static_cast<int>(std::ceil(total_duration / target_duration));
-
-    if (index < 0 || index >= total_segments) {
-        return segment_data;
-    }
-
     double start_time = index * target_duration;
-    double end_time = std::min((index + 1.0) * target_duration, total_duration);
+    double end_time = std::min((index + 1.0) * target_duration, duration);
 
     int64_t seek_target = start_time * AV_TIME_BASE;
 
@@ -90,22 +87,31 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
 
     // 创建输出上下文
     avformat_alloc_output_context2(&output_ctx, nullptr, "mpegts", nullptr);
+
     if (!output_ctx) {
         avformat_close_input(&input_ctx);
         return segment_data;
     }
 
-    // 创建输出流
+    std::vector<int> stream_map(input_ctx->nb_streams, -1);
+    int stream_index = 0;
+
+    // 只复制音视频流
     for (unsigned int i = 0; i < input_ctx->nb_streams; i++) {
         AVStream* in_stream = input_ctx->streams[i];
+
+        if (in_stream->codecpar->codec_type != AVMEDIA_TYPE_VIDEO &&
+            in_stream->codecpar->codec_type != AVMEDIA_TYPE_AUDIO) {
+            continue;
+        }
+
         AVStream* out_stream = avformat_new_stream(output_ctx, nullptr);
 
-        avcodec_parameters_copy(
-            out_stream->codecpar,
-            in_stream->codecpar
-        );
+        avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
 
         out_stream->time_base = in_stream->time_base;
+
+        stream_map[i] = stream_index++;
     }
 
     // 打开内存 buffer
@@ -117,19 +123,35 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
 
     output_ctx->pb = pb;
 
+    // resend_headers 确保 SPS/PPS
+    AVDictionary* opts = nullptr;
+    av_dict_set(&opts, "mpegts_flags", "resend_headers", 0);
+
     // 写 header
-    if (avformat_write_header(output_ctx, nullptr) < 0) {
+    if (avformat_write_header(output_ctx, &opts) < 0) {
+        av_dict_free(&opts);
         avio_close_dyn_buf(pb, nullptr);
         avformat_free_context(output_ctx);
         avformat_close_input(&input_ctx);
         return {};
     }
 
+    av_dict_free(&opts);
+
     AVPacket pkt;
 
+    bool started = false;
+
     while (av_read_frame(input_ctx, &pkt) >= 0) {
-        AVStream* in_stream = input_ctx->streams[pkt.stream_index];
-        AVStream* out_stream = output_ctx->streams[pkt.stream_index];
+        int in_index = pkt.stream_index;
+
+        if (stream_map[in_index] < 0) {
+            av_packet_unref(&pkt);
+            continue;
+        }
+
+        AVStream* in_stream = input_ctx->streams[in_index];
+        AVStream* out_stream = output_ctx->streams[stream_map[in_index]];
 
         if (pkt.pts != AV_NOPTS_VALUE) {
             double pts_sec = pkt.pts * av_q2d(in_stream->time_base);
@@ -143,6 +165,16 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
                 av_packet_unref(&pkt);
                 continue;
             }
+        }
+
+        // 等待关键帧开始
+        if (!started && in_stream->codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
+            if (!(pkt.flags & AV_PKT_FLAG_KEY)) {
+                av_packet_unref(&pkt);
+                continue;
+            }
+
+            started = true;
         }
 
         // 时间戳转换
@@ -166,9 +198,18 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
             out_stream->time_base
         );
 
+        if (pkt.pts != AV_NOPTS_VALUE && pkt.dts != AV_NOPTS_VALUE && pkt.pts < pkt.dts) {
+            pkt.pts = pkt.dts;
+        }
+
         pkt.pos = -1;
 
-        av_interleaved_write_frame(output_ctx, &pkt);
+        pkt.stream_index = stream_map[in_index];
+
+        if (av_interleaved_write_frame(output_ctx, &pkt) < 0) {
+            av_packet_unref(&pkt);
+            break;
+        }
 
         av_packet_unref(&pkt);
     }
@@ -178,6 +219,7 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
 
     // 获取内存 buffer
     uint8_t* buffer = nullptr;
+
     int size = avio_close_dyn_buf(pb, &buffer);
 
     if (size > 0) {

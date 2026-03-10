@@ -13,18 +13,6 @@ extern "C" {
 #include <memory>
 #include <functional>
 
-struct HlsSegment {
-    /** 切片序号 */
-    int index;
-    /** 实际时长（秒） */
-    double duration;
-    /** 切片数据 */
-    std::vector<uint8_t> data;
-
-    HlsSegment(int index, double duration, std::vector<uint8_t>&& data)
-        : index(index), duration(duration), data(std::move(data)) {}
-};
-
 struct HlsPlayList {
     /** m3u8 内容 */
     std::string content;

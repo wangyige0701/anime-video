@@ -13,15 +13,6 @@ extern "C" {
 #include <memory>
 #include <functional>
 
-struct HlsPlayList {
-    /** m3u8 内容 */
-    std::string content;
-    /** 当前序号 */
-    int mediaSequence;
-    /** 最后一个切片序号 */
-    int lastSegmentIndex;
-};
-
 class Hls {
 public:
     Hls(const std::string& input_path, int target_duration);
@@ -47,7 +38,9 @@ private:
     /** 目标切片时长（秒） */
     int target_duration = 2;
 
+    /** 视频时长（秒） */
     double duration = 0;
+    /** 切片数量 */
     int segment_count = 0;
 
     std::vector<uint8_t> m3u8_cache = {};

@@ -5,24 +5,16 @@
 #include <cmath>
 #include <algorithm>
 
-Hls::Hls(const std::string& input_path, int target_duration) : input_path(input_path), target_duration(target_duration) {}
-
-Hls::~Hls() = default;
-
-std::vector<uint8_t> Hls::m3u8() {
-    if (!m3u8_cache.empty()) {
-        return m3u8_cache;
-    }
-
+Hls::Hls(const std::string& input_path, int target_duration) : input_path(input_path), target_duration(target_duration) {
     AVFormatContext* input_ctx = nullptr;
 
     if (avformat_open_input(&input_ctx, input_path.c_str(), nullptr, nullptr) < 0) {
-        return std::vector<uint8_t>();
+        throw std::runtime_error("Failed to open input file");
     }
 
     if (avformat_find_stream_info(input_ctx, nullptr) < 0) {
         avformat_close_input(&input_ctx);
-        return std::vector<uint8_t>();
+        throw std::runtime_error("Failed to find stream info");
     }
 
     // HLS 参数
@@ -30,6 +22,14 @@ std::vector<uint8_t> Hls::m3u8() {
     segment_count = static_cast<int>(std::ceil(duration / target_duration));
 
     avformat_close_input(&input_ctx);
+}
+
+Hls::~Hls() = default;
+
+std::vector<uint8_t> Hls::m3u8() {
+    if (!m3u8_cache.empty()) {
+        return m3u8_cache;
+    }
 
     // 构建 m3u8 内容
     std::string playlist;
@@ -73,15 +73,12 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
         return segment_data;
     }
 
-    double total_duration = input_ctx->duration / (double) AV_TIME_BASE;
-    int total_segments = static_cast<int>(std::ceil(total_duration / target_duration));
-
-    if (index < 0 || index >= total_segments) {
+    if (index < 0 || index >= segment_count) {
         return segment_data;
     }
 
     double start_time = index * target_duration;
-    double end_time = std::min((index + 1.0) * target_duration, total_duration);
+    double end_time = std::min((index + 1.0) * target_duration, duration);
 
     int64_t seek_target = start_time * AV_TIME_BASE;
 

@@ -93,9 +93,6 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
         return segment_data;
     }
 
-    std::vector<int> stream_map(input_ctx->nb_streams, -1);
-    int stream_index = 0;
-
     // 只复制音视频流
     for (unsigned int i = 0; i < input_ctx->nb_streams; i++) {
         AVStream* in_stream = input_ctx->streams[i];
@@ -110,8 +107,6 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
         avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
 
         out_stream->time_base = in_stream->time_base;
-
-        stream_map[i] = stream_index++;
     }
 
     // 打开内存 buffer
@@ -139,19 +134,11 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
     av_dict_free(&opts);
 
     AVPacket pkt;
-
     bool started = false;
 
     while (av_read_frame(input_ctx, &pkt) >= 0) {
-        int in_index = pkt.stream_index;
-
-        if (stream_map[in_index] < 0) {
-            av_packet_unref(&pkt);
-            continue;
-        }
-
-        AVStream* in_stream = input_ctx->streams[in_index];
-        AVStream* out_stream = output_ctx->streams[stream_map[in_index]];
+        AVStream* in_stream = input_ctx->streams[pkt.stream_index];
+        AVStream* out_stream = output_ctx->streams[pkt.stream_index];
 
         if (pkt.pts != AV_NOPTS_VALUE) {
             double pts_sec = pkt.pts * av_q2d(in_stream->time_base);
@@ -203,8 +190,6 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
         }
 
         pkt.pos = -1;
-
-        pkt.stream_index = stream_map[in_index];
 
         if (av_interleaved_write_frame(output_ctx, &pkt) < 0) {
             av_packet_unref(&pkt);

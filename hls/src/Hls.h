@@ -13,6 +13,18 @@ extern "C" {
 #include <memory>
 #include <functional>
 
+struct HlsSegment {
+    int index;
+
+    int64_t start_pts;
+    int64_t end_pts;
+
+    int64_t start_pos;
+
+    double start_time;
+    double duration;
+};
+
 class Hls {
 public:
     Hls(const std::string& input_path, int target_duration);
@@ -44,6 +56,10 @@ private:
     int segment_count = 0;
 
     std::vector<uint8_t> m3u8_cache = {};
+    std::vector<HlsSegment> segments;
+
+    int video_stream_index = -1;
+    AVRational video_time_base;
 
     /**
      * 生成指定序号的 ts 切片数据

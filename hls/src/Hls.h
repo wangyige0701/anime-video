@@ -19,15 +19,13 @@ struct HlsSegment {
     int64_t start_pts;
     int64_t end_pts;
 
-    int64_t start_pos;
-
     double start_time;
     double duration;
 };
 
 class Hls {
 public:
-    Hls(const std::string& input_path, int target_duration);
+    Hls(const std::string& input_path, int segment_duration);
     ~Hls();
 
     // 禁止拷贝
@@ -47,19 +45,15 @@ public:
 
 private:
     std::string input_path;
-    /** 目标切片时长（秒） */
-    int target_duration = 2;
+
+    int video_stream_index = -1;
+    AVRational video_time_base{};
 
     /** 视频时长（秒） */
     double duration = 0;
-    /** 切片数量 */
-    int segment_count = 0;
 
     std::vector<uint8_t> m3u8_cache = {};
     std::vector<HlsSegment> segments;
-
-    int video_stream_index = -1;
-    AVRational video_time_base;
 
     /**
      * 生成指定序号的 ts 切片数据

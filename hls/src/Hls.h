@@ -49,8 +49,7 @@ private:
     int video_stream_index = -1;
     AVRational video_time_base{};
 
-    /** 视频时长（秒） */
-    double duration = 0;
+    double duration = 0;/** 视频时长（秒） */
 
     std::vector<uint8_t> m3u8_cache = {};
     std::vector<HlsSegment> segments;

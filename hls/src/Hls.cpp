@@ -34,15 +34,10 @@ Hls::Hls(const std::string& input_path, int segment_duration = 4) : input_path(i
     AVPacket pkt{};
 
     bool first_segment = true;
+    double last_segment_time = 0;
 
     while (av_read_frame(input_ctx, &pkt) >= 0) {
         if (pkt.stream_index != video_stream_index) {
-            av_packet_unref(&pkt);
-            continue;
-        }
-
-        // 只在关键帧切片
-        if (!(pkt.flags & AV_PKT_FLAG_KEY)) {
             av_packet_unref(&pkt);
             continue;
         }
@@ -58,13 +53,36 @@ Hls::Hls(const std::string& input_path, int segment_duration = 4) : input_path(i
 
         double time_sec = pts * av_q2d(video_time_base);
 
-        HlsSegment seg;
+        // 只在关键帧切片
+        if (!(pkt.flags & AV_PKT_FLAG_KEY)) {
+            av_packet_unref(&pkt);
+            continue;
+        }
 
-        seg.index = segments.size();
-        seg.start_pts = pts;
-        seg.start_time = time_sec;
+        // 第一段直接创建
+        if (segments.empty()) {
+            HlsSegment seg;
+            seg.index = 0;
+            seg.start_pts = pts;
+            seg.start_time = time_sec;
 
-        segments.push_back(seg);
+            segments.push_back(seg);
+            last_segment_time = time_sec;
+
+            av_packet_unref(&pkt);
+            continue;
+        }
+
+        if (time_sec - last_segment_time >= segment_duration) {
+            HlsSegment seg;
+            seg.index = segments.size();
+            seg.start_pts = pts;
+            seg.start_time = time_sec;
+
+            segments.push_back(seg);
+
+            last_segment_time = time_sec;
+        }
 
         av_packet_unref(&pkt);
     }
@@ -77,7 +95,7 @@ Hls::Hls(const std::string& input_path, int segment_duration = 4) : input_path(i
                 (segments[i + 1].start_pts - segments[i].start_pts) * av_q2d(video_time_base)
             );
         } else {
-            segments[i].end_pts = INT64_MAX;
+            segments[i].end_pts = duration / av_q2d(video_time_base);
             segments[i].duration = duration - segments[i].start_time;
         }
     }
@@ -108,7 +126,11 @@ std::vector<uint8_t> Hls::m3u8() {
     playlist += "#EXT-X-PLAYLIST-TYPE:VOD\n"; // 点播类型，支持拖拽
 
     for (auto& seg : segments) {
-        playlist += "#EXTINF:" + std::to_string(seg.duration) + ",\n";
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%.3f", seg.duration);
+        playlist += "#EXTINF:";
+        playlist += buf;
+        playlist += ",\n";
         playlist += std::to_string(seg.index) + ".ts\n";
     }
 
@@ -192,7 +214,7 @@ std::vector<uint8_t> Hls::generateSegment(int index) {
 
     // 关键参数：
     // - mpegts_flags=resend_headers：确保每个切片都包含完整的 header
-    av_dict_set(&opts, "mpegts_flags", "resend_headers", 0);
+    av_dict_set(&opts, "mpegts_flags", "resend_headers+initial_discontinuity", 0);
     av_dict_set(&opts, "muxdelay", "0", 0);
     av_dict_set(&opts, "muxpreload", "0", 0);
 

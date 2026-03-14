@@ -1,53 +1,43 @@
 import Koa from 'koa';
 import Router from '@koa/router';
 import body from 'koa-body';
-import { Remux, getDuration } from '@remux/remux.node';
 import { response } from '@server/koa/response';
+import { HlsManage } from './src/hls';
 
 const app = new Koa();
 const router = new Router();
 
-router.get('/video/:path/info', async (ctx) => {
+router.get('/video/:path/index.m3u8', async (ctx) => {
 	const { path: requestPath } = ctx.params;
 	const filepath = decodeURIComponent(requestPath);
+
+	const m3u8 = HlsManage.getHlsManage(filepath).m3u8();
+
+	ctx.set('Content-Type', 'application/vnd.apple.mpegurl');
+	ctx.set('Cache-Control', 'no-cache');
 
 	ctx.set('Access-Control-Allow-Origin', '*');
 	ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 	ctx.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
 
-	ctx.Success(getDuration(filepath));
+	ctx.body = m3u8;
 });
 
-router.get('/video/:path', async (ctx) => {
-	ctx.respond = false; // 让 Koa 不处理响应，直接使用原生 Node.js 的响应对象
-	ctx.status = 200;
-
-	const { path: requestPath } = ctx.params;
+router.get('/video/:path/:id.ts', async (ctx) => {
+	const { path: requestPath, id: segmentId } = ctx.params;
 	const filepath = decodeURIComponent(requestPath);
-	const seek = Number(ctx.query.time || 0) || 0;
+	const segmentIndex = parseInt(segmentId, 10);
 
-	const remux = new Remux({
-		path: filepath,
-		seek,
-		write(data) {
-			ctx.res.write(data);
-		},
-		end() {
-			ctx.res.end();
-		},
-		error(e) {
-			console.error(e);
-		},
-	});
+	const ts = await HlsManage.getHlsManage(filepath).ts(segmentIndex);
 
-	ctx.req.on('close', () => {
-		try {
-			remux.stop();
-		} catch (error) {}
-	});
+	ctx.set('Content-Type', 'video/mp2t');
+	ctx.set('Cache-Control', 'public, max-age=3600');
 
-	console.log(`Start streaming ${filepath} from ${seek}s`);
-	remux.start();
+	ctx.set('Access-Control-Allow-Origin', '*');
+	ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+	ctx.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+
+	ctx.body = ts;
 });
 
 router.get('/videos', async (ctx) => {});

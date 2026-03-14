@@ -1,3 +1,5 @@
 packages:
-    - 'server/*'
-    - 'www/*'
+    - 'server'
+    - 'www'
+    - 'hls'
+    - 'remux'

@@ -3,3 +3,5 @@ node_modules
 streamer/build
 
 *.mp4
+
+ffmpeg

@@ -7,6 +7,7 @@
 		"types": ["vitest/globals", "node"],
 		"paths": {
 			"@remux/*": ["./remux/build/*"],
+			"@hls/*": ["./hls/build/*"],
 			"@server/*": ["./server/*"],
 			"@www/*": ["./www/*"]
 		}

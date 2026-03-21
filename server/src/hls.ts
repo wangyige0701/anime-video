@@ -23,18 +23,20 @@ export class HlsManage {
 	private size = 0;
 	/** Hls 实例输入路径 hash 值 */
 	private hashPath!: string;
+	private inputPath!: string;
 	/** Hls 实例清除的定时器 */
 	private gcTimeout!: NodeJS.Timeout;
 	/** 当前正在生成的分片索引 */
 	private currentIndex = 0;
 	/** 清除缓存的分片索引最大范围 */
 	private clearMaxRange = 50;
+	/** 并行任务执行数量 */
+	private runCount = 5;
+	/** Hls 实例清除延迟时间 */
+	private destroyDelay = 60 * 1000 * 5;
 
 	constructor(inputPath: string) {
-		const hashPath = crypto
-			.createHash('sha256')
-			.update(path.normalize(inputPath))
-			.digest('hex');
+		const hashPath = crypto.createHash('sha256').update(path.normalize(inputPath)).digest('hex');
 		// 如果缓存中已存在该 Hls 实例，则直接返回并重置清除定时器
 		if (HlsManage.hlsBucket.has(hashPath)) {
 			const hls = HlsManage.hlsBucket.get(hashPath)!;
@@ -42,22 +44,40 @@ export class HlsManage {
 			return hls;
 		}
 		HlsManage.hlsBucket.set(hashPath, this);
+
+		this.inputPath = inputPath;
 		this.hashPath = hashPath;
-		this.hls = new Hls(inputPath, 4);
-		this.size = this.hls.size();
+
+		this.getHls();
+		this.size = this.getHls().size();
 		this.cache = new Array(this.size);
+	}
+
+	private getHls(): Hls {
+		if (!this.hls) {
+			this.hls = new Hls(this.inputPath, 4);
+		}
+		return this.hls;
 	}
 
 	private log(...params: any[]) {
 		// return console.log(...params);
 	}
 
+	public master() {
+		return this.getHls().master();
+	}
+
 	public m3u8() {
 		this.resetGc();
-		return this.hls.m3u8();
+		return this.getHls().m3u8();
 	}
 
 	public async ts(index: number) {
+		if (index < 0 || index >= this.size) {
+			return undefined as unknown as Buffer;
+		}
+
 		this.currentIndex = index;
 
 		this.resetGc();
@@ -77,7 +97,7 @@ export class HlsManage {
 			return this.cache[index]!;
 		}
 
-		const ts = this.hls.ts(index);
+		const ts = this.getHls().ts(index);
 		this.log(`生成 ${index} 分片`);
 
 		this.preloadTs(index + 1);
@@ -88,16 +108,28 @@ export class HlsManage {
 		return buffer;
 	}
 
+	public subtitle_m3u8(streamIndex: number) {
+		return this.getHls().subtitle_m3u8(streamIndex);
+	}
+
+	public subtitle(streamIndex: number, index: number) {
+		return this.getHls().subtitle(streamIndex, index);
+	}
+
 	private preloadTs(index: number) {
-		for (let i = index; i < this.size && i < index + 5; i++) {
+		for (let i = index; i < this.size && i < index + this.runCount; i++) {
 			this.task.add(async (index) => {
+				if (index < 0 || index >= this.size) {
+					return;
+				}
 				if (this.cache[index]) {
 					return;
 				}
+				// hls 实例不存在时，跳过预加载行为
 				if (!this.hls) {
 					return;
 				}
-				const buffer = await this.hls.ts(index);
+				const buffer = await this.getHls().ts(index);
 				this.log(`生成 ${index} 分片`);
 				this.setTsCache(index, buffer);
 			}, i);
@@ -120,10 +152,7 @@ export class HlsManage {
 	 */
 	private resetTsCacheClear() {
 		this.waitToClear.forEach((waitTime, i) => {
-			if (
-				i >= this.currentIndex &&
-				i <= this.currentIndex + this.clearMaxRange
-			) {
+			if (i >= this.currentIndex && i <= this.currentIndex + this.clearMaxRange) {
 				this.log(`清除 ${i} 分片缓存定时器`);
 				waitTime && clearTimeout(waitTime);
 				this.waitToClear.delete(i);
@@ -133,17 +162,13 @@ export class HlsManage {
 		this.cache.forEach((buffer, i) => {
 			if (
 				!buffer ||
-				(i >= this.currentIndex &&
-					i <= this.currentIndex + this.clearMaxRange) ||
+				(i >= this.currentIndex && i <= this.currentIndex + this.clearMaxRange) ||
 				this.waitToClear.has(i)
 			) {
 				return;
 			}
 			this.log(`设置 ${i} 分片缓存定时器`);
-			this.waitToClear.set(
-				i,
-				setTimeout(this.clearTsCache.bind(this, i), 10 * 1000),
-			);
+			this.waitToClear.set(i, setTimeout(this.clearTsCache.bind(this, i), 10 * 1000));
 		});
 	}
 
@@ -153,10 +178,7 @@ export class HlsManage {
 	 */
 	private clearTsCache(index: number) {
 		this.waitToClear.delete(index);
-		if (
-			index >= this.currentIndex &&
-			index <= this.currentIndex + this.clearMaxRange
-		) {
+		if (index >= this.currentIndex && index <= this.currentIndex + this.clearMaxRange) {
 			this.log(`${index} 分片缓存在当前播放序列之后，无需清除`);
 			return;
 		}
@@ -170,11 +192,16 @@ export class HlsManage {
 	private gc() {
 		this.gcTimeout = setTimeout(() => {
 			this.log(`清除实例缓存`);
+
+			if (this.hls) {
+				this.hls.destroy();
+			}
+			this.hls = null as unknown as Hls;
+
 			this.cache = new Array(this.size);
 			this.waitToClear.clear();
 			HlsManage.hlsBucket.delete(this.hashPath);
-			global.gc && global.gc();
-		}, 60 * 1000);
+		}, this.destroyDelay);
 	}
 
 	/**

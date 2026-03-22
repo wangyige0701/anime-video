@@ -1,7 +1,8 @@
-import { Controller, HttpMethod, Inject, Types, ResponseHeader, Cross } from '@server/koa/decorators';
+import { Controller, HttpMethod, Inject, Types, ResponseHeader, Cross, Singleton } from 'koa-use-decorator-route';
 import { HlsManage } from '@server/src/hls';
 
-@Controller('/video', true)
+@Singleton()
+@Controller('/video')
 @Cross()
 export class VideoController {
 	@HttpMethod.Get('/:path/master.m3u8')

@@ -19,6 +19,7 @@
 		"@koa/router": "^15.3.0",
 		"koa": "^3.1.1",
 		"koa-body": "^7.0.1",
+		"koa-use-decorator-route": "^0.0.3",
 		"reflect-metadata": "^0.2.2"
 	}
 }

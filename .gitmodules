@@ -1,0 +1,3 @@
+[submodule "hls"]
+	path = hls
+	url = git@github.com:wangyige0701/anime-video-hls.git

@@ -5,5 +5,3 @@ streamer/build
 *.mp4
 
 ffmpeg
-
-hls

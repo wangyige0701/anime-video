@@ -1,5 +1,3 @@
 packages:
     - 'server'
     - 'www'
-    - 'hls'
-    - 'remux'

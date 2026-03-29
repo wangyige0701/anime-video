@@ -7,7 +7,7 @@ import fs, { stat } from 'node:fs';
 interface Series {
 	rootPath: string;
 	name: string;
-	title: string; // 可修改，默认是 name
+	title: string;
 	imagePath: string;
 	seasons: Season[];
 	/**
@@ -95,24 +95,26 @@ export function refreshSeriesInfo() {
 			continue;
 		}
 
-		const datas: Series[] = [];
 		const configPath = getSeriesDirectoryFile(directory);
 
 		// 遍历每个视频系列的目录内容
 		const traverseSeries = () => {
+			const datas: Series[] = [];
 			const files = fs.readdirSync(directory);
+			const filter: Set<string> = new Set();
 			for (const file of files) {
 				const seriesPath = path.resolve(directory, file);
 				if (!isDirectory(seriesPath)) {
 					continue;
 				}
 
+				filter.add(file);
 				const oldSerieInfo = oldInfos.find((item) => item.name === file) || ({} as Series);
 				const seasonInfo = traverseSeasons(seriesPath, oldSerieInfo);
 				if (seasonInfo.seasons.length) {
 					// 合并旧信息
 					datas.push({
-						rootPath: directory,
+						rootPath: seriesPath,
 						name: file,
 						title: oldSerieInfo.title || file,
 						imagePath: seasonInfo.image || '',
@@ -122,6 +124,8 @@ export function refreshSeriesInfo() {
 					});
 				}
 			}
+
+			return datas.filter((item) => filter.has(item.name));
 		};
 
 		const traverseSeasons = (seriesPath: string, oldSerieInfo: Series) => {
@@ -133,8 +137,19 @@ export function refreshSeriesInfo() {
 				image: '',
 				seasons: oldSeasons,
 			};
+			const seasonFilter: Set<string> = new Set();
+			const episodeFilter: Set<string> = new Set();
+
+			const filterEpisode = (pathName: string) => {
+				const target = result.seasons.find((item) => item.pathName === pathName);
+				if (target) {
+					target.episodes = target.episodes.filter((item) => episodeFilter.has(item.pathName));
+				}
+				episodeFilter.clear();
+			};
 
 			const initialSeason = (pathName: string, title: string) => {
+				seasonFilter.add(pathName);
 				const target = result.seasons.find((item) => item.pathName === pathName);
 				// 不存在旧数据则新插入一条，索引取最大值
 				if (!target) {
@@ -164,8 +179,11 @@ export function refreshSeriesInfo() {
 					continue;
 				}
 				if (isAllowVideoExtension(extension)) {
-					traverseEpisodes(seasonPath, initialSeason('/', '未命名'));
+					episodeFilter.add(traverseEpisodes(seasonPath, initialSeason('/', '未命名')));
 				}
+			}
+			if (episodeFilter.size) {
+				filterEpisode('/');
 			}
 
 			for (const folder of wait) {
@@ -174,7 +192,8 @@ export function refreshSeriesInfo() {
 				if (!files.length) {
 					continue;
 				}
-				const episodes = initialSeason(folder, folder);
+				const basename = path.basename(folder);
+				const episodes = initialSeason(basename, basename);
 				// 遍历视频文件
 				for (const file of files) {
 					const episodePath = path.resolve(episodesFolderPath, file);
@@ -183,10 +202,16 @@ export function refreshSeriesInfo() {
 					}
 					const extension = path.extname(episodePath);
 					if (isAllowVideoExtension(extension)) {
-						traverseEpisodes(episodePath, episodes);
+						episodeFilter.add(traverseEpisodes(episodePath, episodes));
 					}
 				}
+				if (episodeFilter.size) {
+					filterEpisode(basename);
+				}
 			}
+
+			result.seasons = result.seasons.filter((item) => seasonFilter.has(item.pathName));
+
 			return result;
 		};
 
@@ -196,17 +221,21 @@ export function refreshSeriesInfo() {
 		 */
 		const traverseEpisodes = (episodePath: string, episodes: Episode[]) => {
 			const extension = path.extname(episodePath);
-			const fileName = path.basename(episodePath, extension);
-			const target = episodes.find((item) => item.pathName === fileName);
+			const filename = path.basename(episodePath, extension);
+			const basename = path.basename(episodePath);
+			const target = episodes.find((item) => item.pathName === basename);
 			if (!target) {
 				episodes.push({
 					episodeNumber: Math.max(0, ...episodes.map((item) => item.episodeNumber)) + 1,
-					pathName: fileName,
+					pathName: basename,
 					extension,
-					title: fileName,
+					title: filename,
 				} as Episode);
 			}
+			return basename;
 		};
+
+		const datas = traverseSeries();
 
 		fs.writeFileSync(configPath, JSON.stringify(datas, null, 2), 'utf-8');
 	}

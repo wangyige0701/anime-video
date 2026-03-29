@@ -1,9 +1,16 @@
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	test: {
-		globals: true,
-		environment: 'node',
 		include: ['**/test/**/*.test.ts'],
+		env: {
+			VIDEO_CONFIG_PREFIX: 'test',
+		},
+	},
+	resolve: {
+		alias: {
+			'@server': path.resolve(__dirname, 'server'),
+		},
 	},
 });

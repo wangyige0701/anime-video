@@ -5,3 +5,8 @@ streamer/build
 *.mp4
 
 ffmpeg
+
+test/videos/*
+!test/videos/.gitkeep
+
+*.video.json

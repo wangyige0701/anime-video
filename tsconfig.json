@@ -15,6 +15,6 @@
 			"@www/*": ["./www/*"]
 		}
 	},
-	"include": ["server", "test", "dev"],
+	"include": ["server", "test", "dev", "test", "www"],
 	"exclude": ["node_modules"]
 }

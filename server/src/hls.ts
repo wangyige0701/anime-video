@@ -3,6 +3,9 @@ import path from 'node:path';
 import { Hls } from '@hls/hls.node';
 import { ParallelTask } from '@wang-yige/utils';
 
+/**
+ * 接入缓存管理 Hls 实例
+ */
 export class HlsManage {
 	/** 缓存所有 HlsManage 实例 */
 	private static hlsBucket = new Map<string, HlsManage>();

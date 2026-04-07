@@ -8,7 +8,7 @@ interface Series {
 	rootPath: string;
 	name: string;
 	title: string;
-	imagePath: string;
+	images: string[];
 	seasons: Season[];
 	/**
 	 * 可手动添加的描述信息
@@ -117,7 +117,7 @@ export function refreshSeriesInfo() {
 						rootPath: seriesPath,
 						name: file,
 						title: oldSerieInfo.title || file,
-						imagePath: seasonInfo.image || '',
+						images: seasonInfo.images || [],
 						seasons: seasonInfo.seasons,
 						description: oldSerieInfo.description || '',
 						tags: oldSerieInfo.tags || [],
@@ -134,7 +134,7 @@ export function refreshSeriesInfo() {
 			const wait: string[] = [];
 			const files = fs.readdirSync(seriesPath);
 			const result = {
-				image: '',
+				images: oldSerieInfo.images || [],
 				seasons: oldSeasons,
 			};
 			const seasonFilter: Set<string> = new Set();
@@ -175,7 +175,9 @@ export function refreshSeriesInfo() {
 				// 先遍历文件，判断是否有视频文件，如果有则同样整理为季信息
 				const extension = path.extname(seasonPath);
 				if (isAllowImageExtension(extension)) {
-					result.image = seasonPath;
+					if (!result.images.includes(file)) {
+						result.images.push(file);
+					}
 					continue;
 				}
 				if (isAllowVideoExtension(extension)) {

@@ -1,6 +1,6 @@
 import Koa from 'koa';
 import body from 'koa-body';
-import Decorator from 'koa-use-decorator-route';
+import Decorator from 'koa-use-decorator-router';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { response } from '@server/koa/response';

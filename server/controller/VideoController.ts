@@ -1,4 +1,4 @@
-import { Controller, HttpMethod, Inject, Types, ResponseHeader, Cross, Singleton } from 'koa-use-decorator-route';
+import { Controller, HttpMethod, Inject, Types, ResponseHeader, Cross, Singleton } from 'koa-use-decorator-router';
 import { HlsManage } from '@server/src/hls';
 
 @Singleton()

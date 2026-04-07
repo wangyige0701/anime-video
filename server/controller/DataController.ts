@@ -1,4 +1,4 @@
-import { Controller, Cross, Singleton } from 'koa-use-decorator-route';
+import { Controller, Cross, Singleton } from 'koa-use-decorator-router';
 
 @Singleton()
 @Controller('/data')

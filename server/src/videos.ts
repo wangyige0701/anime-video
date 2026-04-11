@@ -1,5 +1,5 @@
 import path from 'node:path';
-import fs, { stat } from 'node:fs';
+import fs from 'node:fs';
 
 /**
  * 视频系列
@@ -42,7 +42,7 @@ interface Episode {
 
 const configPrefix = process.env.VIDEO_CONFIG_PREFIX || '';
 const configName = configPrefix + '.video.json';
-const videoExtensions = ['.mp4', '.mkv'];
+const videoExtensions = ['.mp4', '.mkv', '.avi', '.flv'];
 const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
 
 function getDirectoryFile() {
@@ -53,16 +53,35 @@ function getDirectoryFile() {
 	return configPath;
 }
 
+/**
+ * 获取所有视频系列目录
+ * @returns 视频系列目录数组
+ */
 export function getDirectories(): string[] {
 	const configPath = getDirectoryFile();
 	return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 }
 
+/**
+ * 设置视频系列目录
+ * @param directories 视频系列目录数组
+ */
 export function setDirectories(...directories: string[]) {
 	const configPath = getDirectoryFile();
 	const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
 	config.push(...directories.map((item) => path.resolve(item)).filter((item) => !config.includes(item)));
 	fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+}
+
+/**
+ * 删除视频系列目录
+ * @param directories 视频系列目录数组
+ */
+export function removeDirectories(...directories: string[]) {
+	const configPath = getDirectoryFile();
+	const config = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as string[];
+	const newConfig = config.filter((item) => !directories.includes(item));
+	fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2));
 }
 
 /**
@@ -76,6 +95,10 @@ function getSeriesDirectoryFile(directory: string) {
 	return configPath;
 }
 
+/**
+ * 获取所有视频系列的信息
+ * @returns 视频系列信息数组
+ */
 export function getSeriesInfos() {
 	const directories = getDirectories();
 	const result: Series[] = [];
@@ -87,6 +110,9 @@ export function getSeriesInfos() {
 	return result;
 }
 
+/**
+ * 刷新视频系列信息，遍历每个视频系列的目录内容，判断是否有更新，并将更新后的信息写入配置文件
+ */
 export function refreshSeriesInfo() {
 	const directories = getDirectories();
 	const oldInfos = getSeriesInfos();
@@ -130,7 +156,6 @@ export function refreshSeriesInfo() {
 
 		const traverseSeasons = (seriesPath: string, oldSerieInfo: Series) => {
 			const oldSeasons = oldSerieInfo.seasons || [];
-
 			const wait: string[] = [];
 			const files = fs.readdirSync(seriesPath);
 			const result = {
@@ -184,6 +209,7 @@ export function refreshSeriesInfo() {
 					episodeFilter.add(traverseEpisodes(seasonPath, initialSeason('/', '未命名')));
 				}
 			}
+
 			if (episodeFilter.size) {
 				filterEpisode('/');
 			}

@@ -56,7 +56,7 @@ importers:
         specifier: ^4.21.0
         version: 4.21.0
 
-  www:
+  web:
     dependencies:
       hls.js:
         specifier: ^1.6.15

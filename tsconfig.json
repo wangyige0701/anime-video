@@ -12,9 +12,10 @@
 			"@remux/*": ["./remux/build/*"],
 			"@hls/*": ["./hls/build/*"],
 			"@server/*": ["./server/*"],
-			"@www/*": ["./www/*"]
+			"@web/*": ["./web/*"],
+			"@config/*": ["./config/*"]
 		}
 	},
-	"include": ["server", "test", "dev", "test", "www"],
+	"include": ["server", "test", "dev", "test", "web"],
 	"exclude": ["node_modules"]
 }

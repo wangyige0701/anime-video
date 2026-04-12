@@ -11,6 +11,7 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef } from 'vue';
 import Hls from 'hls.js';
+import { getMasterM3u8Url } from '@config/hls';
 
 const video = useTemplateRef('video');
 const mp4 = 'E:\\动画\\我们不可能成为恋人！绝对不行。 (※似乎可行？)\\正片\\11.mp4';
@@ -21,12 +22,12 @@ let hls: Hls | null = null;
 function switchVideo() {
 	if (hls) {
 		name = name === mp4 ? mkv : mp4;
-		hls.loadSource(`http://localhost:3000/video/${encodeURIComponent(name)}/master.m3u8`);
+		hls.loadSource(`http://localhost:3000${getMasterM3u8Url(name)}`);
 	}
 }
 
 onMounted(() => {
-	const src = `http://localhost:3000/video/${encodeURIComponent(name)}/master.m3u8`;
+	const src = `http://localhost:3000${getMasterM3u8Url(name)}`;
 	const el = video.value!;
 
 	if (Hls.isSupported()) {

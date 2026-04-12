@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { Hls } from '@hls/hls.node';
 import { ParallelTask } from '@wang-yige/utils';
+import { M3u8Config, SEGMENT_MIN_DURATION } from '@config/hls';
 
 /**
  * 接入缓存管理 Hls 实例
@@ -58,7 +59,10 @@ export class HlsManage {
 
 	private getHls(): Hls {
 		if (!this.hls) {
-			this.hls = new Hls(this.inputPath, 4);
+			this.hls = new Hls(this.inputPath, SEGMENT_MIN_DURATION, {
+				mediaM3u8Name: M3u8Config.MEDIA_M3U8_NAME,
+				subtitleM3u8Name: M3u8Config.SUBTITLE_M3U8_NAME,
+			});
 		}
 		return this.hls;
 	}
@@ -71,9 +75,9 @@ export class HlsManage {
 		return this.getHls().master();
 	}
 
-	public m3u8() {
+	public media_m3u8() {
 		this.resetGc();
-		return this.getHls().m3u8();
+		return this.getHls().media_m3u8();
 	}
 
 	public async ts(index: number) {

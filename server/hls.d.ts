@@ -3,9 +3,16 @@ declare module '@hls/hls.node' {
 		/**
 		 * 创建 Hls 实例
 		 * @param inputPath 输入文件路径
-		 * @param segmentDuration 片段最短时长，单位秒
+		 * @param segmentMinDuration 片段最短时长，单位秒
 		 */
-		constructor(inputPath: string, segmentDuration?: number);
+		constructor(
+			inputPath: string,
+			segmentMinDuration?: number,
+			options?: {
+				mediaM3u8Name?: string;
+				subtitleM3u8Name?: string;
+			},
+		);
 
 		/**
 		 * 获取主 m3u8 文件
@@ -15,7 +22,7 @@ declare module '@hls/hls.node' {
 		/**
 		 * 获取视频 m3u8 文件
 		 */
-		m3u8(): Buffer;
+		media_m3u8(): Buffer;
 
 		/**
 		 * 获取视频分片文件（.ts）

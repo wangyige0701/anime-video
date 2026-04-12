@@ -16,6 +16,6 @@
 			"@config/*": ["./config/*"]
 		}
 	},
-	"include": ["server", "test", "dev", "test", "web"],
+	"include": ["server", "test", "dev", "test", "web", "config"],
 	"exclude": ["node_modules"]
 }

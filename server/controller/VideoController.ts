@@ -1,22 +1,24 @@
 import { Controller, HttpMethod, Inject, Types, ResponseHeader, Cross, Singleton } from 'koa-use-decorator-router';
 import { HlsManage } from '@server/src/hls';
+import { VIDEO_ROUTE } from '@config/route';
+import { M3u8Config } from '@config/hls';
 
 @Singleton()
-@Controller('/video')
+@Controller(VIDEO_ROUTE)
 @Cross()
 export class VideoController {
-	@HttpMethod.Get('/:path/master.m3u8')
+	@HttpMethod.Get(`/:path/${M3u8Config.MASTER_M3U8_NAME}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	master(@Inject('path', decodeURIComponent) path: string) {
 		return HlsManage.getHlsManage(path).master();
 	}
 
-	@HttpMethod.Get('/:path/index.m3u8')
+	@HttpMethod.Get(`/:path/${M3u8Config.MEDIA_M3U8_NAME}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	index(@Inject('path', decodeURIComponent) path: string) {
-		return HlsManage.getHlsManage(path).m3u8();
+		return HlsManage.getHlsManage(path).media_m3u8();
 	}
 
 	@HttpMethod.Get('/:path/:id.ts')
@@ -26,7 +28,7 @@ export class VideoController {
 		return await HlsManage.getHlsManage(path).ts(id);
 	}
 
-	@HttpMethod.Get('/:path/:stream.m3u8')
+	@HttpMethod.Get(`/:path/:stream/${M3u8Config.SUBTITLE_M3U8_NAME}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	subtitle(@Inject('path', decodeURIComponent) path: string, @Inject('stream', Types.Int) stream: number) {

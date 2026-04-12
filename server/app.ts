@@ -4,6 +4,7 @@ import Decorator from 'koa-use-decorator-router';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { response } from '@server/koa/response';
+import { getServerPort } from '@config/server';
 
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), './controller');
 
@@ -12,6 +13,6 @@ const decorator = new Decorator(dir);
 
 app.use(body()).use(response()).use(decorator.middleware()).use(decorator.allowedMethods());
 
-app.listen(3000, () => {
-	console.log('server is running on http://localhost:3000');
+app.listen(getServerPort(), () => {
+	console.log(`server is running on http://localhost:${getServerPort()}`);
 });

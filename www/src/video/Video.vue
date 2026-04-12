@@ -24,7 +24,7 @@ watchEffect(() => {
 });
 
 function clickContainer() {
-	if (player.value) {
+	if (player.value && player.value instanceof HTMLVideoElement) {
 		if (player.value.isPlay) {
 			player.value.pause();
 		} else {
@@ -32,20 +32,6 @@ function clickContainer() {
 		}
 	}
 }
-
-onMounted(async () => {
-	const name =
-		'E:\\动画\\我们不可能成为恋人！绝对不行。 (※似乎可行？)\\正片\\11.mp4';
-	const time = await fetch(
-		`http://localhost:3000/video/${encodeURIComponent(name)}/info`,
-	).then((res) => res.json());
-	const src = `http://localhost:3000/video/${encodeURIComponent(name)}`;
-	if (player.value) {
-		player.value.setVideo(src, '视频', time.data);
-
-		player.value.play();
-	}
-});
 </script>
 
 <style scoped lang="scss">

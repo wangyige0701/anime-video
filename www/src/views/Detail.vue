@@ -1,7 +1,7 @@
 <template>
-	<Index />
+	<VideoPlayer />
 </template>
 
 <script setup lang="ts">
-import Index from '@/video/Index.vue';
+import VideoPlayer from '@/video/Video.vue';
 </script>

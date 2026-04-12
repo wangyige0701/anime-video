@@ -11,6 +11,9 @@ const router = createRouter({
 		{
 			path: '/detail/:name',
 			component: () => import('@/views/Detail.vue'),
+			props: (route) => {
+				return { name: decodeURIComponent((route.params.name as string) || '') };
+			},
 		},
 	],
 });

@@ -1,0 +1,39 @@
+@font-face {
+	font-family: 'icofont';
+	src:
+		url(./icon/iconfont.woff2) format('woff2'),
+		url(./icon/iconfont.woff) format('woff'),
+		url(./icon/iconfont.ttf) format('truetype');
+}
+
+[class^='icon-'],
+[class*=' icon-'],
+.iconfont {
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	line-height: 1em;
+	font-family: 'icofont' !important;
+	font-size: 1rem;
+	font-style: normal;
+}
+
+/* 搜索 &#xe603; */
+.icon-search::before {
+	content: '\e603;';
+}
+
+/* 错误 &#xe600; */
+.icon-error::before {
+	content: '\e600;';
+}
+
+/* 成功 &#xe8ad; */
+.icon-success::before {
+	content: '\xe8ad;';
+}
+
+/* 警告 &#xe611; */
+.icon-warning::before {
+	content: '\xe611;';
+}

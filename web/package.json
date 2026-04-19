@@ -1,5 +1,5 @@
 {
-	"name": "@anime-video/web",
+	"name": "web",
 	"version": "1.0.0",
 	"private": true,
 	"type": "module",
@@ -12,6 +12,7 @@
 		"format": "prettier --write --experimental-cli src/"
 	},
 	"dependencies": {
+		"axios-useful": "^0.0.1",
 		"hls.js": "^1.6.15",
 		"pinia": "^3.0.4",
 		"vue": "^3.5.28",

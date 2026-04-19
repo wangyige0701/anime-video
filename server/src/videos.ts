@@ -1,44 +1,6 @@
+import type { Series, Season, Episode } from '~types/videos';
 import path from 'node:path';
 import fs from 'node:fs';
-
-/**
- * 视频系列
- */
-interface Series {
-	rootPath: string;
-	name: string;
-	title: string;
-	images: string[];
-	seasons: Season[];
-	/**
-	 * 可手动添加的描述信息
-	 */
-	description: string;
-	/**
-	 * 可手动添加的关键词
-	 */
-	tags: string[];
-}
-
-/**
- * 季
- */
-interface Season {
-	seasonNumber: number;
-	pathName: string;
-	title: string;
-	episodes: Episode[];
-}
-
-/**
- * 集
- */
-interface Episode {
-	episodeNumber: number;
-	pathName: string;
-	extension: string;
-	title: string;
-}
 
 const configPrefix = process.env.VIDEO_CONFIG_PREFIX || '';
 const configName = configPrefix + '.video.json';

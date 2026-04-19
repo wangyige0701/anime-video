@@ -10,6 +10,7 @@
 	"license": "ISC",
 	"description": "",
 	"devDependencies": {
+		"@types/koa": "^3.0.1",
 		"@types/node": "^25.3.0",
 		"cross-env": "^10.1.0",
 		"prettier": "^3.8.1",
@@ -17,6 +18,7 @@
 		"vitest": "^4.0.18"
 	},
 	"dependencies": {
-		"@wang-yige/utils": "^0.0.18"
+		"@wang-yige/utils": "^0.0.18",
+		"koa": "^3.1.2"
 	}
 }

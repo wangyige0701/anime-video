@@ -11,7 +11,13 @@ importers:
       '@wang-yige/utils':
         specifier: ^0.0.18
         version: 0.0.18
+      koa:
+        specifier: ^3.1.2
+        version: 3.1.2
     devDependencies:
+      '@types/koa':
+        specifier: ^3.0.1
+        version: 3.0.1
       '@types/node':
         specifier: ^25.3.0
         version: 25.3.0
@@ -33,9 +39,6 @@ importers:
       '@koa/router':
         specifier: ^15.3.0
         version: 15.3.1(koa@3.1.2)
-      koa:
-        specifier: ^3.1.1
-        version: 3.1.2
       koa-body:
         specifier: ^7.0.1
         version: 7.0.1
@@ -52,9 +55,6 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2
     devDependencies:
-      '@types/koa':
-        specifier: ^3.0.1
-        version: 3.0.1
       '@types/koa-static':
         specifier: ^4.0.4
         version: 4.0.4
@@ -76,6 +76,9 @@ importers:
 
   web:
     dependencies:
+      axios-useful:
+        specifier: ^0.0.1
+        version: 0.0.1
       hls.js:
         specifier: ^1.6.15
         version: 1.6.15
@@ -978,6 +981,12 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
+  axios-useful@0.0.1:
+    resolution: {integrity: sha512-mDSZg2iHYfy/igM35z5jaxot0sje/KaVRqD1x0oBy6VxaLmgbkiT6VmLjGIZW9m+UpH+fW/2BG+6xuerrDmq/g==}
+
+  axios@1.15.0:
+    resolution: {integrity: sha512-wWyJDlAatxk30ZJer+GeCWS209sA42X+N5jU2jy6oHTp7ufw8uzUTVFBX9+wTfAlhiJXGS0Bq7X6efruWjuK9Q==}
+
   baseline-browser-mapping@2.10.0:
     resolution: {integrity: sha512-lIyg0szRfYbiy67j9KN8IyeD7q7hcmqnJ1ddWmNt19ItGpNN64mnllmxUNFIOdOm6by97jlL6wfpTTJrmnjWAA==}
     engines: {node: '>=6.0.0'}
@@ -1612,6 +1621,10 @@ packages:
     resolution: {integrity: sha512-UOnG6LftzbdaHZcKoPFtOcCKztrQ57WkHDeRD9t/PTQtmT0NHSeWWepj6pS0z/N7+08BHFDQVUrfmfMRcZwbMg==}
     engines: {node: '>=14'}
     hasBin: true
+
+  proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
 
   qs@6.15.0:
     resolution: {integrity: sha512-mAZTtNCeetKMH+pSjrb76NAM8V9a05I9aBZOHztWy/UqcJdQYNsf59vrRKWnojAT9Y+GbIvoTBC++CPHqpDBhQ==}
@@ -2859,6 +2872,21 @@ snapshots:
 
   asynckit@0.4.0: {}
 
+  axios-useful@0.0.1:
+    dependencies:
+      '@wang-yige/utils': 0.0.18
+      axios: 1.15.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.15.0:
+    dependencies:
+      follow-redirects: 1.15.11(debug@4.4.3)
+      form-data: 4.0.5
+      proxy-from-env: 2.1.0
+    transitivePeerDependencies:
+      - debug
+
   baseline-browser-mapping@2.10.0: {}
 
   birpc@2.9.0: {}
@@ -3455,6 +3483,8 @@ snapshots:
       source-map-js: 1.2.1
 
   prettier@3.8.1: {}
+
+  proxy-from-env@2.1.0: {}
 
   qs@6.15.0:
     dependencies:

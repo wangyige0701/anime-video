@@ -13,9 +13,10 @@
 			"@hls/*": ["./hls/build/*"],
 			"@server/*": ["./server/*"],
 			"@web/*": ["./web/*"],
-			"@config/*": ["./config/*"]
+			"@config/*": ["./config/*"],
+			"~types/*": ["./types/*"]
 		}
 	},
-	"include": ["server", "test", "dev", "test", "web", "config"],
+	"include": ["server", "test", "dev", "test", "web", "config", "types"],
 	"exclude": ["node_modules"]
 }

@@ -2,6 +2,7 @@
  * 视频系列
  */
 export interface Series {
+	id: string;
 	rootPath: string;
 	name: string;
 	title: string;
@@ -21,6 +22,7 @@ export interface Series {
  * 季
  */
 export interface Season {
+	id: string;
 	seasonNumber: number;
 	pathName: string;
 	title: string;
@@ -31,6 +33,7 @@ export interface Season {
  * 集
  */
 export interface Episode {
+	id: string;
 	episodeNumber: number;
 	pathName: string;
 	extension: string;

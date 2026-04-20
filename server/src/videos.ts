@@ -1,11 +1,32 @@
 import type { Series, Season, Episode } from '~types/videos';
 import path from 'node:path';
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 
 const configPrefix = process.env.VIDEO_CONFIG_PREFIX || '';
 const configName = configPrefix + '.video.json';
 const videoExtensions = ['.mp4', '.mkv', '.avi', '.flv'];
 const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+
+function isDirectory(path: string) {
+	return fs.existsSync(path) && fs.statSync(path).isDirectory();
+}
+
+function isFile(path: string) {
+	return fs.existsSync(path) && fs.statSync(path).isFile();
+}
+
+function isAllowVideoExtension(extension: string) {
+	return videoExtensions.includes(extension);
+}
+
+function isAllowImageExtension(extension: string) {
+	return imageExtensions.includes(extension);
+}
+
+function hash(str: string) {
+	return crypto.createHash('md5').update(str).digest('hex');
+}
 
 function getDirectoryFile() {
 	const configPath = path.resolve(process.cwd(), configName);
@@ -67,7 +88,7 @@ export function getSeriesInfos() {
 	for (const directory of directories) {
 		const configPath = getSeriesDirectoryFile(directory);
 		const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-		result.push(config);
+		result.push(...config);
 	}
 	return result;
 }
@@ -102,6 +123,7 @@ export function refreshSeriesInfo() {
 				if (seasonInfo.seasons.length) {
 					// 合并旧信息
 					datas.push({
+						id: hash(seriesPath),
 						rootPath: seriesPath,
 						name: file,
 						title: oldSerieInfo.title || file,
@@ -142,6 +164,7 @@ export function refreshSeriesInfo() {
 				if (!target) {
 					const episodes = [] as Episode[];
 					const season = {
+						id: hash(path.resolve(seriesPath, pathName)),
 						seasonNumber: Math.max(0, ...result.seasons.map((item) => item.seasonNumber)) + 1,
 						pathName,
 						title,
@@ -216,6 +239,7 @@ export function refreshSeriesInfo() {
 			const target = episodes.find((item) => item.pathName === basename);
 			if (!target) {
 				episodes.push({
+					id: hash(episodePath),
 					episodeNumber: Math.max(0, ...episodes.map((item) => item.episodeNumber)) + 1,
 					pathName: basename,
 					extension,
@@ -229,20 +253,4 @@ export function refreshSeriesInfo() {
 
 		fs.writeFileSync(configPath, JSON.stringify(datas, null, 2), 'utf-8');
 	}
-}
-
-function isDirectory(path: string) {
-	return fs.existsSync(path) && fs.statSync(path).isDirectory();
-}
-
-function isFile(path: string) {
-	return fs.existsSync(path) && fs.statSync(path).isFile();
-}
-
-function isAllowVideoExtension(extension: string) {
-	return videoExtensions.includes(extension);
-}
-
-function isAllowImageExtension(extension: string) {
-	return imageExtensions.includes(extension);
 }

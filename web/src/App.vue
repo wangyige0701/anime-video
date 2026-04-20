@@ -1,6 +1,10 @@
 <template>
 	<main class="main">
-		<RouterView></RouterView>
+		<RouterView v-slot="{ Component }">
+			<KeepAlive :include="['Index', 'Video']">
+				<component :is="Component"></component>
+			</KeepAlive>
+		</RouterView>
 	</main>
 </template>
 
@@ -10,6 +14,7 @@
 .main {
 	width: 100%;
 	height: 100%;
-	overflow-y: auto;
+	background-color: var(--background-color);
+	overflow: hidden;
 }
 </style>

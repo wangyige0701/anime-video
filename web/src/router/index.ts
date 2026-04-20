@@ -6,13 +6,17 @@ const router = createRouter({
 	routes: [
 		{
 			path: '/',
+			name: 'Index',
 			component: Index,
 		},
 		{
-			path: '/detail/:name',
-			component: () => import('@/views/Detail.vue'),
+			path: '/video/:name',
+			name: 'Video',
+			component: () => import('@/views/Video.vue'),
 			props: (route) => {
-				return { name: decodeURIComponent((route.params.name as string) || '') };
+				return {
+					name: decodeURIComponent((route.params.name as string) || ''),
+				};
 			},
 		},
 	],

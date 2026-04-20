@@ -1,3 +1,34 @@
 :root {
+	--background-color: #a1ebbc;
+	--left-side-offset: 150px;
+	--right-side-offset: 0px;
+
+	--index-video-row-count: 6;
+	--index-video-list-padding: 0 var(--right-side-offset) 0 var(--left-side-offset);
+	--index-video-list-gap: 20px;
+	--index-video-item-width: calc(
+		(100% - var(--left-side-offset) - var(--right-side-offset)) / var(--index-video-row-count) -
+			var(--index-video-list-gap)
+	);
+	--index-video-item-background-color: #fff;
+
 	font-size: 16px;
+}
+
+@media screen and (max-width: 1600px) {
+	:root {
+		--index-video-row-count: 5;
+	}
+}
+
+@media screen and (max-width: 1400px) {
+	:root {
+		--index-video-row-count: 4;
+	}
+}
+
+@media screen and (max-width: 1200px) {
+	:root {
+		--index-video-row-count: 3;
+	}
 }

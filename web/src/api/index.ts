@@ -7,9 +7,9 @@ import { API } from './base';
  * 获取所有系列信息
  */
 export function getSeriesInfos() {
-	return API.get(`${DATA_ROUTE}/series`) as unknown as Response<Series[]>;
+	return API.get(`${DATA_ROUTE}/series`) as unknown as Promise<Response<Series[]>>;
 }
 
 export function refreshSeriesInfo() {
-	return API.post(`${DATA_ROUTE}/series/refresh`) as unknown as Response<null>;
+	return API.post(`${DATA_ROUTE}/series/refresh`) as unknown as Promise<Response<null>>;
 }

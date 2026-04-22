@@ -6,7 +6,7 @@
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watchEffect } from 'vue';
 import Hls from 'hls.js';
 import { useVideoStore } from '@/stores/video';
-import { getMasterM3u8Url } from '@config/route';
+import { getMasterM3u8Url } from '~routes/server';
 
 const HLS_SUPPORTED = Symbol('HLS_SUPPORTED');
 const HLS_NATIVE_SUPPORTED = Symbol('HLS_NATIVE_SUPPORTED');

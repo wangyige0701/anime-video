@@ -1,10 +1,10 @@
 import { Controller, HttpMethod, Inject, Types, ResponseHeader, Cross, Singleton } from 'koa-use-decorator-router';
 import { HlsManage } from '@server/src/hls';
-import { VIDEO_ROUTE } from '@config/route';
+import { ServerRoot } from '~routes/server';
 import { M3u8Config } from '@config/hls';
 
 @Singleton()
-@Controller(VIDEO_ROUTE)
+@Controller(ServerRoot.VIDEO)
 @Cross()
 export class VideoController {
 	@HttpMethod.Get(`/:path/${M3u8Config.MASTER_M3U8_NAME}.m3u8`)

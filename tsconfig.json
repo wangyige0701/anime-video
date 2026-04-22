@@ -14,9 +14,10 @@
 			"@server/*": ["./server/*"],
 			"@web/*": ["./web/*"],
 			"@config/*": ["./config/*"],
+			"~routes/*": ["./routes/*"],
 			"~types/*": ["./types/*"]
 		}
 	},
-	"include": ["server", "test", "dev", "test", "web", "config", "types"],
+	"include": ["server", "test", "dev", "test", "web", "config", "types", "routes"],
 	"exclude": ["node_modules"]
 }

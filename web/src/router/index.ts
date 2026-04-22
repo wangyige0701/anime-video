@@ -1,4 +1,5 @@
 import Index from '@/views/Index.vue';
+import { WebRoute } from '~routes/web';
 import { createRouter, createWebHistory } from 'vue-router';
 
 const router = createRouter({
@@ -6,13 +7,13 @@ const router = createRouter({
 	routes: [
 		{
 			path: '/',
-			name: 'Index',
+			name: WebRoute.INDEX,
 			component: Index,
 		},
 		{
-			path: '/video/:name',
-			name: 'Video',
-			component: () => import('@/views/Video.vue'),
+			path: '/detail/:name',
+			name: WebRoute.DETAIL,
+			component: () => import('@/views/Detail.vue'),
 			props: (route) => {
 				return {
 					name: decodeURIComponent((route.params.name as string) || ''),

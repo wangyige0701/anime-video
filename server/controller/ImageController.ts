@@ -2,12 +2,12 @@ import Koa from 'koa';
 import { Context, Controller, HttpMethod, Inject, ResponseHeader, Singleton } from 'koa-use-decorator-router';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { IMAGE_ROUTE } from '@config/route';
+import { ServerRoot } from '~routes/server';
 
 const allowedImageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
 @Singleton()
-@Controller(IMAGE_ROUTE)
+@Controller(ServerRoot.IMAGE)
 @ResponseHeader('Access-Control-Allow-Methods', 'GET')
 @ResponseHeader('Access-Control-Allow-Origin', '*')
 @ResponseHeader('Access-Control-Allow-Headers', 'Content-Type')

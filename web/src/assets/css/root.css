@@ -11,6 +11,7 @@
 			var(--index-video-list-gap)
 	);
 	--index-video-item-background-color: #fff;
+	--index-video-item-name-color: #333;
 
 	font-size: 16px;
 }

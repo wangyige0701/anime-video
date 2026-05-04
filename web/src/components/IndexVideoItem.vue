@@ -25,11 +25,17 @@ const imagePath = computed(() => {
 	if (!props.item.images.length) {
 		return '';
 	}
-	return 'http://localhost:3000' + getImageUrl(getSeriesPath(props.item.rootPath, props.item.images[0]!));
+	return getImageUrl(getSeriesPath(props.item.rootPath, props.item.images[0]!));
 });
 
 function gotoDetail(item: Series) {
-	router.push({ name: WebRoute.DETAIL, params: { name: item.name } });
+	router.push({
+		name: WebRoute.DETAIL,
+		params: {
+			seriesId: item.id,
+			name: item.name,
+		},
+	});
 }
 </script>
 
@@ -45,7 +51,7 @@ function gotoDetail(item: Series) {
 	padding: var(--padding);
 	background-color: var(--index-video-item-background-color);
 	border-radius: var(--radius);
-	transition: box-shadow 0.3s ease;
+	transition: box-shadow 0.2s ease;
 
 	&:hover {
 		box-shadow: 0 0 0px 6px var(--index-video-item-background-color);

@@ -15,12 +15,12 @@
 import { onMounted, useTemplateRef, watchEffect } from 'vue';
 import Player from './Player.vue';
 import Progress from './Progress.vue';
-import { useVideoStore } from '@/stores/video';
+import { usePlayerStore } from '@/stores/player';
 
 const player = useTemplateRef('player');
 
 watchEffect(() => {
-	console.log(useVideoStore().progress);
+	console.log(usePlayerStore().progress);
 });
 
 function clickContainer() {

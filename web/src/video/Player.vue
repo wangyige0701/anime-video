@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watchEffect } from 'vue';
 import Hls from 'hls.js';
-import { useVideoStore } from '@/stores/video';
+import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
 
 const HLS_SUPPORTED = Symbol('HLS_SUPPORTED');
@@ -17,7 +17,7 @@ const video = useTemplateRef('video');
 const videoPath = ref('');
 
 const watchProgress = watchEffect(() => {
-	const process = useVideoStore().changedProgress;
+	const process = usePlayerStore().changedProgress;
 	video.value?.addEventListener?.(
 		'loadedmetadata',
 		() => {
@@ -34,7 +34,7 @@ const watchVideoPath = watchEffect(() => {
 	if (!path) {
 		return;
 	}
-	const src = `http://localhost:3000${getMasterM3u8Url(path)}`;
+	const src = getMasterM3u8Url(path);
 	if (hlsSupported === HLS_SUPPORTED) {
 		hls?.loadSource?.(src);
 	} else if (hlsSupported === HLS_NATIVE_SUPPORTED) {
@@ -54,7 +54,7 @@ function setVideo(path: string, name: string, fullTime: number, seek: number = 0
 	if (path && video.value) {
 		video.value.style.opacity = '1';
 		video.value.src = path;
-		useVideoStore().setVideo(name, fullTime, seek);
+		usePlayerStore().setVideo(name, fullTime, seek);
 	}
 }
 
@@ -65,7 +65,7 @@ onMounted(() => {
 	const el = video.value!;
 
 	el.addEventListener('timeupdate', () => {
-		useVideoStore().setCurrentTime(el.currentTime || 0);
+		usePlayerStore().setCurrentTime(el.currentTime || 0);
 	});
 
 	if (Hls.isSupported()) {

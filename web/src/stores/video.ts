@@ -1,80 +1,75 @@
-import { ref, computed } from 'vue';
+import { createPromise, hasOwn, isObject, isString } from '@wang-yige/utils';
 import { defineStore } from 'pinia';
+import { ref, shallowReactive } from 'vue';
+import type { Series } from '~types/videos';
 
 export const useVideoStore = defineStore('video', () => {
-	const name = ref('');
-	const progress = ref(0);
-	const fullTime = ref(0);
-	/** 手动更新进度条后的数据，用于触发视频更新 */
-	const changedProgress = ref(0);
-	// 每1%对应的时间
-	const step = computed(() => {
-		return Number((fullTime.value / 100).toFixed(2)) || 0;
-	});
-	// 当前进度对应的时长
-	const position = computed(() => {
-		if (progress.value >= 100) {
-			return fullTime.value;
-		}
-		if (progress.value <= 0) {
-			return 0;
-		}
-		return Number((progress.value * step.value).toFixed(2)) || 0;
-	});
+	let isWaiting = ref(true);
+	const { promise, resolve } = createPromise<void>();
+	const data = shallowReactive<Series[]>([]);
 
-	function setVideo(
-		videoName: string,
-		fullTimeValue: number,
-		defaultProcess = 0,
-	) {
-		name.value = videoName;
-		fullTime.value = fullTimeValue;
-		progress.value = defaultProcess;
+	async function getData() {
+		await promise;
+		return data;
 	}
 
-	function resetProgress() {
-		progress.value = 0;
-		changedProgress.value = 0;
+	async function setData(newData: Series[]) {
+		(await getData()).splice(0, data.length, ...newData);
 	}
 
-	/**
-	 * @param value 进度值，范围为0-100
-	 */
-	function setProgress(value: number) {
-		console.log(value);
-		progress.value = value;
-		changedProgress.value = value;
-	}
-
-	function setCurrentTime(time: number) {
-		if (time >= fullTime.value) {
-			setProgress(100);
+	async function getSeriesInfo(seriesId: string) {
+		if (!isString(seriesId) || !seriesId) {
 			return;
 		}
-		if (time <= 0) {
-			setProgress(0);
+		return (await getData()).find((item) => item.id === seriesId);
+	}
+
+	async function updateData<T extends keyof Omit<Series, 'id'>>(
+		seriesId: string,
+		key: T,
+		value: Series[T],
+	): Promise<void>;
+	async function updateData(seriesId: string, series: Omit<Series, 'id'>): Promise<void>;
+	async function updateData(...params: any[]) {
+		const seriesId = params[0] as string;
+		if (!isString(seriesId) || !seriesId) {
 			return;
 		}
-		setProgress(Number(((time / fullTime.value) * 100).toFixed(2)) || 0);
+		let series = params[1] as Series | keyof Series;
+		if (isString(series)) {
+			// 参数归一化
+			const key = series;
+			const value = params[2] as any;
+			series = {
+				[key]: value,
+			} as Series;
+		}
+		if (!isObject(series)) {
+			return;
+		}
+		const target = (await getData()).find((item) => item.id === seriesId);
+		if (!target) {
+			return;
+		}
+		for (const key in series) {
+			if (hasOwn(target, key)) {
+				target[key as keyof Series] = series[key as keyof Series] as any;
+			}
+		}
+	}
+
+	function initialize() {
+		isWaiting.value = false;
+		resolve();
 	}
 
 	return {
-		name,
-		progress,
-		changedProgress,
-		position,
-		/**
-		 * 设置视频信息
-		 */
-		setVideo,
-		/**
-		 * 重置进度
-		 */
-		resetProgress,
-		/**
-		 * 设置进度
-		 */
-		setProgress,
-		setCurrentTime,
+		data,
+		isWaiting,
+		getSeriesInfo,
+		getData,
+		setData,
+		updateData,
+		initialize,
 	};
 });

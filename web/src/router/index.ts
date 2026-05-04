@@ -11,14 +11,9 @@ const router = createRouter({
 			component: Index,
 		},
 		{
-			path: '/detail/:name',
+			path: '/:seriesId([a-fA-F0-9]{32})/:name',
 			name: WebRoute.DETAIL,
 			component: () => import('@/views/Detail.vue'),
-			props: (route) => {
-				return {
-					name: decodeURIComponent((route.params.name as string) || ''),
-				};
-			},
 		},
 	],
 });

@@ -1,10 +1,7 @@
 <template>
 	<div ref="cotnainer" class="video-progress_container">
 		<div ref="line" class="video-progress_line">
-			<div
-				class="video-progress_current"
-				:style="{ '--line-position': progress }"
-			></div>
+			<div class="video-progress_current" :style="{ '--line-position': progress }"></div>
 		</div>
 		<div
 			ref="bar"
@@ -17,18 +14,11 @@
 </template>
 
 <script setup lang="ts">
-import { useVideoStore } from '@/stores/video';
-import {
-	computed,
-	onBeforeUnmount,
-	onMounted,
-	ref,
-	unref,
-	useTemplateRef,
-} from 'vue';
+import { usePlayerStore } from '@/stores/player';
+import { computed, onBeforeUnmount, onMounted, ref, unref, useTemplateRef } from 'vue';
 
 let isPress = false;
-let oldValue = unref(useVideoStore().progress);
+let oldValue = unref(usePlayerStore().progress);
 let startPressPosition = 0;
 let startPressClientX = 0;
 
@@ -39,9 +29,7 @@ const lineLength = ref(0); // 滑块按压时进度条的长度
 const afterMovePosition = ref(0);
 
 const progress = computed(() => {
-	const value = parseFloat(
-		((unref(useVideoStore().progress) / 100) * lineLength.value).toFixed(2),
-	);
+	const value = parseFloat(((unref(usePlayerStore().progress) / 100) * lineLength.value).toFixed(2));
 	if (isPress) {
 		return oldValue;
 	}
@@ -53,11 +41,7 @@ function mousedoan(e: MouseEvent) {
 	isPress = true;
 	startPressClientX = e.clientX;
 	if (bar.value) {
-		const translateX = (
-			getComputedStyle(bar.value).transform.match(
-				/matrix\((.+)\)/,
-			)?.[1] || ''
-		)
+		const translateX = (getComputedStyle(bar.value).transform.match(/matrix\((.+)\)/)?.[1] || '')
 			.trim()
 			.split(',')[4];
 		startPressPosition = parseFloat(translateX || '') || 0;
@@ -69,17 +53,14 @@ function mouseup() {
 		return;
 	}
 	isPress = false;
-	useVideoStore().setProgress(
-		(afterMovePosition.value / lineLength.value) * 100,
-	);
+	usePlayerStore().setProgress((afterMovePosition.value / lineLength.value) * 100);
 }
 
 function mousemove(e: MouseEvent) {
 	if (!isPress) {
 		return;
 	}
-	afterMovePosition.value =
-		startPressPosition + (e.clientX - startPressClientX);
+	afterMovePosition.value = startPressPosition + (e.clientX - startPressClientX);
 	if (afterMovePosition.value >= lineLength.value) {
 		afterMovePosition.value = lineLength.value;
 		return;
@@ -89,10 +70,7 @@ function mousemove(e: MouseEvent) {
 		return;
 	}
 	if (cotnainer.value) {
-		cotnainer.value.style.setProperty(
-			'--move-position',
-			String(afterMovePosition.value),
-		);
+		cotnainer.value.style.setProperty('--move-position', String(afterMovePosition.value));
 	}
 }
 
@@ -148,9 +126,6 @@ onBeforeUnmount(() => {
 	position: absolute;
 	top: 50%;
 	left: -7.5px;
-	transform: translate(
-		calc(var(--move-position, var(--bar-position)) * 1px),
-		-50%
-	);
+	transform: translate(calc(var(--move-position, var(--bar-position)) * 1px), -50%);
 }
 </style>

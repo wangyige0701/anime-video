@@ -3,9 +3,11 @@
 	--left-side-offset: 150px;
 	--right-side-offset: 0px;
 
+	--side-float-padding: 0 var(--right-side-offset) 0 var(--left-side-offset);
+	--container-padding: 20px;
+
 	--index-video-row-count: 6;
-	--index-video-list-padding: 0 var(--right-side-offset) 0 var(--left-side-offset);
-	--index-video-list-gap: 20px;
+	--index-video-list-gap: var(--container-padding);
 	--index-video-item-width: calc(
 		(100% - var(--left-side-offset) - var(--right-side-offset)) / var(--index-video-row-count) -
 			var(--index-video-list-gap)
@@ -14,6 +16,16 @@
 	--index-video-item-name-color: #333;
 
 	font-size: 16px;
+	font-family:
+		-apple-system,
+		BlinkMacSystemFont,
+		Helvetica Neue,
+		Helvetica,
+		Arial,
+		PingFang SC,
+		Hiragino Sans GB,
+		Microsoft YaHei,
+		sans-serif;
 }
 
 @media screen and (max-width: 1600px) {

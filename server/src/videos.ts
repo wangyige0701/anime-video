@@ -149,6 +149,10 @@ export function refreshSeriesInfo() {
 			const seasonFilter: Set<string> = new Set();
 			const episodeFilter: Set<string> = new Set();
 
+			/**
+			 * 过滤视频系列的季信息，根据视频文件路径过滤出需要更新的季信息
+			 * @param pathName 季的路径名
+			 */
 			const filterEpisode = (pathName: string) => {
 				const target = result.seasons.find((item) => item.pathName === pathName);
 				if (target) {

@@ -1,20 +1,33 @@
 import { createPromise, hasOwn, isObject, isString } from '@wang-yige/utils';
 import { defineStore } from 'pinia';
-import { ref, shallowReactive } from 'vue';
+import { ref } from 'vue';
 import type { Series } from '~types/videos';
 
 export const useVideoStore = defineStore('video', () => {
 	let isWaiting = ref(true);
 	const { promise, resolve } = createPromise<void>();
-	const data = shallowReactive<Series[]>([]);
+	const data: Series[] = [];
 
+	/**
+	 * 获取视频数据，会等待请求完成
+	 */
 	async function getData() {
 		await promise;
 		return data;
 	}
 
-	async function setData(newData: Series[]) {
-		(await getData()).splice(0, data.length, ...newData);
+	/**
+	 * 设置视频数据，全量替换
+	 * @param newData 新的视频数据
+	 */
+	function setData(newData: Series[]) {
+		data.splice(0, data.length, ...newData);
+		initialize();
+	}
+
+	function initialize() {
+		isWaiting.value = false;
+		resolve();
 	}
 
 	async function getSeriesInfo(seriesId: string) {
@@ -58,18 +71,19 @@ export const useVideoStore = defineStore('video', () => {
 		}
 	}
 
-	function initialize() {
-		isWaiting.value = false;
-		resolve();
+	async function pagination(page: number, pageSize: number) {
+		const data = await getData();
+		page = parseInt(page.toString());
+		const start = (page - 1) * pageSize;
+		return data.slice(start, start + pageSize);
 	}
 
 	return {
-		data,
 		isWaiting,
 		getSeriesInfo,
 		getData,
 		setData,
 		updateData,
-		initialize,
+		pagination,
 	};
 });

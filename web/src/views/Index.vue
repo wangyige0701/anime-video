@@ -1,11 +1,9 @@
 <template>
 	<div class="index">
 		<div class="index-video-list">
-			<div class="index-video-list-container">
-				<template v-for="(item, index) of videos" :key="item.id">
-					<IndexVideoItem :item="item"></IndexVideoItem>
-				</template>
-			</div>
+			<template v-for="(item, index) of videos" :key="item.id">
+				<IndexVideoItem :item="item"></IndexVideoItem>
+			</template>
 		</div>
 	</div>
 </template>
@@ -13,14 +11,15 @@
 <script setup lang="ts">
 import type { Series } from '~types/videos';
 import { onBeforeMount, shallowReactive } from 'vue';
-import { getSeriesInfos } from '@/api';
 import IndexVideoItem from '@/components/IndexVideoItem.vue';
+import { useVideoStore } from '@/stores/video';
 
+const pageSize = 20;
 const videos = shallowReactive<Series[]>([]);
 
-async function getVideos() {
-	const data = await getSeriesInfos();
-	videos.splice(0, videos.length, ...data.data);
+async function getVideos(page = 1) {
+	const data = await useVideoStore().pagination(page, pageSize);
+	videos.splice(0, videos.length, ...data);
 }
 
 onBeforeMount(async () => {
@@ -32,23 +31,16 @@ onBeforeMount(async () => {
 .index {
 	width: 100%;
 	height: 100%;
-	overflow: hidden;
-}
-
-.index-video-list {
-	width: 100%;
-	height: 100%;
-	padding: var(--index-video-list-padding);
 	overflow-x: hidden;
 	overflow-y: auto;
 }
 
-.index-video-list-container {
+.index-video-list {
 	width: 100%;
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
 	gap: var(--index-video-list-gap);
-	padding: var(--index-video-list-gap);
+	padding: var(--container-padding);
 }
 </style>

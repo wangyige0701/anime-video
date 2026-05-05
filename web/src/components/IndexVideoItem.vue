@@ -1,7 +1,7 @@
 <template>
 	<div class="index-video-item" @click="gotoDetail(item)">
 		<div class="index-video-img-container">
-			<Image :src="imagePath" class="index-video-img"></Image>
+			<Image :src="imagePath" class="image index-video-img"></Image>
 		</div>
 
 		<div class="index-video-name">
@@ -62,8 +62,6 @@ function gotoDetail(item: Series) {
 	width: 100%;
 
 	.index-video-img {
-		width: 100%;
-		object-fit: cover;
 		border-radius: calc(var(--radius) - var(--padding) / 2);
 	}
 }

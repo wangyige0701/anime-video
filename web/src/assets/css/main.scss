@@ -24,3 +24,10 @@ body,
 		background-position: 0 50%;
 	}
 }
+
+.image {
+	--image-w-h-ratio: 5 / 7;
+	width: 100%;
+	aspect-ratio: var(--image-w-h-ratio);
+	object-fit: cover;
+}

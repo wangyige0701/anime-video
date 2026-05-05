@@ -1,6 +1,6 @@
 :root {
 	--background-color: #a1ebbc;
-	--left-side-offset: 150px;
+	--left-side-offset: 250px;
 	--right-side-offset: 0px;
 
 	--side-float-padding: 0 var(--right-side-offset) 0 var(--left-side-offset);
@@ -9,11 +9,13 @@
 	--index-video-row-count: 6;
 	--index-video-list-gap: var(--container-padding);
 	--index-video-item-width: calc(
-		(100% - var(--left-side-offset) - var(--right-side-offset)) / var(--index-video-row-count) -
-			var(--index-video-list-gap)
+		(100% - var(--left-side-offset) - var(--right-side-offset)) /
+			var(--index-video-row-count) - var(--index-video-list-gap)
 	);
 	--index-video-item-background-color: #fff;
 	--index-video-item-name-color: #333;
+
+	--detail-block-background-color: #fff;
 
 	font-size: 16px;
 	font-family:

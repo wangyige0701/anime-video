@@ -6,8 +6,8 @@
 			"type": "node",
 			"request": "launch",
 			"runtimeExecutable": "npx",
-			"runtimeArgs": ["tsx", "server/app.ts"],
-			"cwd": "${workspaceFolder}",
+			"runtimeArgs": ["tsx", "app.ts"],
+			"cwd": "${workspaceFolder}/server",
 			"skipFiles": ["<node_internals>/**"]
 		}
 	]

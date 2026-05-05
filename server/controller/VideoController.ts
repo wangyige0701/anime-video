@@ -8,21 +8,6 @@ import { isAllowedDirectory } from '@server/src/videos';
 import { NotFoundError } from '@server/src/error/notFound';
 import { allowedVideoExtensions } from '@config/server';
 
-function checkDirectory(pathName: string) {
-	const filePath = decodeURIComponent(pathName);
-	const extension = path.extname(filePath).toLowerCase();
-	if (!isAllowedDirectory(filePath)) {
-		throw new NotFoundError('Not Found', `File not allowed in this directory ${filePath}`, 'text/plain');
-	}
-	if (!allowedVideoExtensions.includes(extension)) {
-		throw new NotFoundError('Not Found', `Invalid video extension ${filePath}`, 'text/plain');
-	}
-	if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
-		throw new NotFoundError('Not Found', `Video not found ${filePath}`, 'text/plain');
-	}
-	return filePath;
-}
-
 @Singleton()
 @Controller(ServerRoot.VIDEO)
 @Cors()
@@ -65,4 +50,19 @@ export class VideoController {
 	) {
 		return HlsManage.getHlsManage(path).subtitle(stream, id);
 	}
+}
+
+function checkDirectory(pathName: string) {
+	const filePath = decodeURIComponent(pathName);
+	const extension = path.extname(filePath).toLowerCase();
+	if (!isAllowedDirectory(filePath)) {
+		throw new NotFoundError('Not Found', `File not allowed in this directory ${filePath}`, 'text/plain');
+	}
+	if (!allowedVideoExtensions.includes(extension)) {
+		throw new NotFoundError('Not Found', `Invalid video extension ${filePath}`, 'text/plain');
+	}
+	if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+		throw new NotFoundError('Not Found', `Video not found ${filePath}`, 'text/plain');
+	}
+	return filePath;
 }

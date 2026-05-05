@@ -32,9 +32,10 @@
 <script setup lang="ts">
 import { useVideoStore } from '@/stores/video';
 import { getSeriesPath } from '@/utils/series';
-import { computed, onBeforeMount, shallowRef } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, onBeforeMount, onMounted, shallowRef } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { getImageUrl } from '~routes/server';
+import { WebRoute } from '~routes/web';
 import type { Series } from '~types/videos';
 
 const seriesId = useRoute().params.seriesId as string;
@@ -50,6 +51,12 @@ onBeforeMount(async () => {
 	const info = await useVideoStore().getSeriesInfo(seriesId);
 	if (info) {
 		series.value = info;
+	}
+});
+
+onMounted(() => {
+	if (!series.value || !series.value.id) {
+		useRouter().replace({ name: WebRoute.INDEX });
 	}
 });
 </script>

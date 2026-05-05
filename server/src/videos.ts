@@ -2,11 +2,10 @@ import type { Series, Season, Episode } from '~types/videos';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
+import { allowedImageExtensions, allowedVideoExtensions } from '@config/server';
 
 const configPrefix = process.env.VIDEO_CONFIG_PREFIX || '';
 const configName = configPrefix + '.video.json';
-const videoExtensions = ['.mp4', '.mkv', '.avi', '.flv'];
-const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
 
 function isDirectory(path: string) {
 	return fs.existsSync(path) && fs.statSync(path).isDirectory();
@@ -17,11 +16,11 @@ function isFile(path: string) {
 }
 
 function isAllowVideoExtension(extension: string) {
-	return videoExtensions.includes(extension);
+	return allowedVideoExtensions.includes(extension);
 }
 
 function isAllowImageExtension(extension: string) {
-	return imageExtensions.includes(extension);
+	return allowedImageExtensions.includes(extension);
 }
 
 function hash(str: string) {
@@ -43,6 +42,20 @@ function getDirectoryFile() {
 export function getDirectories(): string[] {
 	const configPath = getDirectoryFile();
 	return JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+}
+
+/**
+ * 检查目录是否被允许，所有视频、图片资源文件目录必须在允许的目录中
+ *
+ * @param directory 视频系列目录
+ * @returns 是否被允许
+ */
+export function isAllowedDirectory(directory: string) {
+	const directories = getDirectories();
+	const handleDirectory = path.resolve(directory);
+	return directories.find((item) => {
+		return handleDirectory.startsWith(item);
+	});
 }
 
 /**

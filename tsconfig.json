@@ -15,7 +15,8 @@
 			"@web/*": ["./web/*"],
 			"@config/*": ["./config/*"],
 			"~routes/*": ["./routes/*"],
-			"~types/*": ["./types/*"]
+			"~types/*": ["./types/*"],
+			"~common/*": ["./common/*"]
 		}
 	},
 	"include": ["server", "test", "dev", "test", "web", "config", "types", "routes"],

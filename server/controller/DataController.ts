@@ -1,12 +1,12 @@
 import type Koa from 'koa';
-import { Context, Controller, Cross, HttpMethod, Singleton } from 'koa-use-decorator-router';
+import { Context, Controller, Cors, HttpMethod, Singleton } from 'koa-use-decorator-router';
 import { ServerRoot } from '~routes/server';
 import { getDirectories, getSeriesInfos, refreshSeriesInfo, setDirectories } from '@server/src/videos';
 import { isArray } from '@wang-yige/utils';
 
 @Singleton()
 @Controller(ServerRoot.DATA)
-@Cross()
+@Cors()
 export class DataController {
 	@HttpMethod.Get('/directories')
 	public getDirectories(@Context() ctx: Koa.Context) {

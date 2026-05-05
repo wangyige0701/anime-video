@@ -7,6 +7,9 @@ const configs = {
 	},
 };
 
+export const allowedImageExtensions = Object.freeze(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+export const allowedVideoExtensions = Object.freeze(['.mp4', '.mkv', '.avi', '.flv']);
+
 /**
  * 获取服务器端口
  */

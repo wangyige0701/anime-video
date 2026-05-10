@@ -9,27 +9,27 @@ import { isArray } from '@wang-yige/utils';
 @Cors()
 export class DataController {
 	@HttpMethod.Get('/directories')
-	public getDirectories(@Context() ctx: Koa.Context) {
-		return ctx.Success(getDirectories());
+	public async getDirectories(@Context() ctx: Koa.Context) {
+		return ctx.Success(await getDirectories());
 	}
 
 	@HttpMethod.Put('/directories')
-	public setDirectories(@Context() ctx: Koa.Context) {
+	public async setDirectories(@Context() ctx: Koa.Context) {
 		const directories = ctx.request.body;
 		if (isArray(directories)) {
-			setDirectories(...(directories as string[]));
+			await setDirectories(...(directories as string[]));
 		}
 		return ctx.Success();
 	}
 
 	@HttpMethod.Get('/series')
-	public getSeriesInfos(@Context() ctx: Koa.Context) {
-		return ctx.Success(getSeriesInfos());
+	public async getSeriesInfos(@Context() ctx: Koa.Context) {
+		return ctx.Success(await getSeriesInfos());
 	}
 
 	@HttpMethod.Post('/series/refresh')
-	public refreshSeriesInfo(@Context() ctx: Koa.Context) {
-		refreshSeriesInfo();
+	public async refreshSeriesInfo(@Context() ctx: Koa.Context) {
+		await refreshSeriesInfo();
 		return ctx.Success();
 	}
 }

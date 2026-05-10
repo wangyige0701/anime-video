@@ -1,6 +1,6 @@
 import { Controller, HttpMethod, Inject, Types, ResponseHeader, Singleton, Cors } from 'koa-use-decorator-router';
 import path from 'node:path';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import { HlsManage } from '@server/src/hls';
 import { ServerRoot } from '~routes/server';
 import { M3u8Config } from '@config/hls';
@@ -52,16 +52,20 @@ export class VideoController {
 	}
 }
 
-function checkDirectory(pathName: string) {
+async function checkDirectory(pathName: string) {
 	const filePath = decodeURIComponent(pathName);
 	const extension = path.extname(filePath).toLowerCase();
-	if (!isAllowedDirectory(filePath)) {
+	if (!(await isAllowedDirectory(filePath))) {
 		throw new NotFoundError('Not Found', `File not allowed in this directory ${filePath}`, 'text/plain');
 	}
 	if (!allowedVideoExtensions.includes(extension)) {
 		throw new NotFoundError('Not Found', `Invalid video extension ${filePath}`, 'text/plain');
 	}
-	if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+	try {
+		if (!(await fs.stat(filePath)).isFile()) {
+			throw new NotFoundError('Not Found', `Video not found ${filePath}`, 'text/plain');
+		}
+	} catch (error) {
 		throw new NotFoundError('Not Found', `Video not found ${filePath}`, 'text/plain');
 	}
 	return filePath;

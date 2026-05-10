@@ -19,7 +19,20 @@
 					</div>
 
 					<div class="detail-desc">
-						<span>{{ series.description ?? '' }}</span>
+						<span
+							ref="descContent"
+							class="detail-desc-content"
+							:contenteditable="status.editDescription"
+							:data-modify="status.modifyDescription"
+							@blur="endEditDescription"
+						>
+							{{ series.description ?? '' }}
+						</span>
+						<template v-if="!status.editDescription && !status.modifyDescription">
+							<span class="detail-desc-edit" @click="editDescription">
+								<i class="icon-edit"></i>
+							</span>
+						</template>
 					</div>
 				</div>
 			</div>
@@ -30,16 +43,20 @@
 </template>
 
 <script setup lang="ts">
+import type { Series } from '~types/videos';
 import { useVideoStore } from '@/stores/video';
 import { getSeriesPath } from '@/utils/series';
-import { computed, onBeforeMount, onMounted, shallowRef } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, nextTick, onMounted, shallowRef, useTemplateRef } from 'vue';
+import { useRoute } from 'vue-router';
 import { getImageUrl } from '~routes/server';
 import { WebRoute } from '~routes/web';
-import type { Series } from '~types/videos';
+import router from '@/router';
+import { useVueStatusRef } from 'status-ref/vue';
 
 const seriesId = useRoute().params.seriesId as string;
+const status = useVueStatusRef('editDescription', 'modifyDescription');
 const series = shallowRef<Series>({} as Series);
+const descContent = useTemplateRef('descContent');
 const image = computed(() => {
 	if (series.value.images?.length) {
 		return getImageUrl(getSeriesPath(series.value.rootPath, series.value.images[0]!));
@@ -47,25 +64,64 @@ const image = computed(() => {
 	return '';
 });
 
-onBeforeMount(async () => {
-	const info = await useVideoStore().getSeriesInfo(seriesId);
-	if (info) {
-		series.value = info;
+async function editDescription() {
+	if (status.modifyDescription) {
+		return;
 	}
-});
+	status.onEditDescription();
+	await nextTick();
+	focusDescription();
+}
 
-onMounted(() => {
-	if (!series.value || !series.value.id) {
-		useRouter().replace({ name: WebRoute.INDEX });
+async function endEditDescription() {
+	if (!status.editDescription || !descContent.value) {
+		return;
 	}
+	status.onModifyDescription();
+	status.offEditDescription();
+	const div = document.createElement('div');
+	div.style.position = 'absolute';
+	div.style.inset = '0';
+	div.style.display = 'flex';
+	div.style.alignItems = 'center';
+	div.style.justifyContent = 'center';
+	div.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+	div.style.borderRadius = '5px';
+	const i = document.createElement('i');
+	i.className = 'icon-loading loading-anime';
+	i.style.color = 'var(--primary-color)';
+	i.style.fontSize = '1.2em';
+	div.appendChild(i);
+	descContent.value.appendChild(div);
+}
+
+function focusDescription() {
+	if (descContent.value) {
+		const el = descContent.value;
+		el.focus();
+
+		const range = document.createRange();
+		range.selectNodeContents(el);
+		range.collapse(false);
+
+		const selection = window.getSelection();
+		if (selection) {
+			selection.removeAllRanges();
+			selection.addRange(range);
+		}
+	}
+}
+
+onMounted(async () => {
+	const info = await useVideoStore().getSeriesInfo(seriesId);
+	if (!info || !info.id) {
+		router.push({ name: WebRoute.INDEX, replace: true });
+		return;
+	}
+	series.value = info;
 });
 </script>
 
-<style>
-:root {
-	--right-side-offset: var(--left-side-offset);
-}
-</style>
 <style scoped lang="scss">
 .detail {
 	--container-padding: 10px;
@@ -110,7 +166,7 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	flex: 1;
-	gap: var(--container-padding);
+	gap: calc(var(--container-padding) * 1.5);
 	padding: var(--container-padding);
 }
 
@@ -119,8 +175,49 @@ onMounted(() => {
 	color: #333;
 }
 
+// 描述
 .detail-desc {
+	--inner-padding: 5px;
 	font-size: 1rem;
 	color: #666;
+	padding: var(--inner-padding);
+	border-radius: 5px;
+	position: relative;
+	border: 1px solid transparent;
+	transition: border-color 0.2s ease;
+	&:has(.detail-desc-content[contenteditable='true'], .detail-desc-content[data-modify='true']) {
+		padding: 0;
+		border-color: var(--primary-color);
+	}
+}
+
+.detail-desc-content {
+	padding: 0;
+	outline: none;
+	border: none;
+	&[contenteditable='true'],
+	&[data-modify='true'] {
+		display: inline-block;
+		width: 100%;
+		padding: var(--inner-padding);
+	}
+}
+
+.detail-desc-edit {
+	cursor: pointer;
+	width: 1.5em;
+	height: 1.5em;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 0.75rem;
+	border-radius: 5px;
+	transition:
+		background-color 0.2s ease,
+		color 0.2s ease;
+	&:hover {
+		background-color: var(--primary-color);
+		color: #fff;
+	}
 }
 </style>

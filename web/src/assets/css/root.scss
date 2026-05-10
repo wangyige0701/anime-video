@@ -1,21 +1,20 @@
 :root {
 	--background-color: #a1ebbc;
-	--left-side-offset: 250px;
-	--right-side-offset: 0px;
+	--left-side-offset: 200px;
+	--right-side-offset: 200px;
 
 	--side-float-padding: 0 var(--right-side-offset) 0 var(--left-side-offset);
 	--container-padding: 20px;
 
 	--index-video-row-count: 6;
 	--index-video-list-gap: var(--container-padding);
-	--index-video-item-width: calc(
-		(100% - var(--left-side-offset) - var(--right-side-offset)) /
-			var(--index-video-row-count) - var(--index-video-list-gap)
-	);
+	--index-video-item-width: calc(100% / var(--index-video-row-count) - var(--index-video-list-gap));
 	--index-video-item-background-color: #fff;
 	--index-video-item-name-color: #333;
 
 	--detail-block-background-color: #fff;
+
+	--primary-color: #409eff;
 
 	font-size: 16px;
 	font-family:
@@ -30,7 +29,13 @@
 		sans-serif;
 }
 
-@media screen and (max-width: 1600px) {
+@media screen and (min-width: 1921px) {
+	:root {
+		--index-video-row-count: 7;
+	}
+}
+
+@media screen and (max-width: 1919px) {
 	:root {
 		--index-video-row-count: 5;
 	}

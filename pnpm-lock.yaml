@@ -85,6 +85,9 @@ importers:
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.9.3)(vue@3.5.29(typescript@5.9.3))
+      status-ref:
+        specifier: ^1.0.2
+        version: 1.0.2
       vue:
         specifier: ^3.5.28
         version: 3.5.29(typescript@5.9.3)
@@ -924,6 +927,9 @@ packages:
   '@wang-yige/utils@0.0.18':
     resolution: {integrity: sha512-5u+zMn201PtAY1VusvBLD+r/dy5hfH+AvItWan7fubllKogwtO5XuDAgNGLnhuSAFM0YW3WHFdygv+kfWTdkfg==}
 
+  '@wang-yige/utils@0.0.9':
+    resolution: {integrity: sha512-VU3AR08kOMKNxgRY4DdQoU7reavLOPIaRWB+YOG9kJ+xR/wvA/p1EMe94ETP0Mz7CX4C0IH6q63HqeVdnkQc1Q==}
+
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
     engines: {node: '>= 0.6'}
@@ -1725,6 +1731,9 @@ packages:
 
   stackback@0.0.2:
     resolution: {integrity: sha512-1XMJE5fQo1jGH6Y/7ebnwPOBEkIEnT4QF32d5R1+VXdXveM0IBMJt8zfaxX1P3QhVwrYe+576+jkANtSS2mBbw==}
+
+  status-ref@1.0.2:
+    resolution: {integrity: sha512-4d7T21Q2c8p1TqiENhnYMn1DG6tocZNHRPHSH6OnXaZASdvTT8Ly+zp/MTczUwYCvwboGvKLK5YixRUEoBluKw==}
 
   statuses@1.5.0:
     resolution: {integrity: sha512-OpZ3zP+jT1PI7I8nemJX4AKmAX070ZkYPVWV/AaKTJl+tXCTGyVdC1a4SL8RUQYEwk/f34ZX8UTykN68FwrqAA==}
@@ -2828,6 +2837,8 @@ snapshots:
 
   '@wang-yige/utils@0.0.18': {}
 
+  '@wang-yige/utils@0.0.9': {}
+
   accepts@1.3.8:
     dependencies:
       mime-types: 2.1.35
@@ -3627,6 +3638,10 @@ snapshots:
   speakingurl@14.0.1: {}
 
   stackback@0.0.2: {}
+
+  status-ref@1.0.2:
+    dependencies:
+      '@wang-yige/utils': 0.0.9
 
   statuses@1.5.0: {}
 

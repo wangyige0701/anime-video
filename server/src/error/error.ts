@@ -1,6 +1,6 @@
 import { Status } from '~common/status';
 
-export class BaseError extends Error {
+export class ApiError extends Error {
 	code: Status;
 	body: any;
 	contentType: string;

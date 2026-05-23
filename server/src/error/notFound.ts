@@ -1,7 +1,7 @@
 import { Status } from '~common/status';
-import { BaseError } from './error';
+import { ApiError } from './error';
 
-export class NotFoundError extends BaseError {
+export class NotFoundError extends ApiError {
 	constructor(body?: any, message?: string, contentType?: string) {
 		super(Status.NotFound, body, message, contentType);
 	}

@@ -38,7 +38,7 @@ importers:
     dependencies:
       '@koa/router':
         specifier: ^15.3.0
-        version: 15.3.1(koa@3.2.0)
+        version: 15.3.1(koa@3.2.1)
       koa-body:
         specifier: ^7.0.1
         version: 7.0.1
@@ -46,8 +46,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       koa-use-decorator-router:
-        specifier: ^1.1.2
-        version: 1.1.2(@koa/router@15.3.1(koa@3.2.0))(koa@3.2.0)(reflect-metadata@0.2.2)
+        specifier: ^1.2.1
+        version: 1.2.1(@koa/router@15.3.1(koa@3.2.1))(koa@3.2.1)(reflect-metadata@0.2.2)
       koa2-connect-history-api-fallback:
         specifier: ^0.1.3
         version: 0.1.3
@@ -1047,6 +1047,10 @@ packages:
     resolution: {integrity: sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==}
     engines: {node: '>= 0.6'}
 
+  content-type@2.0.0:
+    resolution: {integrity: sha512-j/O/d7GcZCyNl7/hwZAb606rzqkyvaDctLmckbxLzHvFBzTJHuGEdodATcP3yIRoDrLHkIATJuvzbFlp/ki2cQ==}
+    engines: {node: '>=18'}
+
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
@@ -1405,8 +1409,8 @@ packages:
     resolution: {integrity: sha512-UqyYyH5YEXaJrf9S8E23GoJFQZXkBVJ9zYYMPGz919MSX1KuvAcycIuS0ci150HCoPf4XQVhQ84Qf8xRPWxFaQ==}
     engines: {node: '>= 7.6.0'}
 
-  koa-use-decorator-router@1.1.2:
-    resolution: {integrity: sha512-E5uZAULe8efw9Dej3oSGs1xvbzQn+6HIoz8q39e/0pcr+G3I83whSWOf04Bf1USgquG5+tI2+Jg46utRdx4GMg==}
+  koa-use-decorator-router@1.2.1:
+    resolution: {integrity: sha512-IyX0qkFHy3L5YkWfBCw83A6FTraFit7gUhPWzbyHcwVfnVztxuexv+krkIr5LXF/T/xbgO8Q9wXaJo09vDv2qQ==}
     peerDependencies:
       '@koa/router': '>=10.0.0'
       koa: '>=2.0.0'
@@ -1419,8 +1423,8 @@ packages:
     resolution: {integrity: sha512-2LOQnFKu3m0VxpE+5sb5+BRTSKrXmNxGgxVRiKwD9s5KQB1zID/FRXhtzeV7RT1L2GVpdEEAfVuclFOMGl1ikA==}
     engines: {node: '>= 18'}
 
-  koa@3.2.0:
-    resolution: {integrity: sha512-TrM4/tnNY7uJ1aW55sIIa+dqBvc4V14WRIAlGcWat9wV5pRS9Wr5Zk2ZTjQP1jtfIHDoHiSbPuV08P0fUZo2pg==}
+  koa@3.2.1:
+    resolution: {integrity: sha512-e7IpWJrnanNUroVK2taAgMxoEZvHLXdQiNjeExSu/DEIWm83jaKGBgb7tLmu2rMYpA027qFB3iLR/k3AVpFRnA==}
     engines: {node: '>= 18'}
 
   kolorist@1.8.0:
@@ -1809,6 +1813,10 @@ packages:
   type-is@2.0.1:
     resolution: {integrity: sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==}
     engines: {node: '>= 0.6'}
+
+  type-is@2.1.0:
+    resolution: {integrity: sha512-faYHw0anBbc/kWF3zFTEnxSFOAGUX9GFbOBthvDdLsIlEoWOFOtS0zgCiQYwIskL9iGXZL3kAXD8OoZ4GmMATA==}
+    engines: {node: '>= 18'}
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -2310,11 +2318,11 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@koa/router@15.3.1(koa@3.2.0)':
+  '@koa/router@15.3.1(koa@3.2.1)':
     dependencies:
       debug: 4.4.3
       http-errors: 2.0.1
-      koa: 3.2.0
+      koa: 3.2.1
       koa-compose: 4.1.0
       path-to-regexp: 8.3.0
     transitivePeerDependencies:
@@ -2949,6 +2957,8 @@ snapshots:
 
   content-type@1.0.5: {}
 
+  content-type@2.0.0: {}
+
   convert-source-map@2.0.0: {}
 
   cookie-signature@1.2.2: {}
@@ -3293,11 +3303,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  koa-use-decorator-router@1.1.2(@koa/router@15.3.1(koa@3.2.0))(koa@3.2.0)(reflect-metadata@0.2.2):
+  koa-use-decorator-router@1.2.1(@koa/router@15.3.1(koa@3.2.1))(koa@3.2.1)(reflect-metadata@0.2.2):
     dependencies:
-      '@koa/router': 15.3.1(koa@3.2.0)
-      koa: 3.2.0
+      '@koa/router': 15.3.1(koa@3.2.1)
+      koa: 3.2.1
       reflect-metadata: 0.2.2
+      vary: 1.1.2
 
   koa2-connect-history-api-fallback@0.1.3: {}
 
@@ -3322,7 +3333,7 @@ snapshots:
       type-is: 2.0.1
       vary: 1.1.2
 
-  koa@3.2.0:
+  koa@3.2.1:
     dependencies:
       accepts: 1.3.8
       content-disposition: 1.0.1
@@ -3340,7 +3351,7 @@ snapshots:
       on-finished: 2.4.1
       parseurl: 1.3.3
       statuses: 2.0.2
-      type-is: 2.0.1
+      type-is: 2.1.0
       vary: 1.1.2
 
   kolorist@1.8.0: {}
@@ -3717,6 +3728,12 @@ snapshots:
   type-is@2.0.1:
     dependencies:
       content-type: 1.0.5
+      media-typer: 1.1.0
+      mime-types: 3.0.2
+
+  type-is@2.1.0:
+    dependencies:
+      content-type: 2.0.0
       media-typer: 1.1.0
       mime-types: 3.0.2
 

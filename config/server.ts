@@ -23,3 +23,8 @@ export function getServerPort() {
 	}
 	return configs.port.value;
 }
+
+/**
+ * 视频数据信息存放的文件名
+ */
+export const DATA_FILE = (process.env.VIDEO_CONFIG_PREFIX || '') + '.video.json';

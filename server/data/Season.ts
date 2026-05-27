@@ -12,7 +12,5 @@ export class Season implements ServerToPromise<ISeason> {
 
 	private season: ISeason;
 
-	constructor(season: ISeason) {
-		this.season = season;
-	}
+	constructor(seasonPath: string) {}
 }

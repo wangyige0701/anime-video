@@ -4,8 +4,9 @@ import { Singleton } from 'koa-use-decorator-router';
 import type { Series as ISeries, Season as ISeason, ServerToPromise } from '~types/videos';
 import { Season } from './Season';
 import { DATA_FILE } from '@config/server';
-import { createPromise } from '@wang-yige/utils';
+import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import { ConfigFile } from './ConfigFile';
+import { hash } from '@server/src/utils';
 
 @Singleton()
 export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
@@ -28,7 +29,14 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 		const directories = await this.getDirectories();
 		const result: Series[] = [];
 		for (const directory of directories) {
-			result.push(await this.getSeriesByDirectory(directory));
+			try {
+				// 遍历配置目录下的文件夹，依次去解析系列数据
+				await fs.access(directory);
+				for (const folder of await fs.readdir(directory)) {
+					const seriesDirectory = path.resolve(directory, folder);
+					result.push(await this.getSeriesByDirectory(seriesDirectory));
+				}
+			} catch (error) {}
 		}
 		return result;
 	}
@@ -36,7 +44,7 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	/**
 	 * 根据目录绝对路径获取视频系列实例
 	 *
-	 * @param directory 视频系列目录
+	 * @param directory 视频系列目录，即某个视频系列对应的文件夹
 	 */
 	public static async getSeriesByDirectory(directory: string) {
 		if (!this.cache.has(directory)) {
@@ -93,17 +101,26 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	 */
 	constructor(seriesDirectory: string) {
 		this.directory = path.resolve(seriesDirectory);
-		try {
-			fs.access(this.directory);
-		} catch (error) {
-			throw new Error(`系列目录 ${this.directory} 不存在`);
-		}
 		this.configDirectory = path.resolve(this.directory, '..', DATA_FILE);
 		if (!Series.isAllowedDirectory(this.configDirectory)) {
 			throw new Error(`系列配置目录 ${this.configDirectory} 不被允许`);
 		}
-		const { resolve, reject, promise } = createPromise<ISeries>();
+
+		const { resolve, promise } = createPromise<ISeries>();
 		this.promise = promise;
+
+		this.initial(resolve);
+	}
+
+	private async initial(resolve: PromiseResolve<ISeries>) {
+		try {
+			await fs.access(this.directory);
+		} catch (error) {
+			throw new Error(`系列目录 ${this.directory} 不存在`);
+		}
+		if ((await fs.stat(this.directory)).isFile()) {
+			throw new Error(`系列目录 ${this.directory} 不是一个文件夹`);
+		}
 
 		this.registerId();
 		this.registerRootPath();
@@ -117,15 +134,37 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 		ConfigFile.instance<ISeries[]>(this.configDirectory, [])
 			.read()
 			.then((configs) => {
-				// TODO 需要判断配置文件中是否存在该视频系列，不存在需要创建配置项
-				return configs.find((config) => config.rootPath === this.directory) as ISeries;
-			})
-			.then((config) => {
-				resolve(config);
+				return this.readSeries(configs, resolve);
 			})
 			.catch(() => {
-				reject(new Error(`目录 ${this.configDirectory} 没有配置文件`));
+				throw new Error(`目录 ${this.configDirectory} 数据初始化异常`);
 			});
+	}
+
+	private async readSeries(configs: ISeries[], resolve: PromiseResolve<ISeries>) {
+		const id = hash(this.directory);
+		const name = path.basename(this.directory);
+		const config = configs.find((config) => config.rootPath === this.directory);
+		if (!config) {
+			return resolve({
+				id: id,
+				rootPath: this.directory,
+				name: name,
+				title: name,
+				images: [],
+				tags: [],
+				description: '',
+				seasons: [],
+			} satisfies ISeries);
+		}
+		config.id = id;
+		config.name = name;
+		config.title = config.title || name;
+		config.images = config.images || [];
+		config.tags = config.tags || [];
+		config.description = config.description || '';
+		config.seasons = config.seasons || [];
+		return resolve(config);
 	}
 
 	public async updateTitle(title: string) {

@@ -70,74 +70,75 @@ export class ConfigFile<T extends any[] | object> {
 	// 等待
 	private isSaveWaiting = false;
 	private saveWaitQueue: Array<[PromiseResolve<void>, PromiseReject]> = [];
-	private saveWaitingReject?: PromiseReject;
-
-	private saveFLushPromise?: Promise<void>;
-	private saveFLushResolve?: PromiseResolve<void>;
-	private saveFLushReject?: PromiseReject;
+	private saveWaitingResolve?: PromiseResolve<void>;
 
 	private async doSave() {
 		if (this.isSaveWorking) {
 			this.isSaveWaiting = true;
-			if (!this.saveFLushPromise) {
-				const { resolve, reject, promise } = createPromise<void>();
-				this.saveFLushPromise = promise;
-				this.saveFLushResolve = resolve;
-				this.saveFLushReject = reject;
-			}
-			return this.saveFLushPromise;
+			return;
+		}
+		this.isSaveWorking = true;
+
+		try {
+			await fs.writeFile(this.tmpPath, JSON.stringify(await this.data, null, 2), 'utf-8');
+			await fs.rename(this.tmpPath, this.configPath);
+			this.saveWorkQueue.forEach(([resolve]) => resolve());
+		} catch (error) {
+			this.saveWorkQueue.forEach(([_, reject]) => reject(error));
 		}
 
-		this.isSaveWorking = true;
-		await fs.writeFile(this.tmpPath, JSON.stringify(await this.data, null, 2), 'utf-8');
-		await fs.rename(this.tmpPath, this.configPath);
+		const waitQueue = this.saveWaitQueue.splice(0);
+		this.saveWorkQueue.splice(0, this.saveWorkQueue.length, ...waitQueue);
+
 		this.isSaveWorking = false;
 		if (this.isSaveWaiting) {
 			this.isSaveWaiting = false;
-			this.saveFLushPromise = void 0;
-			const resolve = this.saveFLushResolve;
-			const reject = this.saveFLushReject;
-			this.saveFLushResolve = void 0;
-			this.saveFLushReject = void 0;
-			if (resolve) {
-				Promise.resolve()
-					.then(() => {
-						return this.flushSave();
-					})
-					.then(resolve, reject);
-			}
+			Promise.resolve().then(() => {
+				this.flushSave();
+			});
 		}
 	}
 
-	private flushSave() {
-		this.saveTimeout && clearTimeout(this.saveTimeout);
-		if (this.saveWaitingReject) {
-			this.saveWaitingReject(null);
+	private flushSave(resolve?: PromiseResolve<void>, reject?: PromiseReject) {
+		if (!this.saveWaitingResolve) {
+			const { resolve: saveResolve, promise } = createPromise<void>();
+			promise.then(() => {
+				return this.doSave();
+			});
+			this.saveWaitingResolve = saveResolve;
 		}
 
-		const { resolve, reject, promise } = createPromise<void>();
-		this.saveWaitingReject = reject;
+		if (resolve && reject) {
+			if (this.isSaveWaiting) {
+				this.saveWaitQueue.push([resolve, reject]);
+			} else {
+				this.saveWorkQueue.push([resolve, reject]);
+			}
+		}
 
+		this.saveTimeout && clearTimeout(this.saveTimeout);
 		this.saveTimeout = setTimeout(() => {
-			resolve();
+			const saveResolve = this.saveWaitingResolve;
+			this.saveWaitingResolve = void 0;
+			this.saveTimeout = void 0;
+			if (saveResolve) {
+				saveResolve();
+			}
 		}, 300);
-
-		promise.then(() => {});
 	}
 
 	/**
 	 * 保存配置文件内容
+	 *
+	 * - save() -> 返回 promise，resolve 和 reject 通过 flushSave 保存起来
+	 * - flushSave() -> 一个工作流同时只有一个 promise，通过 timeout 和 全局提出的 resolve 方法控制延迟触发和防抖
+	 * - flushSave 的唯一 promise 回调后，触发 doSave
+	 * - doSave() -> 通过一个状态判断是否正在保存中，如果在保存则等待，否则立即保存
+	 * - 保存操作完成后，触发 resolve 或 reject，并且将等待队列中的数据替换到工作队列，如果有等待状态则在下一个微队列中触发 flushSave
 	 */
 	public async save() {
 		const { resolve, reject, promise } = createPromise<void>();
-
-		if (this.isSaveWaiting) {
-			this.saveWaitQueue.push([resolve, reject]);
-		} else {
-			this.saveWorkQueue.push([resolve, reject]);
-		}
-
-		this.flushSave();
+		this.flushSave(resolve, reject);
 
 		return promise;
 	}

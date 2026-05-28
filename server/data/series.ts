@@ -1,26 +1,20 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { Singleton } from 'koa-use-decorator-router';
-import type { Series as ISeries, Season as ISeason, ServerToPromise } from '~types/videos';
-import { Season } from './Season';
+import type { Series as ISeries, ServerToPromise } from '~types/videos';
+import { Season } from './season';
 import { DATA_FILE } from '@config/server';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import { ConfigFile } from './ConfigFile';
-import { hash } from '@server/src/utils';
+import { ConfigFile } from './configFile';
+import { hash, isDirectory } from '@server/src/utils';
+import { Data } from './data';
 
 @Singleton()
-export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
+export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	/**
 	 * 视频系列缓存，key 为目录绝对路径，value 为视频系列实例
 	 */
 	private static cache: Map<string, Series> = new Map();
-
-	/**
-	 * 获取所有视频系列目录
-	 */
-	public static async getDirectories() {
-		return await ConfigFile.instance<string[]>(path.resolve(process.cwd(), DATA_FILE), []).read();
-	}
 
 	/**
 	 * 获取所有视频系列实例
@@ -34,23 +28,11 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 				await fs.access(directory);
 				for (const folder of await fs.readdir(directory)) {
 					const seriesDirectory = path.resolve(directory, folder);
-					result.push(await this.getSeriesByDirectory(seriesDirectory));
+					result.push(new Series(seriesDirectory));
 				}
 			} catch (error) {}
 		}
 		return result;
-	}
-
-	/**
-	 * 根据目录绝对路径获取视频系列实例
-	 *
-	 * @param directory 视频系列目录，即某个视频系列对应的文件夹
-	 */
-	public static async getSeriesByDirectory(directory: string) {
-		if (!this.cache.has(directory)) {
-			this.cache.set(directory, new Series(directory));
-		}
-		return this.cache.get(directory)!;
 	}
 
 	/**
@@ -68,31 +50,18 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 		throw new Error(`没有找到 id 为 ${id} 的视频系列`);
 	}
 
-	/**
-	 * 检查目录是否被允许，所有视频、图片资源文件目录必须在允许的目录中
-	 *
-	 * @param directory 视频系列目录
-	 */
-	public static async isAllowedDirectory(directory: string) {
-		const directories = await this.getDirectories();
-		const handleDirectory = path.resolve(directory);
-		return directories.find((item) => {
-			return handleDirectory.startsWith(item);
-		});
-	}
-
 	id!: Promise<string>;
 	rootPath!: Promise<string>;
 	name!: Promise<string>;
 	title!: Promise<string>;
 	images!: Promise<string[]>;
-	seasons!: Promise<Season[]>;
 	description!: Promise<string>;
 	tags!: Promise<string[]>;
+	seasons!: Promise<Season[]>;
 
-	private directory: string;
-	private configDirectory: string;
-	private promise: Promise<ISeries>;
+	private directory!: string;
+	private configDirectory!: string;
+	private promise!: Promise<ISeries>;
 
 	/**
 	 * 构造函数
@@ -100,48 +69,61 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	 * @param seriesDirectory 视频系列目录
 	 */
 	constructor(seriesDirectory: string) {
-		this.directory = path.resolve(seriesDirectory);
+		const directory = path.resolve(seriesDirectory);
+		if (Series.cache.has(directory)) {
+			return Series.cache.get(directory)!;
+		}
+
+		super();
+
+		Series.cache.set(directory, this);
+
+		this.directory = directory;
 		this.configDirectory = path.resolve(this.directory, '..', DATA_FILE);
-		if (!Series.isAllowedDirectory(this.configDirectory)) {
-			throw new Error(`系列配置目录 ${this.configDirectory} 不被允许`);
-		}
 
-		const { resolve, promise } = createPromise<ISeries>();
+		const { resolve, reject, promise } = createPromise<ISeries>();
 		this.promise = promise;
-
-		this.initial(resolve);
-	}
-
-	private async initial(resolve: PromiseResolve<ISeries>) {
-		try {
-			await fs.access(this.directory);
-		} catch (error) {
-			throw new Error(`系列目录 ${this.directory} 不存在`);
-		}
-		if ((await fs.stat(this.directory)).isFile()) {
-			throw new Error(`系列目录 ${this.directory} 不是一个文件夹`);
-		}
 
 		this.registerId();
 		this.registerRootPath();
 		this.registerName();
 		this.registerTitle();
 		this.registerImages();
-		this.registerSeasons();
 		this.registerDescription();
 		this.registerTags();
+		this.registerSeasons();
 
-		ConfigFile.instance<ISeries[]>(this.configDirectory, [])
+		if (!Series.isAllowedDirectory(this.configDirectory)) {
+			reject(new Error(`系列配置目录 ${this.configDirectory} 不被允许`));
+		} else {
+			this.initialize(resolve, reject);
+		}
+	}
+
+	/**
+	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
+	 */
+	private async initialize(resolve: PromiseResolve<ISeries>, reject: PromiseReject) {
+		try {
+			await fs.access(this.directory);
+		} catch (error) {
+			return reject(new Error(`系列目录 ${this.directory} 不存在`));
+		}
+		if (!(await isDirectory(this.directory))) {
+			return reject(new Error(`系列目录 ${this.directory} 不是一个文件夹`));
+		}
+
+		await ConfigFile.instance<ISeries[]>(this.configDirectory, [])
 			.read()
 			.then((configs) => {
 				return this.readSeries(configs, resolve);
 			})
 			.catch(() => {
-				throw new Error(`目录 ${this.configDirectory} 数据初始化异常`);
+				reject(new Error(`目录 ${this.configDirectory} 数据初始化异常`));
 			});
 	}
 
-	private async readSeries(configs: ISeries[], resolve: PromiseResolve<ISeries>) {
+	private readSeries(configs: ISeries[], resolve: PromiseResolve<ISeries>) {
 		const id = hash(this.directory);
 		const name = path.basename(this.directory);
 		const config = configs.find((config) => config.rootPath === this.directory);
@@ -165,6 +147,13 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 		config.description = config.description || '';
 		config.seasons = config.seasons || [];
 		return resolve(config);
+	}
+
+	/**
+	 * 获取系列初始化的 promise 示例，可以判断内部是否出现异常
+	 */
+	public getPromise() {
+		return this.promise;
 	}
 
 	public async updateTitle(title: string) {
@@ -224,7 +213,7 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 
 	private registerSeasons() {
 		this.seasons = this.promise.then(
-			({ seasons }) => seasons.map((season: ISeason) => new Season(season)),
+			({ seasons }) => Season.getAllSeasons(this.directory, seasons),
 			() => [] as Season[],
 		);
 	}

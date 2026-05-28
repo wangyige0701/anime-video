@@ -1,4 +1,4 @@
-import { createPromise, isArray, isObject, PromiseReject, PromiseResolve, VOID_FUNCTION } from '@wang-yige/utils';
+import { createPromise, isArray, isObject, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 

@@ -37,8 +37,17 @@ export interface Series {
  */
 export interface Season {
 	id: string;
+	/**
+	 * 季排序
+	 */
 	seasonNumber: number;
+	/**
+	 * 季文件名
+	 */
 	pathName: string;
+	/**
+	 * 季标题，默认为季文件名，可手动修改
+	 */
 	title: string;
 	episodes: Episode[];
 }
@@ -48,9 +57,21 @@ export interface Season {
  */
 export interface Episode {
 	id: string;
+	/**
+	 * 集排序
+	 */
 	episodeNumber: number;
+	/**
+	 * 集文件名
+	 */
 	pathName: string;
+	/**
+	 * 集文件扩展名
+	 */
 	extension: string;
+	/**
+	 * 集标题，默认为集文件名，可手动修改
+	 */
 	title: string;
 }
 

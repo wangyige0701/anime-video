@@ -119,6 +119,65 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	}
 
 	/**
+	 * 获取系列初始化的 promise 示例，可以判断内部是否出现异常
+	 */
+	public getPromise() {
+		return this.promise;
+	}
+
+	public async updateTitle(title: string) {
+		await this.title;
+		this.title = Promise.resolve(title);
+	}
+
+	public async updateDescription(description: string) {
+		await this.description;
+		this.description = Promise.resolve(description);
+	}
+
+	public async updateImages(images: string[]) {
+		await this.images;
+		this.images = Promise.resolve(images);
+	}
+
+	public async updateTags(tags: string[]) {
+		await this.tags;
+		this.tags = Promise.resolve(tags);
+	}
+
+	private registerId() {
+		this.id = this.promise.then(({ id }) => id);
+	}
+
+	private registerRootPath() {
+		this.rootPath = this.promise.then(({ rootPath }) => rootPath);
+	}
+
+	private registerName() {
+		this.name = this.promise.then(({ name }) => name);
+	}
+
+	private registerTitle() {
+		this.title = this.promise.then(({ title }) => title);
+	}
+
+	private registerImages() {
+		this.images = this.promise.then(({ images }) => images);
+	}
+
+	private registerSeasons() {
+		this.seasons = this.promise.then(({ seasons }) => Season.getAllSeasons(this.directory, seasons, this));
+	}
+
+	private registerDescription() {
+		this.description = this.promise.then(({ description }) => description);
+	}
+
+	private registerTags() {
+		this.tags = this.promise.then(({ tags }) => tags);
+	}
+
+	/**
 	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
 	 */
 	private async initialize(resolve: PromiseResolve<ISeries>, reject: PromiseReject) {
@@ -166,88 +225,5 @@ export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 		config.description = config.description || '';
 		config.seasons = config.seasons || [];
 		return resolve(config);
-	}
-
-	/**
-	 * 获取系列初始化的 promise 示例，可以判断内部是否出现异常
-	 */
-	public getPromise() {
-		return this.promise;
-	}
-
-	public async updateTitle(title: string) {
-		await this.title;
-		this.title = Promise.resolve(title);
-	}
-
-	public async updateDescription(description: string) {
-		await this.description;
-		this.description = Promise.resolve(description);
-	}
-
-	public async updateImages(images: string[]) {
-		await this.images;
-		this.images = Promise.resolve(images);
-	}
-
-	public async updateTags(tags: string[]) {
-		await this.tags;
-		this.tags = Promise.resolve(tags);
-	}
-
-	private registerId() {
-		this.id = this.promise.then(
-			({ id }) => id,
-			() => '',
-		);
-	}
-
-	private registerRootPath() {
-		this.rootPath = this.promise.then(
-			({ rootPath }) => rootPath,
-			() => '',
-		);
-	}
-
-	private registerName() {
-		this.name = this.promise.then(
-			({ name }) => name,
-			() => '',
-		);
-	}
-
-	private registerTitle() {
-		this.title = this.promise.then(
-			({ title }) => title,
-			() => '',
-		);
-	}
-
-	private registerImages() {
-		this.images = this.promise.then(
-			({ images }) => images,
-			() => [],
-		);
-	}
-
-	private registerSeasons() {
-		this.seasons = this.promise.then(
-			({ seasons }) => Season.getAllSeasons(this.directory, seasons),
-			() => [] as Season[],
-		);
-	}
-
-	private registerDescription() {
-		this.description = this.promise.then(
-			({ description }) => description,
-			() => '',
-		);
-	}
-
-	private registerTags() {
-		this.tags = this.promise.then(
-			({ tags }) => tags,
-			() => [],
-		);
 	}
 }

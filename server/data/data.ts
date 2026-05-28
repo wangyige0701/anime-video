@@ -62,6 +62,9 @@ export class Data<T extends object> {
 				// 数据更新，需要保存
 				const result = Reflect.set(target, prop, value, receiver);
 				if (result) {
+					if (isObject(value) || isArray(value)) {
+						this.proxy(value);
+					}
 					this.save();
 				}
 				return result;

@@ -8,7 +8,7 @@ import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import { Data } from './data';
 
 @Singleton()
-export class Season extends Data implements Omit<ServerToPromise<ISeason>, 'episodes'> {
+export class Season implements Omit<ServerToPromise<ISeason>, 'episodes'> {
 	private static cache: Map<string, Season> = new Map();
 
 	public static async getAllSeasons(seriesDirectory: string, seasons: ISeason[]) {
@@ -39,8 +39,6 @@ export class Season extends Data implements Omit<ServerToPromise<ISeason>, 'epis
 		if (Season.cache.has(directory)) {
 			return Season.cache.get(directory)!;
 		}
-
-		super();
 
 		Season.cache.set(directory, this);
 

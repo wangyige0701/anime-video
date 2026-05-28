@@ -9,14 +9,14 @@ import { Data } from './data';
 import { hash, isDirectory } from '@server/src/utils';
 
 @Singleton()
-export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seasons'> {
+export class Series implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	/**
 	 * 视频系列缓存，key 为目录绝对路径，value 为视频系列实例
 	 */
 	private static cache: Map<string, Series> = new Map();
 
 	/**
-	 * 获取所有视频系列目录
+	 * 获取所有视频系列根目录配置数据
 	 */
 	public static async getDirectories() {
 		return await Data.instance<string[]>(path.resolve(process.cwd(), DATA_FILE), []).read();
@@ -93,8 +93,6 @@ export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seas
 			return Series.cache.get(directory)!;
 		}
 
-		super();
-
 		Series.cache.set(directory, this);
 
 		this.directory = directory;
@@ -103,6 +101,7 @@ export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seas
 		const { resolve, reject, promise } = createPromise<ISeries>();
 		this.promise = promise;
 
+		// 需要在构造函数中立刻注册
 		this.registerId();
 		this.registerRootPath();
 		this.registerName();
@@ -145,9 +144,9 @@ export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seas
 	private readSeries(configs: ISeries[], resolve: PromiseResolve<ISeries>) {
 		const id = hash(this.directory);
 		const name = path.basename(this.directory);
-		const config = configs.find((config) => config.rootPath === this.directory);
-		if (!config) {
-			return resolve({
+		if (!configs.find((config) => config.rootPath === this.directory)) {
+			// 重新写入配置数据，需要通过代理进行绑定
+			configs.push({
 				id: id,
 				rootPath: this.directory,
 				name: name,
@@ -158,6 +157,7 @@ export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seas
 				seasons: [],
 			} satisfies ISeries);
 		}
+		const config = configs.find((config) => config.rootPath === this.directory)!;
 		config.id = id;
 		config.name = name;
 		config.title = config.title || name;

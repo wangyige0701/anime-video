@@ -1,14 +1,12 @@
 import type { Episode as IEpisode, ServerToPromise } from '~types/videos';
 import { Data } from './data';
 
-export class Episode extends Data implements ServerToPromise<IEpisode> {
-	id: Promise<string>;
-	episodeNumber: Promise<number>;
-	pathName: Promise<string>;
-	extension: Promise<string>;
-	title: Promise<string>;
+export class Episode implements ServerToPromise<IEpisode> {
+	id!: Promise<string>;
+	episodeNumber!: Promise<number>;
+	pathName!: Promise<string>;
+	extension!: Promise<string>;
+	title!: Promise<string>;
 
-	constructor() {
-		super();
-	}
+	constructor() {}
 }

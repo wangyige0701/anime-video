@@ -5,9 +5,8 @@ import type { Series as ISeries, ServerToPromise } from '~types/videos';
 import { Season } from './season';
 import { DATA_FILE } from '@config/server';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import { ConfigFile } from './configFile';
-import { hash, isDirectory } from '@server/src/utils';
 import { Data } from './data';
+import { hash, isDirectory } from '@server/src/utils';
 
 @Singleton()
 export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seasons'> {
@@ -15,6 +14,26 @@ export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seas
 	 * 视频系列缓存，key 为目录绝对路径，value 为视频系列实例
 	 */
 	private static cache: Map<string, Series> = new Map();
+
+	/**
+	 * 获取所有视频系列目录
+	 */
+	public static async getDirectories() {
+		return await Data.instance<string[]>(path.resolve(process.cwd(), DATA_FILE), []).read();
+	}
+
+	/**
+	 * 检查目录是否被允许，所有视频、图片资源文件目录必须在允许的目录中
+	 *
+	 * @param directory 视频系列目录
+	 */
+	public static async isAllowedDirectory(directory: string) {
+		const directories = await this.getDirectories();
+		const handleDirectory = path.resolve(directory);
+		return !!directories.find((item) => {
+			return handleDirectory.startsWith(item);
+		});
+	}
 
 	/**
 	 * 获取所有视频系列实例
@@ -113,7 +132,7 @@ export class Series extends Data implements Omit<ServerToPromise<ISeries>, 'seas
 			return reject(new Error(`系列目录 ${this.directory} 不是一个文件夹`));
 		}
 
-		await ConfigFile.instance<ISeries[]>(this.configDirectory, [])
+		await Data.instance<ISeries[]>(this.configDirectory, [])
 			.read()
 			.then((configs) => {
 				return this.readSeries(configs, resolve);

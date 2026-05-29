@@ -9,8 +9,7 @@
 		"emitDecoratorMetadata": true,
 		"types": ["vitest/globals", "node"],
 		"paths": {
-			"@remux/*": ["./remux/build/*"],
-			"@hls/*": ["./hls/build/*"],
+			"~hls/*": ["./hls/build/*"],
 			"~server/*": ["./server/*"],
 			"~web/*": ["./web/*"],
 			"~config/*": ["./config/*"],

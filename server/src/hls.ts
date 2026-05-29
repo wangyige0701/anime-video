@@ -1,4 +1,4 @@
-import type { Hls } from '@hls/hls.node';
+import type { Hls } from '~hls/hls.node';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -62,7 +62,7 @@ export class HlsManage {
 
 	private getHls(): Hls {
 		if (!this.hls) {
-			const HlsConstructor = require('@hls/hls.node') as typeof Hls;
+			const HlsConstructor = require('~hls/hls.node') as typeof Hls;
 			this.hls = new HlsConstructor(this.inputPath, SEGMENT_MIN_DURATION, {
 				mediaM3u8Name: M3u8Config.MEDIA_M3U8_NAME,
 				subtitleM3u8Name: M3u8Config.SUBTITLE_M3U8_NAME,

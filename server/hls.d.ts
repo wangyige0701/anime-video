@@ -1,4 +1,4 @@
-declare module '@hls/hls.node' {
+declare module '~hls/hls.node' {
 	class Hls {
 		/**
 		 * 创建 Hls 实例

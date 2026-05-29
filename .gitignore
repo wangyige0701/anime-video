@@ -5,6 +5,7 @@ streamer/build
 *.mp4
 
 ffmpeg
+remux
 
 test/videos/*
 !test/videos/.gitkeep

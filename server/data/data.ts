@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createPromise, isArray, isObject, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import { DATA_FILE } from '~config/server';
-import { isFileExist } from '@server/src/utils/fs';
+import { isFileExist } from '~server/src/utils/fs';
 
 /**
  * 配置文件数据获取

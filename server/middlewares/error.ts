@@ -1,5 +1,5 @@
 import type { Middleware } from 'koa';
-import { ApiError } from '@server/src/error/error';
+import { ApiError } from '~server/src/error/error';
 
 export function error(): Middleware {
 	return async (ctx, next) => {

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Episode as IEpisode, ServerToPromise } from '~types/videos';
 import type { Season } from './season';
-import { isDirectory, isFileExist } from '@server/src/utils/fs';
+import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Common } from './common';
 
 export class Episode extends Common implements ServerToPromise<IEpisode> {

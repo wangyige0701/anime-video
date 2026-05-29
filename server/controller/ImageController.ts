@@ -12,8 +12,8 @@ import {
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { ServerRoot } from '~routes/server';
-import { isAllowedDirectory } from '@server/src/videos';
-import { ImageNotFoundError } from '@server/src/error/imageNotFound';
+import { isAllowedDirectory } from '~server/src/videos';
+import { ImageNotFoundError } from '~server/src/error/imageNotFound';
 import { allowedImageExtensions } from '~config/server';
 
 @Singleton()

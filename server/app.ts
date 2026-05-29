@@ -3,8 +3,8 @@ import body from 'koa-body';
 import Decorator from 'koa-use-decorator-router';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { response } from '@server/middlewares/response';
-import { error } from '@server/middlewares/error';
+import { response } from '~server/middlewares/response';
+import { error } from '~server/middlewares/error';
 import { getServerPort } from '~config/server';
 
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), './controller');

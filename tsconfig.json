@@ -11,8 +11,8 @@
 		"paths": {
 			"@remux/*": ["./remux/build/*"],
 			"@hls/*": ["./hls/build/*"],
-			"@server/*": ["./server/*"],
-			"@web/*": ["./web/*"],
+			"~server/*": ["./server/*"],
+			"~web/*": ["./web/*"],
 			"~config/*": ["./config/*"],
 			"~routes/*": ["./routes/*"],
 			"~types/*": ["./types/*"],

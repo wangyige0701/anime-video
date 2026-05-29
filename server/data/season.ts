@@ -1,70 +1,76 @@
-import { Singleton } from 'koa-use-decorator-router';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import type { Season as ISeason, ServerToPromise } from '~types/videos';
-import type { Episode } from './episode';
-import { isDirectory } from '@server/src/utils';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import { Data } from './data';
+import type { Season as ISeason, ServerToPromise } from '~types/videos';
+import { Episode } from './episode';
+import { hash, isDirectory, isFileExist } from '@server/src/utils';
 import type { Series } from './series';
+import { Common } from './common';
 
-@Singleton()
-export class Season implements Omit<ServerToPromise<ISeason>, 'episodes'> {
+export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'episodes'> {
 	private static cache: Map<string, Season> = new Map();
 
-	public static async getAllSeasons(seriesDirectory: string, seasons: ISeason[], series: Series) {
+	/**
+	 * 获取所有视频实例
+	 * @param series 视频系列实例
+	 */
+	public static async getAllSeasons(series: Series) {
 		const result = [] as Season[];
-		for (const file of await fs.readdir(seriesDirectory)) {
-			if (!(await isDirectory(file))) {
+		for (const file of await fs.readdir(series.getDirectory())) {
+			const filePath = path.join(series.getDirectory(), file);
+			if (!(await isDirectory(filePath))) {
 				continue;
 			}
-			const seasonDirectory = path.resolve(seriesDirectory, file);
-			result.push(new Season(seasonDirectory, seasons, series));
+			const season = new Season(file, series);
+			await season.getPromise();
+			result.push(season);
 		}
 
-		const needRemove = [] as Season[];
-		for (const season of result) {
-			const pathName = await season.pathName;
-			if (!seasons.find((item) => item.pathName === pathName)) {
-				needRemove.push(season);
+		// 移除不存在的季实例
+		const ids = await Promise.all(result.map((item) => item.id));
+		const seasons = (await series.getConfig()).seasons; // 配置文件中读取的季数据
+		for (let i = seasons.length - 1; i >= 0; i--) {
+			const season = seasons[i];
+			if (!ids.find((id) => id === season.id)) {
+				seasons.splice(i, 1);
 			}
 		}
+
+		seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
 
 		return result;
 	}
 
-	id!: Promise<string>;
-	seasonNumber!: Promise<number>;
-	pathName!: Promise<string>;
-	title!: Promise<string>;
-	episodes!: Promise<Episode[]>;
+	private _id!: Promise<string>;
+	private _seasonNumber!: Promise<number>;
+	private _pathName!: Promise<string>;
+	private _title!: Promise<string>;
+	private _episodes!: Promise<Episode[]>;
 
-	/**
-	 * 季完整路径
-	 */
-	fullPath!: Promise<string>;
-
+	private seasonName!: string;
 	private directory!: string;
 	private promise!: Promise<ISeason>;
 
 	/**
-	 * @param seasonDirectory 季目录
+	 * @param seasonDirectory 季目录名
 	 * @param seasons 当前系列下的所有季数据，用来进行过滤判断
 	 * @returns
 	 */
 	constructor(
-		seasonDirectory: string,
-		seasons: ISeason[],
+		seasonName: string,
 		private series: Series,
 	) {
-		const directory = path.resolve(seasonDirectory);
+		const directory = path.join(series.getDirectory(), seasonName);
 
 		if (Season.cache.has(directory)) {
 			return Season.cache.get(directory)!;
 		}
 
+		super();
+
 		Season.cache.set(directory, this);
 
+		this.seasonName = seasonName;
 		this.directory = directory;
 
 		const { resolve, reject, promise } = createPromise<ISeason>();
@@ -74,36 +80,118 @@ export class Season implements Omit<ServerToPromise<ISeason>, 'episodes'> {
 		this.registerSeasonNumber();
 		this.registerPathName();
 		this.registerTitle();
-		this.registerFullPath();
+		this.registerEpisodes();
 
 		this.initialize(resolve, reject);
+	}
+
+	public getSeries() {
+		return this.series;
+	}
+
+	/**
+	 * 获取季目录绝对路径
+	 */
+	public getDirectory() {
+		return this.directory;
+	}
+
+	public getConfig() {
+		return this.promise;
 	}
 
 	public getPromise() {
 		return this.promise;
 	}
 
+	public get id() {
+		return this._id;
+	}
+
+	public get seasonNumber() {
+		return this._seasonNumber;
+	}
+
+	public get pathName() {
+		return this._pathName;
+	}
+
+	public get title() {
+		return this._title;
+	}
+
+	public get episodes() {
+		return this._episodes;
+	}
+
+	public async updateSeasonNumber(seasonNumber: number) {
+		const config = await this.promise;
+		config.seasonNumber = Math.max(1, seasonNumber);
+		this.registerSeasonNumber();
+	}
+
+	public async updateTitle(title: string) {
+		const config = await this.promise;
+		config.title = title;
+		this.registerTitle();
+	}
+
 	private registerId() {
-		this.id = this.promise.then(({ id }) => id);
+		this._id = this.promise.then(({ id }) => id);
 	}
 
 	private registerSeasonNumber() {
-		this.seasonNumber = this.promise.then(({ seasonNumber }) => seasonNumber);
+		this._seasonNumber = this.promise.then(({ seasonNumber }) => seasonNumber);
 	}
 
 	private registerPathName() {
-		this.pathName = this.promise.then(({ pathName }) => pathName);
+		this._pathName = this.promise.then(({ pathName }) => pathName);
 	}
 
 	private registerTitle() {
-		this.title = this.promise.then(({ title }) => title);
+		this._title = this.promise.then(({ title }) => title);
 	}
 
-	private registerFullPath() {
-		this.fullPath = Promise.all([this.series.rootPath, this.promise]).then(([rootPath, { pathName }]) => {
-			return path.resolve(rootPath, pathName);
-		});
+	private registerEpisodes() {
+		this._episodes = this.promise.then(() => Episode.getAllEpisodes(this));
 	}
 
-	private async initialize(resolve: PromiseResolve<ISeason>, reject: PromiseReject) {}
+	private async initialize(resolve: PromiseResolve<ISeason>, reject: PromiseReject) {
+		if (!(await isFileExist(this.directory))) {
+			return reject(new Error(`季目录 ${this.directory} 不存在`));
+		}
+		if (!(await isDirectory(this.directory))) {
+			return reject(new Error(`季目录 ${this.directory} 不是一个文件夹`));
+		}
+		if (!Season.isAllowedDirectory(this.directory)) {
+			return reject(new Error(`季目录 ${this.directory} 不被允许访问`));
+		}
+
+		// 配置文件中的季数组数据
+		const configs = (await this.series.getConfig()).seasons;
+
+		this.resolveSeasonConfig(configs, resolve);
+	}
+
+	private resolveSeasonConfig(configs: ISeason[], resolve: PromiseResolve<ISeason>) {
+		const id = hash(this.directory);
+		// 排序要从 1 开始
+		const seasonNumber = Math.max(1, ...configs.map((item) => item.seasonNumber)) + 1;
+		if (!configs.find((config) => config.id === id)) {
+			configs.push({
+				id: id,
+				seasonNumber: seasonNumber,
+				pathName: this.seasonName,
+				title: this.seasonName,
+				episodes: [],
+			} satisfies ISeason);
+		}
+		const config = configs.find((item) => item.id === id)!;
+		config.id = id;
+		config.seasonNumber = config.seasonNumber || seasonNumber;
+		config.pathName = config.pathName;
+		config.title = config.title || this.seasonName;
+		config.episodes = config.episodes || [];
+		resolve(config);
+	}
 }

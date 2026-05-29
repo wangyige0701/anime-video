@@ -1,6 +1,5 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { Singleton } from 'koa-use-decorator-router';
 import type { Series as ISeries, ServerToPromise } from '~types/videos';
 import { Season } from './season';
 import { DATA_FILE } from '@config/server';
@@ -9,7 +8,6 @@ import { Data } from './data';
 import { hash, isDirectory, isFileExist } from '@server/src/utils';
 import { Common } from './common';
 
-@Singleton()
 export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	/**
 	 * 视频系列缓存，key 为目录绝对路径，value 为视频系列实例
@@ -26,12 +24,30 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			if (!(await isFileExist(directory))) {
 				continue;
 			}
+
+			const temp = [] as Series[];
+
 			// 遍历配置目录下的文件夹，依次去解析系列数据
 			for (const folder of await fs.readdir(directory)) {
-				const seriesDirectory = path.join(directory, folder);
-				result.push(new Series(seriesDirectory));
+				const series = new Series(directory, folder);
+				await series.getPromise();
+				temp.push(series);
 			}
+
+			// 从原配置数据中移除不存在的系列数据
+			// 如果有新增的已经在 resolveSeriesConfig 中添加过了，这里只需要移除不存在的系列数据
+			const currentSeries = await Data.instance<ISeries[]>(path.join(directory, DATA_FILE), []).read();
+			const ids = await Promise.all(temp.map((item) => item.id));
+			for (let i = currentSeries.length - 1; i >= 0; i--) {
+				const series = currentSeries[i];
+				if (!ids.find((id) => id === series.id)) {
+					currentSeries.splice(i, 1);
+				}
+			}
+
+			result.push(...temp);
 		}
+
 		return result;
 	}
 
@@ -60,16 +76,15 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	private _seasons!: Promise<Season[]>;
 
 	private directory!: string;
-	private configDirectory!: string;
+	private dataFile!: string;
 	private promise!: Promise<ISeries>;
 
 	/**
-	 * 构造函数
-	 *
-	 * @param seriesDirectory 视频系列目录绝对路径
+	 * @param rootDirectory 视频系列根目录绝对路径
+	 * @param seriesName 视频系列名称，可以为空，此时 rootDirectory 为视频系列目录绝对路径
 	 */
-	constructor(seriesDirectory: string) {
-		const directory = path.resolve(seriesDirectory);
+	constructor(rootDirectory: string, seriesName: string) {
+		const directory = path.join(rootDirectory, seriesName);
 		if (Series.cache.has(directory)) {
 			return Series.cache.get(directory)!;
 		}
@@ -79,7 +94,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		Series.cache.set(directory, this);
 
 		this.directory = directory;
-		this.configDirectory = path.resolve(this.directory, '..', DATA_FILE);
+		this.dataFile = path.resolve(this.directory, '..', DATA_FILE);
 
 		const { resolve, reject, promise } = createPromise<ISeries>();
 		this.promise = promise;
@@ -94,11 +109,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerTags();
 		this.registerSeasons();
 
-		if (!Series.isAllowedDirectory(this.configDirectory)) {
-			reject(new Error(`系列配置目录 ${this.configDirectory} 不被允许`));
-		} else {
-			this.initialize(resolve, reject);
-		}
+		this.initialize(resolve, reject);
 	}
 
 	/**
@@ -212,27 +223,33 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
 	 */
 	private async initialize(resolve: PromiseResolve<ISeries>, reject: PromiseReject) {
+		if (!Series.isAllowedDirectory(this.dataFile)) {
+			return reject(new Error(`系列数据文件 ${this.dataFile} 不被允许访问`));
+		}
 		if (!(await isFileExist(this.directory))) {
 			return reject(new Error(`系列目录 ${this.directory} 不存在`));
 		}
 		if (!(await isDirectory(this.directory))) {
 			return reject(new Error(`系列目录 ${this.directory} 不是一个文件夹`));
 		}
+		if (!Series.isAllowedDirectory(this.directory)) {
+			return reject(new Error(`系列目录 ${this.directory} 不被允许访问`));
+		}
 
-		await Data.instance<ISeries[]>(this.configDirectory, [])
+		await Data.instance<ISeries[]>(this.dataFile, [])
 			.read()
 			.then((configs) => {
 				return this.resolveSeriesConfig(configs, resolve);
 			})
 			.catch(() => {
-				reject(new Error(`目录 ${this.configDirectory} 数据初始化异常`));
+				reject(new Error(`数据文件 ${this.dataFile} 数据初始化异常`));
 			});
 	}
 
 	private resolveSeriesConfig(configs: ISeries[], resolve: PromiseResolve<ISeries>) {
 		const id = hash(this.directory);
 		const name = path.basename(this.directory);
-		if (!configs.find((config) => config.rootPath === this.directory)) {
+		if (!configs.find((config) => config.id === id)) {
 			// 重新写入配置数据，需要通过代理进行绑定
 			configs.push({
 				id: id,

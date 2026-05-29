@@ -1,4 +1,5 @@
 import { DATA_FILE } from '@config/server';
+import { isFileExist } from '@server/src/utils';
 import { createPromise, isArray, isObject, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -11,6 +12,7 @@ import path from 'node:path';
  * - 需要对获取的数据进行代理，可以拦截数据更新行为，重新写入新的配置文件
  */
 export class Data<T extends object> {
+	private static delayTime = 500;
 	private static cache: Map<string, Data<any>> = new Map();
 	private static proxyMap: WeakMap<object, object> = new WeakMap();
 
@@ -31,7 +33,7 @@ export class Data<T extends object> {
 		configPath: string,
 		private defaultContent: T,
 	) {
-		const _path = path.resolve(configPath, DATA_FILE);
+		const _path = path.join(configPath, DATA_FILE);
 		if (Data.cache.has(_path)) {
 			return Data.cache.get(_path)! as Data<T>;
 		}
@@ -77,14 +79,12 @@ export class Data<T extends object> {
 	}
 
 	private async doRead() {
-		try {
+		if (await isFileExist(this.tmpPath)) {
 			// 检查临时文件是否存在，如果存在则说明上次保存时发生了错误，应该使用临时文件恢复数据
-			await fs.access(this.tmpPath);
 			await fs.rename(this.tmpPath, this.configPath);
-		} catch (error) {}
-		try {
-			await fs.access(this.configPath);
-		} catch (error) {
+		}
+		if (!(await isFileExist(this.configPath))) {
+			// 数据文件不存在，使用默认内容填充
 			await fs.writeFile(this.configPath, JSON.stringify(this.defaultContent, null, 2), 'utf-8');
 		}
 		const content = await fs.readFile(this.configPath, 'utf-8');
@@ -159,7 +159,7 @@ export class Data<T extends object> {
 			if (saveResolve) {
 				saveResolve();
 			}
-		}, 300);
+		}, Data.delayTime);
 	}
 
 	/**

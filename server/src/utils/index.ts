@@ -15,3 +15,12 @@ export async function isDirectory(path: string) {
 		return false;
 	}
 }
+
+export async function isFileExist(path: string) {
+	try {
+		await fs.access(path);
+		return true;
+	} catch (error) {
+		return false;
+	}
+}

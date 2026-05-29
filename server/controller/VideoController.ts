@@ -4,9 +4,9 @@ import fs from 'node:fs/promises';
 import { ServerRoot } from '~routes/server';
 import { M3u8Config } from '~config/hls';
 import { HlsManage } from '~server/src/hls';
-import { isAllowedDirectory } from '~server/src/videos';
 import { NotFoundError } from '~server/src/error/notFound';
 import { allowedVideoExtensions } from '~config/server';
+import { Series } from '~server/data/series';
 
 @Singleton()
 @Controller(ServerRoot.VIDEO)
@@ -53,20 +53,20 @@ export class VideoController {
 }
 
 async function checkDirectory(pathName: string) {
-	const filePath = decodeURIComponent(pathName);
+	const filePath = path.resolve(decodeURIComponent(pathName));
 	const extension = path.extname(filePath).toLowerCase();
-	if (!(await isAllowedDirectory(filePath))) {
-		throw new NotFoundError('Not Found', `File not allowed in this directory ${filePath}`, 'text/plain');
+	if (!(await Series.isAllowedDirectory(filePath))) {
+		throw new NotFoundError('Not Found', `文件目录 ${filePath} 不被允许`, 'text/plain');
 	}
 	if (!allowedVideoExtensions.includes(extension)) {
-		throw new NotFoundError('Not Found', `Invalid video extension ${filePath}`, 'text/plain');
+		throw new NotFoundError('Not Found', `文件扩展名无效 ${filePath}`, 'text/plain');
 	}
 	try {
 		if (!(await fs.stat(filePath)).isFile()) {
-			throw new NotFoundError('Not Found', `Video not found ${filePath}`, 'text/plain');
+			throw new NotFoundError('Not Found', `文件不存在 ${filePath}`, 'text/plain');
 		}
 	} catch (error) {
-		throw new NotFoundError('Not Found', `Video not found ${filePath}`, 'text/plain');
+		throw new NotFoundError('Not Found', `文件不存在 ${filePath}`, 'text/plain');
 	}
 	return filePath;
 }

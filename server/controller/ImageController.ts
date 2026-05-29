@@ -12,9 +12,9 @@ import {
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { ServerRoot } from '~routes/server';
-import { isAllowedDirectory } from '~server/src/videos';
 import { ImageNotFoundError } from '~server/src/error/imageNotFound';
 import { allowedImageExtensions } from '~config/server';
+import { Series } from '~server/data/series';
 
 @Singleton()
 @Controller(ServerRoot.IMAGE)
@@ -34,20 +34,20 @@ export class ImageController {
 }
 
 async function checkDirectory(pathName: string): Promise<string> {
-	const imagePath = decodeURIComponent(pathName);
+	const imagePath = path.resolve(decodeURIComponent(pathName));
 	const extension = path.extname(imagePath).toLowerCase();
-	if (!(await isAllowedDirectory(imagePath))) {
-		throw new ImageNotFoundError('Image not allowed in this directory', imagePath);
+	if (!(await Series.isAllowedDirectory(imagePath))) {
+		throw new ImageNotFoundError('文件目录不允许访问', imagePath);
 	}
 	if (!allowedImageExtensions.includes(extension)) {
-		throw new ImageNotFoundError('Invalid image extension', imagePath);
+		throw new ImageNotFoundError('文件扩展名无效', imagePath);
 	}
 	try {
 		if (!(await fs.stat(imagePath)).isFile()) {
-			throw new ImageNotFoundError('Image not found', imagePath);
+			throw new ImageNotFoundError('文件不存在', imagePath);
 		}
 	} catch (error) {
-		throw new ImageNotFoundError('Image not found', imagePath);
+		throw new ImageNotFoundError('文件不存在', imagePath);
 	}
 	return imagePath;
 }

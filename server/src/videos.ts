@@ -2,7 +2,7 @@ import type { Series, Season, Episode } from '~types/videos';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
-import { allowedImageExtensions, allowedVideoExtensions } from '@config/server';
+import { allowedImageExtensions, allowedVideoExtensions } from '~config/server';
 
 const configPrefix = process.env.VIDEO_CONFIG_PREFIX || '';
 const configName = configPrefix + '.video.json';

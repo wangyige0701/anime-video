@@ -1,6 +1,6 @@
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { DATA_FILE } from '@config/server';
+import { DATA_FILE } from '~config/server';
 import { Data } from './data';
 
 export class Common {

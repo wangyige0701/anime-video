@@ -4,7 +4,7 @@ import { resolve, dirname } from 'node:path';
 import Koa from 'koa';
 import server from 'koa-static';
 import { historyApiFallback } from 'koa2-connect-history-api-fallback';
-import { getWebPort, WEB_BUNDLE_DIR } from '@config/web';
+import { getWebPort, WEB_BUNDLE_DIR } from '~config/web';
 import { fileURLToPath } from 'node:url';
 
 const staticDir = resolve(dirname(fileURLToPath(import.meta.url)), WEB_BUNDLE_DIR);

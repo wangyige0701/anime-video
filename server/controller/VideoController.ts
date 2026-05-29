@@ -3,10 +3,10 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { HlsManage } from '@server/src/hls';
 import { ServerRoot } from '~routes/server';
-import { M3u8Config } from '@config/hls';
+import { M3u8Config } from '~config/hls';
 import { isAllowedDirectory } from '@server/src/videos';
 import { NotFoundError } from '@server/src/error/notFound';
-import { allowedVideoExtensions } from '@config/server';
+import { allowedVideoExtensions } from '~config/server';
 
 @Singleton()
 @Controller(ServerRoot.VIDEO)

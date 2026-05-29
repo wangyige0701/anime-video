@@ -13,7 +13,7 @@
 			"@hls/*": ["./hls/build/*"],
 			"@server/*": ["./server/*"],
 			"@web/*": ["./web/*"],
-			"@config/*": ["./config/*"],
+			"~config/*": ["./config/*"],
 			"~routes/*": ["./routes/*"],
 			"~types/*": ["./types/*"],
 			"~common/*": ["./common/*"]

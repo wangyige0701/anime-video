@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { ParallelTask } from '@wang-yige/utils';
-import { M3u8Config, SEGMENT_MIN_DURATION } from '@config/hls';
+import { M3u8Config, SEGMENT_MIN_DURATION } from '~config/hls';
 
 const require = createRequire(import.meta.url);
 

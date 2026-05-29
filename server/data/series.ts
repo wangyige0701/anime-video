@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Series as ISeries, ServerToPromise } from '~types/videos';
 import { Season } from './season';
-import { DATA_FILE } from '@config/server';
+import { DATA_FILE } from '~config/server';
 import { Data } from './data';
 import { isDirectory, isFileExist } from '@server/src/utils/fs';
 import { Common } from './common';

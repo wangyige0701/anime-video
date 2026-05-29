@@ -1,6 +1,6 @@
 export {};
 
-import { DEV_WEB_PORT, getWebPort } from '@config/web';
+import { DEV_WEB_PORT, getWebPort } from '~config/web';
 import Koa from 'koa';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import connect from 'koa-connect';

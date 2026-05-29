@@ -1,4 +1,4 @@
-import { M3u8Config } from '@config/hls';
+import { M3u8Config } from '~config/hls';
 
 export enum ServerRoot {
 	VIDEO = '/video',

@@ -2,17 +2,28 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Series as ISeries, ServerToPromise } from '~types/videos';
-import { Season } from './season';
 import { DATA_FILE } from '~config/server';
-import { Data } from './data';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
+import { Data } from './data';
 import { Common } from './common';
+import { Season } from './season';
+import { Episode } from './episode';
 
 export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	/**
 	 * 视频系列缓存，key 为目录绝对路径，value 为视频系列实例
 	 */
 	private static cache: Map<string, Series> = new Map();
+
+	public static clearCache() {
+		this.cache.clear();
+	}
+
+	public static deleteCache(directory: string) {
+		if (this.cache.has(directory)) {
+			this.cache.delete(directory);
+		}
+	}
 
 	/**
 	 * 获取所有视频系列实例
@@ -49,6 +60,31 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		}
 
 		return result;
+	}
+
+	/**
+	 * 刷新所有视频系列信息，移除不存在于配置目录中的视频系列，并更新视频系列信息
+	 */
+	public static async updateSeries() {
+		// 移除不存在于配置目录中的视频系列
+		for (const [key, series] of this.cache) {
+			const seriesPath = series.getDirectory();
+			if (!this.isAllowedDirectory(seriesPath)) {
+				this.cache.delete(key);
+
+				// 循环移除系列目录下的其它缓存
+				const seasons = await series.seasons;
+				for (const season of seasons) {
+					Season.deleteCache(season.getDirectory());
+
+					const episodes = await season.episodes;
+					for (const episode of episodes) {
+						Episode.deleteCache(episode.getDirectory());
+					}
+				}
+			}
+		}
+		await this.getAllSeries();
 	}
 
 	/**

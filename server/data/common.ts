@@ -14,6 +14,14 @@ export class Common {
 	}
 
 	/**
+	 * 重置视频系列目录配置数据，只会更新文件数据，不会刷新系列缓存，需要手动调用方法更新
+	 */
+	public static async setDirectories(directories: string[]) {
+		const data = await this.getDirectories();
+		data.splice(0, data.length, ...directories.map((item) => path.resolve(item)));
+	}
+
+	/**
 	 * 检查目录是否被允许，所有视频、图片资源文件目录必须在允许的目录中
 	 *
 	 * @param directory 视频系列目录绝对路径

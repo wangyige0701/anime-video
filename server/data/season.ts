@@ -10,6 +10,16 @@ import { Common } from './common';
 export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'episodes'> {
 	private static cache: Map<string, Season> = new Map();
 
+	public static clearCache() {
+		this.cache.clear();
+	}
+
+	public static deleteCache(directory: string) {
+		if (this.cache.has(directory)) {
+			this.cache.delete(directory);
+		}
+	}
+
 	/**
 	 * 获取所有视频实例
 	 * @param series 视频系列实例

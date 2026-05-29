@@ -6,10 +6,10 @@ import { API } from './base';
 /**
  * 获取所有系列信息
  */
-export function getSeriesInfos() {
+export function getSeries() {
 	return API.get(`${ServerRoot.DATA}/series`) as unknown as Promise<Response<Series[]>>;
 }
 
-export function refreshSeriesInfo() {
+export function refreshSeries() {
 	return API.post(`${ServerRoot.DATA}/series/refresh`) as unknown as Promise<Response<null>>;
 }

@@ -1,8 +1,8 @@
 import type Koa from 'koa';
 import { Context, Controller, Cors, HttpMethod, Singleton } from 'koa-use-decorator-router';
-import { ServerRoot } from '~routes/server';
-import { getDirectories, getSeriesInfos, refreshSeriesInfo, setDirectories } from '~server/src/videos';
 import { isArray } from '@wang-yige/utils';
+import { ServerRoot } from '~routes/server';
+import { Series } from '~server/data/series';
 
 @Singleton()
 @Controller(ServerRoot.DATA)
@@ -10,26 +10,27 @@ import { isArray } from '@wang-yige/utils';
 export class DataController {
 	@HttpMethod.Get('/directories')
 	public async getDirectories(@Context() ctx: Koa.Context) {
-		return ctx.Success(await getDirectories());
+		return ctx.Success(Series.getDirectories());
 	}
 
 	@HttpMethod.Put('/directories')
 	public async setDirectories(@Context() ctx: Koa.Context) {
 		const directories = ctx.request.body;
 		if (isArray(directories)) {
-			await setDirectories(...(directories as string[]));
+			await Series.setDirectories(directories as string[]);
+			await Series.updateSeries();
 		}
 		return ctx.Success();
 	}
 
 	@HttpMethod.Get('/series')
-	public async getSeriesInfos(@Context() ctx: Koa.Context) {
-		return ctx.Success(await getSeriesInfos());
+	public async getSeries(@Context() ctx: Koa.Context) {
+		return ctx.Success(await Series.getAllSeries());
 	}
 
 	@HttpMethod.Post('/series/refresh')
-	public async refreshSeriesInfo(@Context() ctx: Koa.Context) {
-		await refreshSeriesInfo();
-		return ctx.Success();
+	public async refreshSeries(@Context() ctx: Koa.Context) {
+		await Series.updateSeries();
+		return ctx.Success(await Series.getAllSeries());
 	}
 }

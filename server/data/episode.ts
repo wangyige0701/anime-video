@@ -9,6 +9,16 @@ import { Common } from './common';
 export class Episode extends Common implements ServerToPromise<IEpisode> {
 	private static cache: Map<string, Episode> = new Map();
 
+	public static clearCache() {
+		this.cache.clear();
+	}
+
+	public static deleteCache(directory: string) {
+		if (this.cache.has(directory)) {
+			this.cache.delete(directory);
+		}
+	}
+
 	public static async getAllEpisodes(season: Season) {
 		const result = [] as Episode[];
 		for (const file of await fs.readdir(season.getDirectory())) {

@@ -1,5 +1,6 @@
-import { DATA_FILE } from '@config/server';
 import path from 'node:path';
+import crypto from 'node:crypto';
+import { DATA_FILE } from '@config/server';
 import { Data } from './data';
 
 export class Common {
@@ -23,5 +24,12 @@ export class Common {
 		return !!directories.find((item) => {
 			return handleDirectory.startsWith(item);
 		});
+	}
+
+	/**
+	 * 对字符串进行md5哈希处理
+	 */
+	public static hash(str: string) {
+		return crypto.createHash('md5').update(str).digest('hex');
 	}
 }

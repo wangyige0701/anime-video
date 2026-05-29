@@ -2,9 +2,9 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Season as ISeason, ServerToPromise } from '~types/videos';
-import { Episode } from './episode';
-import { hash, isDirectory, isFileExist } from '@server/src/utils';
 import type { Series } from './series';
+import { isDirectory, isFileExist } from '@server/src/utils/fs';
+import { Episode } from './episode';
 import { Common } from './common';
 
 export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'episodes'> {
@@ -174,7 +174,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	}
 
 	private resolveSeasonConfig(configs: ISeason[], resolve: PromiseResolve<ISeason>) {
-		const id = hash(this.directory);
+		const id = Season.hash(this.directory);
 		// 排序要从 1 开始
 		const seasonNumber = Math.max(1, ...configs.map((item) => item.seasonNumber)) + 1;
 		if (!configs.find((config) => config.id === id)) {

@@ -1,11 +1,11 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Series as ISeries, ServerToPromise } from '~types/videos';
 import { Season } from './season';
 import { DATA_FILE } from '@config/server';
-import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import { Data } from './data';
-import { hash, isDirectory, isFileExist } from '@server/src/utils';
+import { isDirectory, isFileExist } from '@server/src/utils/fs';
 import { Common } from './common';
 
 export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'seasons'> {
@@ -247,7 +247,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	}
 
 	private resolveSeriesConfig(configs: ISeries[], resolve: PromiseResolve<ISeries>) {
-		const id = hash(this.directory);
+		const id = Series.hash(this.directory);
 		const name = path.basename(this.directory);
 		if (!configs.find((config) => config.id === id)) {
 			// 重新写入配置数据，需要通过代理进行绑定

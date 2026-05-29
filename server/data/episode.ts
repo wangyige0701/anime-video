@@ -1,10 +1,10 @@
-import type { Episode as IEpisode, ServerToPromise } from '~types/videos';
-import type { Season } from './season';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { Common } from './common';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import { hash, isDirectory, isFileExist } from '@server/src/utils';
+import type { Episode as IEpisode, ServerToPromise } from '~types/videos';
+import type { Season } from './season';
+import { isDirectory, isFileExist } from '@server/src/utils/fs';
+import { Common } from './common';
 
 export class Episode extends Common implements ServerToPromise<IEpisode> {
 	private static cache: Map<string, Episode> = new Map();
@@ -163,7 +163,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	}
 
 	private resolveEpisodeConfig(configs: IEpisode[], resolve: PromiseResolve<IEpisode>) {
-		const id = hash(this.directory);
+		const id = Episode.hash(this.directory);
 		const episodeNumber = Math.max(1, ...configs.map((item) => item.episodeNumber)) + 1;
 		const extension = path.extname(this.directory);
 		const fileName = path.basename(this.directory, extension);

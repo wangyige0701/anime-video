@@ -11,6 +11,7 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'~server': path.resolve(__dirname, 'server'),
+			'~config': path.resolve(__dirname, 'config'),
 		},
 	},
 });

@@ -13,9 +13,9 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		this.cache.clear();
 	}
 
-	public static deleteCache(directory: string) {
-		if (this.cache.has(directory)) {
-			this.cache.delete(directory);
+	public static deleteCache(id: string) {
+		if (this.cache.has(id)) {
+			this.cache.delete(id);
 		}
 	}
 
@@ -54,6 +54,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 
 	private episodeName!: string;
 	private directory!: string;
+	private hashId!: string;
 	private promise!: Promise<IEpisode>;
 
 	constructor(
@@ -61,17 +62,18 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		private season: Season,
 	) {
 		const directory = path.join(season.getDirectory(), episodeName);
-
-		if (Episode.cache.has(directory)) {
-			return Episode.cache.get(directory)!;
+		const id = Episode.hash(directory);
+		if (Episode.cache.has(id)) {
+			return Episode.cache.get(id)!;
 		}
 
 		super();
 
-		Episode.cache.set(directory, this);
+		Episode.cache.set(id, this);
 
 		this.episodeName = episodeName;
 		this.directory = directory;
+		this.hashId = id;
 
 		const { resolve, reject, promise } = createPromise<IEpisode>();
 		this.promise = promise;
@@ -173,7 +175,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	}
 
 	private resolveEpisodeConfig(configs: IEpisode[], resolve: PromiseResolve<IEpisode>) {
-		const id = Episode.hash(this.directory);
+		const id = this.hashId;
 		const episodeNumber = Math.max(1, ...configs.map((item) => item.episodeNumber)) + 1;
 		const extension = path.extname(this.directory);
 		const fileName = path.basename(this.directory, extension);

@@ -11,7 +11,7 @@ import { Episode } from './episode';
 
 export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	/**
-	 * 视频系列缓存，key 为目录绝对路径，value 为视频系列实例
+	 * 视频系列缓存，key 为视频系列 id，value 为视频系列实例
 	 */
 	private static cache: Map<string, Series> = new Map();
 
@@ -19,9 +19,9 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.cache.clear();
 	}
 
-	public static deleteCache(directory: string) {
-		if (this.cache.has(directory)) {
-			this.cache.delete(directory);
+	public static deleteCache(id: string) {
+		if (this.cache.has(id)) {
+			this.cache.delete(id);
 		}
 	}
 
@@ -70,16 +70,16 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		for (const [key, series] of this.cache) {
 			const seriesPath = series.getDirectory();
 			if (!this.isAllowedDirectory(seriesPath)) {
-				this.cache.delete(key);
+				this.deleteCache(key);
 
 				// 循环移除系列目录下的其它缓存
 				const seasons = await series.seasons;
 				for (const season of seasons) {
-					Season.deleteCache(season.getDirectory());
+					Season.deleteCache(await season.id);
 
 					const episodes = await season.episodes;
 					for (const episode of episodes) {
-						Episode.deleteCache(episode.getDirectory());
+						Episode.deleteCache(await episode.id);
 					}
 				}
 			}
@@ -93,6 +93,10 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * @param id 视频系列 id
 	 */
 	public static async getSeriesById(id: string) {
+		if (this.cache.has(id)) {
+			// 缓存中存在，直接返回
+			return this.cache.get(id)!;
+		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
 			if ((await series.id) === id) {
@@ -100,6 +104,10 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			}
 		}
 		throw new Error(`没有找到 id 为 ${id} 的视频系列`);
+	}
+
+	public static async getSeasonById(id: string) {
+		const allSeries = await this.getAllSeries();
 	}
 
 	private _id!: Promise<string>;
@@ -113,6 +121,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 	private directory!: string;
 	private dataFile!: string;
+	private hashId!: string;
 	private promise!: Promise<ISeries>;
 
 	/**
@@ -121,15 +130,17 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 */
 	constructor(rootDirectory: string, seriesName: string) {
 		const directory = path.join(rootDirectory, seriesName);
-		if (Series.cache.has(directory)) {
-			return Series.cache.get(directory)!;
+		const id = Series.hash(directory);
+		if (Series.cache.has(id)) {
+			return Series.cache.get(id)!;
 		}
 
 		super();
 
-		Series.cache.set(directory, this);
+		Series.cache.set(id, this);
 
 		this.directory = directory;
+		this.hashId = id;
 		this.dataFile = path.resolve(this.directory, '..', DATA_FILE);
 
 		const { resolve, reject, promise } = createPromise<ISeries>();
@@ -283,7 +294,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	}
 
 	private resolveSeriesConfig(configs: ISeries[], resolve: PromiseResolve<ISeries>) {
-		const id = Series.hash(this.directory);
+		const id = this.hashId;
 		const name = path.basename(this.directory);
 		if (!configs.find((config) => config.id === id)) {
 			// 重新写入配置数据，需要通过代理进行绑定

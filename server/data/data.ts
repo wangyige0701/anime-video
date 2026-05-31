@@ -33,7 +33,7 @@ export class Data<T extends object> {
 		configPath: string,
 		private defaultContent: T,
 	) {
-		const _path = path.join(configPath, DATA_FILE);
+		const _path = path.resolve(configPath);
 		if (Data.cache.has(_path)) {
 			return Data.cache.get(_path)! as Data<T>;
 		}
@@ -67,7 +67,7 @@ export class Data<T extends object> {
 					if (isObject(value) || isArray(value)) {
 						this.proxy(value);
 					}
-					this.save();
+					this.save(false);
 				}
 				return result;
 			},
@@ -170,11 +170,17 @@ export class Data<T extends object> {
 	 * - flushSave 的唯一 promise 回调后，触发 doSave
 	 * - doSave() -> 通过一个状态判断是否正在保存中，如果在保存则等待，否则立即保存
 	 * - 保存操作完成后，触发 resolve 或 reject，并且将等待队列中的数据替换到工作队列，如果有等待状态则在下一个微队列中触发 flushSave
+	 *
+	 * @param needPromise 是否需要返回 promise，默认返回 promise
 	 */
-	public async save() {
-		const { resolve, reject, promise } = createPromise<void>();
-		this.flushSave(resolve, reject);
+	public save(needPromise = true) {
+		if (needPromise) {
+			const { resolve, reject, promise } = createPromise<void>();
+			this.flushSave(resolve, reject);
 
-		return promise;
+			return promise;
+		} else {
+			this.flushSave();
+		}
 	}
 }

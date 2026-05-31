@@ -14,9 +14,9 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.cache.clear();
 	}
 
-	public static deleteCache(directory: string) {
-		if (this.cache.has(directory)) {
-			this.cache.delete(directory);
+	public static deleteCache(id: string) {
+		if (this.cache.has(id)) {
+			this.cache.delete(id);
 		}
 	}
 
@@ -59,6 +59,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 
 	private seasonName!: string;
 	private directory!: string;
+	private hashId!: string;
 	private promise!: Promise<ISeason>;
 
 	/**
@@ -71,17 +72,18 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		private series: Series,
 	) {
 		const directory = path.join(series.getDirectory(), seasonName);
-
-		if (Season.cache.has(directory)) {
-			return Season.cache.get(directory)!;
+		const id = Season.hash(directory);
+		if (Season.cache.has(id)) {
+			return Season.cache.get(id)!;
 		}
 
 		super();
 
-		Season.cache.set(directory, this);
+		Season.cache.set(id, this);
 
 		this.seasonName = seasonName;
 		this.directory = directory;
+		this.hashId = id;
 
 		const { resolve, reject, promise } = createPromise<ISeason>();
 		this.promise = promise;
@@ -184,7 +186,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	}
 
 	private resolveSeasonConfig(configs: ISeason[], resolve: PromiseResolve<ISeason>) {
-		const id = Season.hash(this.directory);
+		const id = this.hashId;
 		// 排序要从 1 开始
 		const seasonNumber = Math.max(1, ...configs.map((item) => item.seasonNumber)) + 1;
 		if (!configs.find((config) => config.id === id)) {

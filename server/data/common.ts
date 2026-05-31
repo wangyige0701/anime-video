@@ -16,9 +16,10 @@ export class Common {
 	/**
 	 * 重置视频系列目录配置数据，只会更新文件数据，不会刷新系列缓存，需要手动调用方法更新
 	 */
-	public static async setDirectories(directories: string[]) {
+	public static async setDirectories(...directories: string[]) {
 		const data = await this.getDirectories();
 		data.splice(0, data.length, ...directories.map((item) => path.resolve(item)));
+		await Data.instance<string[]>(this.__path, []).save();
 	}
 
 	/**

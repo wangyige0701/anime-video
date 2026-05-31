@@ -169,7 +169,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 
 	private resolveEpisodeConfig(configs: IEpisode[], resolve: PromiseResolve<IEpisode>) {
 		const id = this.hashId;
-		const sort = Math.max(1, ...configs.map((item) => item.sort)) + 1;
+		const sort = Math.max(0, ...configs.map((item) => item.sort)) + 1;
 		const extension = path.extname(this.directory);
 		const fileName = path.basename(this.directory, extension);
 		const baseName = path.basename(this.directory);

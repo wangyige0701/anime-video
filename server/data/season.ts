@@ -179,7 +179,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	private resolveSeasonConfig(configs: ISeason[], resolve: PromiseResolve<ISeason>) {
 		const id = this.hashId;
 		// 排序要从 1 开始
-		const sort = Math.max(1, ...configs.map((item) => item.sort)) + 1;
+		const sort = Math.max(0, ...configs.map((item) => item.sort)) + 1;
 		if (!configs.find((config) => config.id === id)) {
 			configs.push({
 				id: id,

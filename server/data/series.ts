@@ -13,17 +13,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	/**
 	 * 视频系列缓存，key 为视频系列 id，value 为视频系列实例
 	 */
-	private static cache: Map<string, Series> = new Map();
-
-	public static clearCache() {
-		this.cache.clear();
-	}
-
-	public static deleteCache(id: string) {
-		if (this.cache.has(id)) {
-			this.cache.delete(id);
-		}
-	}
+	protected static cache: Map<string, Series> = new Map();
 
 	/**
 	 * 获取所有视频系列实例
@@ -93,9 +83,9 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * @param id 视频系列 id
 	 */
 	public static async getSeriesById(id: string) {
-		if (this.cache.has(id)) {
+		if (this.hasCache(id)) {
 			// 缓存中存在，直接返回
-			return this.cache.get(id)!;
+			return this.getCache(id) as Series;
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
@@ -106,8 +96,49 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		throw new Error(`没有找到 id 为 ${id} 的视频系列`);
 	}
 
+	/**
+	 * 根据视频季 id 获取视频季实例
+	 *
+	 * @param id 视频季 id
+	 */
 	public static async getSeasonById(id: string) {
+		if (Season.hasCache(id)) {
+			return Season.getCache(id) as Season;
+		}
 		const allSeries = await this.getAllSeries();
+		for (const series of allSeries) {
+			const seasons = await Season.getAllSeasons(series);
+			for (const season of seasons) {
+				if ((await season.id) === id) {
+					return season;
+				}
+			}
+		}
+		throw new Error(`没有找到 id 为 ${id} 的视频季`);
+	}
+
+	/**
+	 * 根据视频集 id 获取视频集实例
+	 *
+	 * @param id 视频集 id
+	 */
+	public static async getEpisodeById(id: string) {
+		if (Episode.hasCache(id)) {
+			return Episode.getCache(id) as Episode;
+		}
+		const allSeries = await this.getAllSeries();
+		for (const series of allSeries) {
+			const seasons = await Season.getAllSeasons(series);
+			for (const season of seasons) {
+				const episodes = await Episode.getAllEpisodes(season);
+				for (const episode of episodes) {
+					if ((await episode.id) === id) {
+						return episode;
+					}
+				}
+			}
+		}
+		throw new Error(`没有找到 id 为 ${id} 的视频集`);
 	}
 
 	private _id!: Promise<string>;
@@ -168,6 +199,10 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 	public getConfig() {
 		return this.promise;
+	}
+
+	public getDataFile() {
+		return this.dataFile;
 	}
 
 	// get 属性代理

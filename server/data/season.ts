@@ -8,24 +8,14 @@ import { Episode } from './episode';
 import { Common } from './common';
 
 export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'episodes'> {
-	private static cache: Map<string, Season> = new Map();
-
-	public static clearCache() {
-		this.cache.clear();
-	}
-
-	public static deleteCache(id: string) {
-		if (this.cache.has(id)) {
-			this.cache.delete(id);
-		}
-	}
+	protected static cache: Map<string, Season> = new Map();
 
 	/**
 	 * 获取所有视频实例
 	 * @param series 视频系列实例
 	 */
 	public static async getAllSeasons(series: Series) {
-		const result = [] as Season[];
+		const result = [] as Array<{ season: Season; seasonNumber: number }>;
 		for (const file of await fs.readdir(series.getDirectory())) {
 			const filePath = path.join(series.getDirectory(), file);
 			if (!(await isDirectory(filePath))) {
@@ -33,11 +23,13 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			}
 			const season = new Season(file, series);
 			await season.getPromise();
-			result.push(season);
+			result.push({ season, seasonNumber: await season.seasonNumber });
 		}
 
+		result.sort((a, b) => a.seasonNumber - b.seasonNumber);
+
 		// 移除不存在的季实例
-		const ids = await Promise.all(result.map((item) => item.id));
+		const ids = await Promise.all(result.map((item) => item.season.id));
 		const seasons = (await series.getConfig()).seasons; // 配置文件中读取的季数据
 		for (let i = seasons.length - 1; i >= 0; i--) {
 			const season = seasons[i];
@@ -46,9 +38,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			}
 		}
 
-		seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
-
-		return result;
+		return result.map((item) => item.season) as Season[];
 	}
 
 	private _id!: Promise<string>;

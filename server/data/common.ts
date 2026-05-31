@@ -4,6 +4,28 @@ import { DATA_FILE } from '~config/server';
 import { Data } from './data';
 
 export class Common {
+	// 缓存处理
+	declare protected static cache: Map<string, any>;
+
+	protected static clearCache() {
+		this.cache.clear();
+	}
+
+	protected static deleteCache(id: string) {
+		if (this.cache.has(id)) {
+			this.cache.delete(id);
+		}
+	}
+
+	protected static getCache(id: string) {
+		return this.cache.get(id);
+	}
+
+	protected static hasCache(id: string) {
+		return this.cache.has(id);
+	}
+
+	// 数据文件
 	private static __path = path.join(process.cwd(), DATA_FILE);
 
 	/**

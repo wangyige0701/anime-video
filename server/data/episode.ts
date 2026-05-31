@@ -7,20 +7,10 @@ import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Common } from './common';
 
 export class Episode extends Common implements ServerToPromise<IEpisode> {
-	private static cache: Map<string, Episode> = new Map();
-
-	public static clearCache() {
-		this.cache.clear();
-	}
-
-	public static deleteCache(id: string) {
-		if (this.cache.has(id)) {
-			this.cache.delete(id);
-		}
-	}
+	protected static cache: Map<string, Episode> = new Map();
 
 	public static async getAllEpisodes(season: Season) {
-		const result = [] as Episode[];
+		const result = [] as Array<{ episode: Episode; episodeNumber: number }>;
 		for (const file of await fs.readdir(season.getDirectory())) {
 			const filePath = path.join(season.getDirectory(), file);
 			if (await isDirectory(filePath)) {
@@ -28,11 +18,13 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 			}
 			const episode = new Episode(file, season);
 			await episode.getPromise();
-			result.push(episode);
+			result.push({ episode, episodeNumber: await episode.episodeNumber });
+
+			result.sort((a, b) => a.episodeNumber - b.episodeNumber);
 		}
 
 		// 移除不存在的视频实例
-		const ids = await Promise.all(result.map((item) => item.id));
+		const ids = await Promise.all(result.map((item) => item.episode.id));
 		const episodes = (await season.getConfig()).episodes || [];
 		for (let i = episodes.length - 1; i >= 0; i--) {
 			const episode = episodes[i];
@@ -41,9 +33,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 			}
 		}
 
-		episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
-
-		return result;
+		return result.map((item) => item.episode) as Episode[];
 	}
 
 	private _id!: Promise<string>;
@@ -83,6 +73,8 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		this.registerPathName();
 		this.registerExtension();
 		this.registerTitle();
+
+		this.initialize(resolve, reject);
 	}
 
 	public getSeason() {

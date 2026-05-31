@@ -15,7 +15,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	 * @param series 视频系列实例
 	 */
 	public static async getAllSeasons(series: Series) {
-		const result = [] as Array<{ season: Season; seasonNumber: number }>;
+		const result = [] as Array<{ season: Season; sort: number }>;
 		for (const file of await fs.readdir(series.getDirectory())) {
 			const filePath = path.join(series.getDirectory(), file);
 			if (!(await isDirectory(filePath))) {
@@ -23,10 +23,10 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			}
 			const season = new Season(file, series);
 			await season.getPromise();
-			result.push({ season, seasonNumber: await season.seasonNumber });
+			result.push({ season, sort: await season.sort });
 		}
 
-		result.sort((a, b) => a.seasonNumber - b.seasonNumber);
+		result.sort((a, b) => a.sort - b.sort);
 
 		// 移除不存在的季实例
 		const ids = await Promise.all(result.map((item) => item.season.id));
@@ -37,13 +37,14 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 				seasons.splice(i, 1);
 			}
 		}
+		await series.getDataInstance().save();
 
 		return result.map((item) => item.season) as Season[];
 	}
 
 	private _id!: Promise<string>;
-	private _seasonNumber!: Promise<number>;
-	private _pathName!: Promise<string>;
+	private _sort!: Promise<number>;
+	private _path!: Promise<string>;
 	private _title!: Promise<string>;
 	private _episodes!: Promise<Episode[]>;
 
@@ -79,8 +80,8 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.promise = promise;
 
 		this.registerId();
-		this.registerSeasonNumber();
-		this.registerPathName();
+		this.registerSort();
+		this.registerPath();
 		this.registerTitle();
 		this.registerEpisodes();
 
@@ -110,12 +111,12 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		return this._id;
 	}
 
-	public get seasonNumber() {
-		return this._seasonNumber;
+	public get sort() {
+		return this._sort;
 	}
 
-	public get pathName() {
-		return this._pathName;
+	public get path() {
+		return this._path;
 	}
 
 	public get title() {
@@ -126,10 +127,10 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		return this._episodes;
 	}
 
-	public async updateSeasonNumber(seasonNumber: number) {
+	public async updateSort(sort: number) {
 		const config = await this.promise;
-		config.seasonNumber = Math.max(1, seasonNumber);
-		this.registerSeasonNumber();
+		config.sort = Math.max(1, sort);
+		this.registerSort();
 	}
 
 	public async updateTitle(title: string) {
@@ -142,12 +143,12 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this._id = this.promise.then(({ id }) => id);
 	}
 
-	private registerSeasonNumber() {
-		this._seasonNumber = this.promise.then(({ seasonNumber }) => seasonNumber);
+	private registerSort() {
+		this._sort = this.promise.then(({ sort }) => sort);
 	}
 
-	private registerPathName() {
-		this._pathName = this.promise.then(({ pathName }) => pathName);
+	private registerPath() {
+		this._path = this.promise.then(({ path: folderName }) => path.resolve(this.series.getDirectory(), folderName));
 	}
 
 	private registerTitle() {
@@ -178,20 +179,20 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	private resolveSeasonConfig(configs: ISeason[], resolve: PromiseResolve<ISeason>) {
 		const id = this.hashId;
 		// 排序要从 1 开始
-		const seasonNumber = Math.max(1, ...configs.map((item) => item.seasonNumber)) + 1;
+		const sort = Math.max(1, ...configs.map((item) => item.sort)) + 1;
 		if (!configs.find((config) => config.id === id)) {
 			configs.push({
 				id: id,
-				seasonNumber: seasonNumber,
-				pathName: this.seasonName,
+				sort: sort,
+				path: this.seasonName,
 				title: this.seasonName,
 				episodes: [],
 			} satisfies ISeason);
 		}
 		const config = configs.find((item) => item.id === id)!;
 		config.id = id;
-		config.seasonNumber = config.seasonNumber || seasonNumber;
-		config.pathName = config.pathName;
+		config.sort = config.sort || sort;
+		config.path = this.seasonName;
 		config.title = config.title || this.seasonName;
 		config.episodes = config.episodes || [];
 		resolve(config);

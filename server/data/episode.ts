@@ -10,7 +10,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	protected static cache: Map<string, Episode> = new Map();
 
 	public static async getAllEpisodes(season: Season) {
-		const result = [] as Array<{ episode: Episode; episodeNumber: number }>;
+		const result = [] as Array<{ episode: Episode; sort: number }>;
 		for (const file of await fs.readdir(season.getDirectory())) {
 			const filePath = path.join(season.getDirectory(), file);
 			if (await isDirectory(filePath)) {
@@ -18,9 +18,9 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 			}
 			const episode = new Episode(file, season);
 			await episode.getPromise();
-			result.push({ episode, episodeNumber: await episode.episodeNumber });
+			result.push({ episode, sort: await episode.sort });
 
-			result.sort((a, b) => a.episodeNumber - b.episodeNumber);
+			result.sort((a, b) => a.sort - b.sort);
 		}
 
 		// 移除不存在的视频实例
@@ -32,13 +32,14 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 				episodes.splice(i, 1);
 			}
 		}
+		await season.getSeries().getDataInstance().save();
 
 		return result.map((item) => item.episode) as Episode[];
 	}
 
 	private _id!: Promise<string>;
-	private _episodeNumber!: Promise<number>;
-	private _pathName!: Promise<string>;
+	private _sort!: Promise<number>;
+	private _path!: Promise<string>;
 	private _extension!: Promise<string>;
 	private _title!: Promise<string>;
 
@@ -69,8 +70,8 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		this.promise = promise;
 
 		this.registerId();
-		this.registerEpisodeNumber();
-		this.registerPathName();
+		this.registerSort();
+		this.registerPath();
 		this.registerExtension();
 		this.registerTitle();
 
@@ -101,12 +102,12 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		return this._id;
 	}
 
-	public get episodeNumber() {
-		return this._episodeNumber;
+	public get sort() {
+		return this._sort;
 	}
 
-	public get pathName() {
-		return this._pathName;
+	public get path() {
+		return this._path;
 	}
 
 	public get extension() {
@@ -117,10 +118,10 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		return this._title;
 	}
 
-	public async updateEpisodeNumber(episodeNumber: number) {
+	public async updateSort(sort: number) {
 		const config = await this.promise;
-		config.episodeNumber = Math.max(1, episodeNumber);
-		this.registerEpisodeNumber();
+		config.sort = Math.max(1, sort);
+		this.registerSort();
 	}
 
 	public async updateTitle(title: string) {
@@ -133,12 +134,12 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		this._id = this.promise.then(({ id }) => id);
 	}
 
-	private registerEpisodeNumber() {
-		this._episodeNumber = this.promise.then(({ episodeNumber }) => episodeNumber);
+	private registerSort() {
+		this._sort = this.promise.then(({ sort }) => sort);
 	}
 
-	private registerPathName() {
-		this._pathName = this.promise.then(({ pathName }) => pathName);
+	private registerPath() {
+		this._path = this.promise.then(({ path: fileName }) => path.join(this.season.getDirectory(), fileName));
 	}
 
 	private registerExtension() {
@@ -168,23 +169,23 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 
 	private resolveEpisodeConfig(configs: IEpisode[], resolve: PromiseResolve<IEpisode>) {
 		const id = this.hashId;
-		const episodeNumber = Math.max(1, ...configs.map((item) => item.episodeNumber)) + 1;
+		const sort = Math.max(1, ...configs.map((item) => item.sort)) + 1;
 		const extension = path.extname(this.directory);
 		const fileName = path.basename(this.directory, extension);
 		const baseName = path.basename(this.directory);
 		if (!configs.find((config) => config.id === id)) {
 			configs.push({
 				id: id,
-				episodeNumber: episodeNumber,
-				pathName: baseName,
+				sort: sort,
+				path: baseName,
 				extension: extension,
 				title: fileName,
 			});
 		}
 		const config = configs.find((config) => config.id === id)!;
 		config.id = id;
-		config.episodeNumber = config.episodeNumber || episodeNumber;
-		config.pathName = baseName;
+		config.sort = config.sort || sort;
+		config.path = baseName;
 		config.extension = extension;
 		config.title = config.title || fileName;
 		resolve(config);

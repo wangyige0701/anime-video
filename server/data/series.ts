@@ -1,14 +1,19 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import type { Series as ISeries, ServerToPromise } from '~types/videos';
-import { DATA_FILE } from '~config/server';
+import type { Series as ISeries, SeriesImagesStoreStruct, ServerToPromise } from '~types/videos';
+import { allowedImageExtensions, DATA_FILE } from '~config/server';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Data } from './data';
 import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
 
+type SeriesStore = Omit<ISeries, 'images'> & { images: SeriesImagesStoreStruct };
+
+/**
+ * Series / Season / Episode 在更新属性时，没有去等待文件写入完成，因为数据记录在内存中完成，写文件是延迟操作，所以为了尽快完成数据更新，文件写入会放到后自动执行
+ */
 export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'seasons'> {
 	/**
 	 * 视频系列缓存，key 为视频系列 id，value 为视频系列实例
@@ -30,6 +35,12 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 			// 遍历配置目录下的文件夹，依次去解析系列数据
 			for (const folder of await fs.readdir(directory)) {
+				const folderPath = path.join(directory, folder);
+				// 非文件夹不进入实例化
+				if (!(await isDirectory(folderPath))) {
+					continue;
+				}
+
 				const series = new Series(directory, folder);
 				await series.getPromise();
 				temp.push(series);
@@ -37,7 +48,8 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 			// 从原配置数据中移除不存在的系列数据
 			// 如果有新增的已经在 resolveSeriesConfig 中添加过了，这里只需要移除不存在的系列数据
-			const currentSeries = await Data.instance<ISeries[]>(path.join(directory, DATA_FILE), []).read();
+			const data = Data.instance<ISeries[]>(path.join(directory, DATA_FILE), []);
+			const currentSeries = await data.read();
 			const ids = await Promise.all(temp.map((item) => item.id));
 			for (let i = currentSeries.length - 1; i >= 0; i--) {
 				const series = currentSeries[i];
@@ -45,6 +57,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 					currentSeries.splice(i, 1);
 				}
 			}
+			await data.save();
 
 			result.push(...temp);
 		}
@@ -142,7 +155,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	}
 
 	private _id!: Promise<string>;
-	private _rootPath!: Promise<string>;
+	private _path!: Promise<string>;
 	private _name!: Promise<string>;
 	private _title!: Promise<string>;
 	private _images!: Promise<string[]>;
@@ -153,7 +166,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	private directory!: string;
 	private dataFile!: string;
 	private hashId!: string;
-	private promise!: Promise<ISeries>;
+	private promise!: Promise<SeriesStore>;
 
 	/**
 	 * @param rootDirectory 视频系列根目录绝对路径
@@ -174,12 +187,12 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.hashId = id;
 		this.dataFile = path.resolve(this.directory, '..', DATA_FILE);
 
-		const { resolve, reject, promise } = createPromise<ISeries>();
+		const { resolve, reject, promise } = createPromise<SeriesStore>();
 		this.promise = promise;
 
 		// 需要在构造函数中立刻注册
 		this.registerId();
-		this.registerRootPath();
+		this.registerPath();
 		this.registerName();
 		this.registerTitle();
 		this.registerImages();
@@ -201,8 +214,8 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		return this.promise;
 	}
 
-	public getDataFile() {
-		return this.dataFile;
+	public getDataInstance() {
+		return Data.instance<SeriesStore[]>(this.dataFile, []);
 	}
 
 	// get 属性代理
@@ -210,8 +223,8 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		return this._id;
 	}
 
-	public get rootPath() {
-		return this._rootPath;
+	public get path() {
+		return this._path;
 	}
 
 	public get name() {
@@ -259,7 +272,15 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 	public async updateImages(images: string[]) {
 		const config = await this.promise;
-		config.images = images;
+		config.images = images
+			.filter((image) => {
+				return (
+					image &&
+					allowedImageExtensions.includes(path.extname(image)) &&
+					path.resolve(image).startsWith(this.directory)
+				);
+			})
+			.map((image, index) => ({ path: path.basename(image), sort: index + 1 }));
 		this.registerImages();
 	}
 
@@ -273,8 +294,8 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this._id = this.promise.then(({ id }) => id);
 	}
 
-	private registerRootPath() {
-		this._rootPath = this.promise.then(({ rootPath }) => rootPath);
+	private registerPath() {
+		this._path = this.promise.then(({ path }) => path);
 	}
 
 	private registerName() {
@@ -286,7 +307,10 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	}
 
 	private registerImages() {
-		this._images = this.promise.then(({ images }) => images);
+		// 需要处理图片排序和路径拼接
+		this._images = this.promise.then(({ images }) =>
+			images.sort((a, b) => a.sort - b.sort).map((image) => path.join(this.directory, image.path)),
+		);
 	}
 
 	private registerSeasons() {
@@ -304,7 +328,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	/**
 	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
 	 */
-	private async initialize(resolve: PromiseResolve<ISeries>, reject: PromiseReject) {
+	private async initialize(resolve: PromiseResolve<SeriesStore>, reject: PromiseReject) {
 		if (!Series.isAllowedDirectory(this.dataFile)) {
 			return reject(new Error(`系列数据文件 ${this.dataFile} 不被允许访问`));
 		}
@@ -318,7 +342,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			return reject(new Error(`系列目录 ${this.directory} 不被允许访问`));
 		}
 
-		await Data.instance<ISeries[]>(this.dataFile, [])
+		await this.getDataInstance()
 			.read()
 			.then((configs) => {
 				return this.resolveSeriesConfig(configs, resolve);
@@ -328,27 +352,52 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			});
 	}
 
-	private resolveSeriesConfig(configs: ISeries[], resolve: PromiseResolve<ISeries>) {
+	private async resolveSeriesConfig(configs: SeriesStore[], resolve: PromiseResolve<SeriesStore>) {
 		const id = this.hashId;
 		const name = path.basename(this.directory);
+		const images = [] as SeriesImagesStoreStruct;
+
+		for (const file of await fs.readdir(this.directory)) {
+			const filePath = path.join(this.directory, file);
+			if (await isDirectory(filePath)) {
+				continue;
+			}
+			const extension = path.extname(filePath);
+			if (!allowedImageExtensions.includes(extension)) {
+				continue;
+			}
+			images.push({ path: file, sort: images.length + 1 });
+		}
+
 		if (!configs.find((config) => config.id === id)) {
 			// 重新写入配置数据，需要通过代理进行绑定
 			configs.push({
 				id: id,
-				rootPath: this.directory,
+				path: this.directory,
 				name: name,
 				title: name,
-				images: [],
+				images: images,
 				tags: [],
 				description: '',
 				seasons: [],
-			} satisfies ISeries);
+			} satisfies SeriesStore);
 		}
-		const config = configs.find((config) => config.rootPath === this.directory)!;
+
+		const config = configs.find((config) => config.id === id)!;
+
+		// 图片重排序
+		const oldImages = config.images || [];
+		let maxSort = Math.max(...oldImages.map((image) => image.sort));
+		for (const image of images) {
+			if (!oldImages.find((oldImage) => oldImage.path === image.path)) {
+				image.sort = ++maxSort;
+			}
+		}
+
 		config.id = id;
 		config.name = name;
 		config.title = config.title || name;
-		config.images = config.images || [];
+		config.images = images;
 		config.tags = config.tags || [];
 		config.description = config.description || '';
 		config.seasons = config.seasons || [];

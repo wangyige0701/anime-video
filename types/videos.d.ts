@@ -5,7 +5,10 @@ import { Fn } from '@wang-yige/utils';
  */
 export interface Series {
 	id: string;
-	rootPath: string;
+	/**
+	 * 视频系列根目录路径
+	 */
+	path: string;
 	/**
 	 * 视频系列目录名，不可修改
 	 */
@@ -15,7 +18,13 @@ export interface Series {
 	 */
 	title: string;
 	/**
-	 * 视频系列图片路径数组，默认为空，可手动添加
+	 * 视频系列图片路径数组，默认为空，可手动添加。
+	 *
+	 * 存储数据结构如下：
+	 * - path 图片路径，存储时只存储文件名（包含扩展名），解析时会手动拼接完整路径
+	 * - sort 图片排序, 从 1 开始
+	 *
+	 * 读取时自动解析为图片完整路径的数组
 	 */
 	images: string[];
 	/**
@@ -32,6 +41,8 @@ export interface Series {
 	tags: string[];
 }
 
+export type SeriesImagesStoreStruct = Array<{ path: string; sort: number }>;
+
 /**
  * 季
  */
@@ -40,11 +51,11 @@ export interface Season {
 	/**
 	 * 季排序, 从 1 开始
 	 */
-	seasonNumber: number;
+	sort: number;
 	/**
-	 * 季文件名
+	 * 季目录路径，存储时只存储目录名，解析时会手动拼接完整路径
 	 */
-	pathName: string;
+	path: string;
 	/**
 	 * 季标题，默认为季文件名，可手动修改
 	 */
@@ -60,11 +71,11 @@ export interface Episode {
 	/**
 	 * 集排序, 从 1 开始
 	 */
-	episodeNumber: number;
+	sort: number;
 	/**
-	 * 集文件名，包含扩展名
+	 * 集文件路径，存储时只存储文件名（包含扩展名），解析时会手动拼接完整路径
 	 */
-	pathName: string;
+	path: string;
 	/**
 	 * 集文件扩展名
 	 */
@@ -75,6 +86,9 @@ export interface Episode {
 	title: string;
 }
 
+/**
+ * 服务端属性转为 Promise 类型
+ */
 export type ServerToPromise<T extends Object> = {
 	[K in keyof T]: Promise<T[K]>;
 };

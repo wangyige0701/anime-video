@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createPromise, isArray, isObject, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import { DATA_FILE } from '~config/server';
 import { isFileExist } from '~server/src/utils/fs';
 
 /**

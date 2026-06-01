@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	test: {
 		include: ['**/test/**/*.test.ts'],
+		exclude: ['dev/**', '**/node_modules/**'],
 		env: {
 			VIDEO_CONFIG_PREFIX: 'test',
 			DATA_FILE_SAVE_DELAY: '0',

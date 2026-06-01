@@ -6,6 +6,7 @@ export default defineConfig({
 		include: ['**/test/**/*.test.ts'],
 		env: {
 			VIDEO_CONFIG_PREFIX: 'test',
+			DATA_FILE_SAVE_DELAY: '0',
 		},
 	},
 	resolve: {

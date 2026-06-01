@@ -7,7 +7,4 @@ streamer/build
 ffmpeg
 remux
 
-test/videos/*
-!test/videos/.gitkeep
-
 *.video.json

@@ -12,6 +12,12 @@ describe('Video Data Config', () => {
 	const configPath = path.join(process.cwd(), DATA_FILE);
 	const dataPath = path.resolve(dir, DATA_FILE);
 
+	async function getJsonFIle() {
+		const json = await fs.readFile(dataPath, 'utf-8');
+		const data = JSON.parse(json);
+		return data;
+	}
+
 	it('Should set video directory', async () => {
 		try {
 			await fs.access(configPath);
@@ -23,6 +29,16 @@ describe('Video Data Config', () => {
 	});
 
 	it('Should get full video data', async () => {
+		const originImagePath1 = path.join(dir, '视频1', '1.webp');
+		const originImagePath2 = path.join(dir, '视频1', '2.jpg');
+		// 新增图片
+		const testImagePath1 = path.join(dir, '视频1', '测试.png');
+		const testImagePath2 = path.join(dir, '视频1', '测试2.png');
+		try {
+			await fs.unlink(testImagePath1);
+			await fs.unlink(testImagePath2);
+		} catch (error) {}
+
 		try {
 			await fs.access(dataPath);
 			await fs.unlink(dataPath);
@@ -36,9 +52,91 @@ describe('Video Data Config', () => {
 		expect(await series.path).toBe(path.resolve(dataPath, '..', '视频1'));
 		expect(await series.name).toBe('视频1');
 		expect(await series.title).toBe('视频1');
-		expect(await series.images).toEqual([path.join(dir, '视频1', '1.webp'), path.join(dir, '视频1', '2.jpg')]);
+		expect(await series.images).toEqual([originImagePath1, originImagePath2]);
 		expect(await series.description).toBe('');
 		expect(await series.tags).toEqual([]);
+
+		// 更新系列信息
+		await series.updateTitle('测试视频标题');
+		await series.updateDescription('测试视频描述');
+		await series.updateTags(['标签1', '标签2']);
+		await series.getDataInstance().save();
+		const dataSeries = await getJsonFIle();
+		expect(dataSeries[0].title).toBe('测试视频标题');
+		expect(dataSeries[0].description).toBe('测试视频描述');
+		expect(dataSeries[0].tags).toEqual(['标签1', '标签2']);
+
+		// 测试系列图片
+		await fs.writeFile(testImagePath1, '');
+		await fs.writeFile(testImagePath2, '');
+		await series.addImages(path.basename(testImagePath1), path.basename(testImagePath2));
+		await series.getDataInstance().save();
+		const dataWithImage1 = await getJsonFIle();
+		expect(await series.images).toEqual([originImagePath1, originImagePath2, testImagePath1, testImagePath2]);
+		expect(dataWithImage1[0].images).toEqual([
+			{
+				path: path.basename(originImagePath1),
+				sort: 1,
+			},
+			{
+				path: path.basename(originImagePath2),
+				sort: 2,
+			},
+			{
+				path: path.basename(testImagePath1),
+				sort: 3,
+			},
+			{
+				path: path.basename(testImagePath2),
+				sort: 4,
+			},
+		]);
+		try {
+			await fs.unlink(testImagePath2);
+		} catch (error) {}
+		await series.removeImages(path.basename(testImagePath2));
+		await series.getDataInstance().save();
+		const dataWithImage2 = await getJsonFIle();
+		expect(dataWithImage2[0].images).toEqual([
+			{
+				path: path.basename(originImagePath1),
+				sort: 1,
+			},
+			{
+				path: path.basename(originImagePath2),
+				sort: 2,
+			},
+			{
+				path: path.basename(testImagePath1),
+				sort: 3,
+			},
+		]);
+		await series.updateImages([
+			path.basename(testImagePath1),
+			path.basename(originImagePath2),
+			path.basename(originImagePath1),
+		]);
+		await series.getDataInstance().save();
+		const dataWithImage3 = await getJsonFIle();
+		expect(dataWithImage3[0].images).toEqual([
+			{
+				path: path.basename(testImagePath1),
+				sort: 1,
+			},
+			{
+				path: path.basename(originImagePath2),
+				sort: 2,
+			},
+			{
+				path: path.basename(originImagePath1),
+				sort: 3,
+			},
+		]);
+		try {
+			await fs.unlink(testImagePath1);
+		} catch (error) {}
+		await series.removeImages(path.basename(testImagePath1));
+		await series.getDataInstance().save();
 
 		const season1 = new Season('第一季', series);
 		await season1.updateSort(3);
@@ -55,10 +153,9 @@ describe('Video Data Config', () => {
 		// 测试文件内容更新
 		await season.updateTitle('测试第一季');
 		await series.getDataInstance().save();
-		const json1 = await fs.readFile(dataPath, 'utf-8');
-		const data1 = JSON.parse(json1);
+		const dataSeason = await getJsonFIle();
 		const expectSeasonId = await season.id;
-		expect(data1[0].seasons.find((item: any) => item.id === expectSeasonId)?.title).toBe('测试第一季');
+		expect(dataSeason[0].seasons.find((item: any) => item.id === expectSeasonId)?.title).toBe('测试第一季');
 
 		const episode1 = new Episode('1.mp4', season);
 		await episode1.updateSort(3);
@@ -73,10 +170,9 @@ describe('Video Data Config', () => {
 		// 测试文件内容更新
 		await episode.updateTitle('测试1');
 		await series.getDataInstance().save();
-		const json2 = await fs.readFile(dataPath, 'utf-8');
-		const data2 = JSON.parse(json2);
+		const dataEpisode = await getJsonFIle();
 		const expectEpisodeId = await episode.id;
-		const seasonData = data2[0].seasons.find((item: any) => item.id === expectSeasonId);
+		const seasonData = dataEpisode[0].seasons.find((item: any) => item.id === expectSeasonId);
 		expect(seasonData?.episodes.find((item: any) => item.id === expectEpisodeId)?.title).toBe('测试1');
 	});
 });

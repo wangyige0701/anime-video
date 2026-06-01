@@ -1,5 +1,5 @@
 import type { Series } from '~types/videos';
-import type { Response } from '~types/koa-response';
+import type { Response } from '~types/response';
 import { ServerRoot } from '~routes/server';
 import { API } from './base';
 

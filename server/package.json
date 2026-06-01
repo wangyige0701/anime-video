@@ -13,6 +13,7 @@
 	"license": "ISC",
 	"description": "",
 	"devDependencies": {
+		"@types/koa": "^3.0.3",
 		"@types/koa-static": "^4.0.4",
 		"@types/supertest": "^7.2.0",
 		"http-proxy-middleware": "^3.0.5",
@@ -22,6 +23,7 @@
 	},
 	"dependencies": {
 		"@koa/router": "^15.3.0",
+		"koa": "^3.2.1",
 		"koa-body": "^7.0.1",
 		"koa-static": "^5.0.0",
 		"koa-use-decorator-router": "^1.2.1",

@@ -11,13 +11,7 @@ importers:
       '@wang-yige/utils':
         specifier: ^0.0.18
         version: 0.0.18
-      koa:
-        specifier: ^3.1.2
-        version: 3.1.2
     devDependencies:
-      '@types/koa':
-        specifier: ^3.0.1
-        version: 3.0.1
       '@types/node':
         specifier: ^25.3.0
         version: 25.3.0
@@ -39,6 +33,9 @@ importers:
       '@koa/router':
         specifier: ^15.3.0
         version: 15.3.1(koa@3.2.1)
+      koa:
+        specifier: ^3.2.1
+        version: 3.2.1
       koa-body:
         specifier: ^7.0.1
         version: 7.0.1
@@ -55,6 +52,9 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2
     devDependencies:
+      '@types/koa':
+        specifier: ^3.0.3
+        version: 3.0.3
       '@types/koa-static':
         specifier: ^4.0.4
         version: 4.0.4
@@ -738,8 +738,8 @@ packages:
   '@types/koa-static@4.0.4':
     resolution: {integrity: sha512-j1AUzzl7eJYEk9g01hNTlhmipFh8RFbOQmaMNLvLcNNAkPw0bdTs3XTa3V045XFlrWN0QYnblbDJv2RzawTn6A==}
 
-  '@types/koa@3.0.1':
-    resolution: {integrity: sha512-VkB6WJUQSe0zBpR+Q7/YIUESGp5wPHcaXr0xueU5W0EOUWtlSbblsl+Kl31lyRQ63nIILh0e/7gXjQ09JXJIHw==}
+  '@types/koa@3.0.3':
+    resolution: {integrity: sha512-TdtNEJ7sYSrFQcVuS2ySsVqnq5EyE3oJbnfFJvkC9UtGP4Kpem5KE7r+ivHIbIAQAofSqnlB5D3vkfYO69TQpg==}
 
   '@types/methods@1.1.4':
     resolution: {integrity: sha512-ymXWVrDiCxTBE3+RIrrP533E70eA+9qu7zdWoHuOmGujkYtzf4HQF96b8nwHLqhuf4ykX61IGRIB38CC6/sImQ==}
@@ -1419,10 +1419,6 @@ packages:
   koa2-connect-history-api-fallback@0.1.3:
     resolution: {integrity: sha512-6SucVC8sn7ffaAKOhpNn1OJUqZDK37Jg/PSBAGSribQIikU/Et1aOkUcPH34dm55Kl94RrH4d1snOG6EErzE1Q==}
 
-  koa@3.1.2:
-    resolution: {integrity: sha512-2LOQnFKu3m0VxpE+5sb5+BRTSKrXmNxGgxVRiKwD9s5KQB1zID/FRXhtzeV7RT1L2GVpdEEAfVuclFOMGl1ikA==}
-    engines: {node: '>= 18'}
-
   koa@3.2.1:
     resolution: {integrity: sha512-e7IpWJrnanNUroVK2taAgMxoEZvHLXdQiNjeExSu/DEIWm83jaKGBgb7tLmu2rMYpA027qFB3iLR/k3AVpFRnA==}
     engines: {node: '>= 18'}
@@ -1808,10 +1804,6 @@ packages:
 
   type-is@1.6.18:
     resolution: {integrity: sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==}
-    engines: {node: '>= 0.6'}
-
-  type-is@2.0.1:
-    resolution: {integrity: sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==}
     engines: {node: '>= 0.6'}
 
   type-is@2.1.0:
@@ -2547,18 +2539,18 @@ snapshots:
 
   '@types/koa-compose@3.2.9':
     dependencies:
-      '@types/koa': 3.0.1
+      '@types/koa': 3.0.3
 
   '@types/koa-send@4.1.6':
     dependencies:
-      '@types/koa': 3.0.1
+      '@types/koa': 3.0.3
 
   '@types/koa-static@4.0.4':
     dependencies:
-      '@types/koa': 3.0.1
+      '@types/koa': 3.0.3
       '@types/koa-send': 4.1.6
 
-  '@types/koa@3.0.1':
+  '@types/koa@3.0.3':
     dependencies:
       '@types/accepts': 1.3.7
       '@types/content-disposition': 0.5.9
@@ -3278,7 +3270,7 @@ snapshots:
     dependencies:
       '@types/co-body': 6.1.3
       '@types/formidable': 3.5.0
-      '@types/koa': 3.0.1
+      '@types/koa': 3.0.3
       co-body: 6.2.0
       formidable: 3.5.4
       type-fest: 5.4.4
@@ -3311,27 +3303,6 @@ snapshots:
       vary: 1.1.2
 
   koa2-connect-history-api-fallback@0.1.3: {}
-
-  koa@3.1.2:
-    dependencies:
-      accepts: 1.3.8
-      content-disposition: 1.0.1
-      content-type: 1.0.5
-      cookies: 0.9.1
-      delegates: 1.0.0
-      destroy: 1.2.0
-      encodeurl: 2.0.0
-      escape-html: 1.0.3
-      fresh: 0.5.2
-      http-assert: 1.5.0
-      http-errors: 2.0.1
-      koa-compose: 4.1.0
-      mime-types: 3.0.2
-      on-finished: 2.4.1
-      parseurl: 1.3.3
-      statuses: 2.0.2
-      type-is: 2.0.1
-      vary: 1.1.2
 
   koa@3.2.1:
     dependencies:
@@ -3724,12 +3695,6 @@ snapshots:
     dependencies:
       media-typer: 0.3.0
       mime-types: 2.1.35
-
-  type-is@2.0.1:
-    dependencies:
-      content-type: 1.0.5
-      media-typer: 1.1.0
-      mime-types: 3.0.2
 
   type-is@2.1.0:
     dependencies:

@@ -1,12 +1,8 @@
-import 'koa';
+/// <reference types="koa" />
 
-export interface Response<T = any> {
-	code: number;
-	data: T;
-	success: boolean;
-	message: string;
-	timestamp: number;
-}
+import type { Response } from '~types/response';
+
+export {};
 
 type KoaResponse = (data?: any, message?: string) => Response;
 

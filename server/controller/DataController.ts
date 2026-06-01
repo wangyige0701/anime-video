@@ -15,9 +15,9 @@ export class DataController {
 
 	@HttpMethod.Put('/directories')
 	public async setDirectories(@Context() ctx: Koa.Context) {
-		const directories = ctx.request.body;
+		const directories = ctx.req.body;
 		if (isArray(directories)) {
-			await Series.setDirectories(directories as string[]);
+			await Series.setDirectories(...(directories as string[]));
 			await Series.updateSeries();
 		}
 		return ctx.Success();

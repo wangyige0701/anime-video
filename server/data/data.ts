@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createPromise, isArray, isObject, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import { isFileExist } from '~server/src/utils/fs';
+import { isEqual } from '~server/src/utils/is';
 
 /**
  * 配置文件数据获取
@@ -57,7 +58,8 @@ export class Data<T extends object> {
 			},
 			set: (target, prop, value, receiver) => {
 				const oldValue = Reflect.get(target, prop, receiver);
-				if (oldValue === value) {
+				// 针对对象会进行递归比较，尽可能减少更新次数
+				if (isEqual(oldValue, value)) {
 					return true;
 				}
 				// 数据更新，需要保存

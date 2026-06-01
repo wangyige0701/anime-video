@@ -41,7 +41,13 @@ export interface Series {
 	tags: string[];
 }
 
-export type SeriesImagesStoreStruct = Array<{ path: string; sort: number }>;
+export type SeriesImagesStoreStruct = Array<{
+	/**
+	 * 图片路径，储存时只记录文件名（包含扩展名）
+	 */
+	path: string;
+	sort: number;
+}>;
 
 /**
  * 季

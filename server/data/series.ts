@@ -270,18 +270,99 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerDescription();
 	}
 
-	public async updateImages(images: string[]) {
+	/**
+	 * 更新视频系列图片，可以用来更新排序
+	 *
+	 * @param imageNames 图片名称数组，仅更新位于当前系列目录下的图片，不要传绝对路径
+	 */
+	public async updateImages(imageNames: string[]) {
 		const config = await this.promise;
-		config.images = images
-			.filter((image) => {
-				return (
-					image &&
-					allowedImageExtensions.includes(path.extname(image)) &&
-					path.resolve(image).startsWith(this.directory)
-				);
-			})
-			.map((image, index) => ({ path: path.basename(image), sort: index + 1 }));
+		const filterImages = [] as string[];
+		for (const image of imageNames) {
+			if (!image) {
+				continue;
+			}
+			const imagePath = path.join(this.directory, image);
+			if (!(await isFileExist(imagePath))) {
+				continue;
+			}
+			const extension = path.extname(imagePath);
+			if (!allowedImageExtensions.includes(extension)) {
+				continue;
+			}
+			filterImages.push(image);
+		}
+		if (!filterImages.length) {
+			return;
+		}
+		config.images = filterImages.map((image, index) => {
+			return { path: path.basename(image), sort: index + 1 } satisfies SeriesImagesStoreStruct[number];
+		});
 		this.registerImages();
+	}
+
+	/**
+	 * 向视频系列中添加图片数据
+	 *
+	 * @param imageNames 图片名称数组，仅添加位于当前系列目录下的图片，不要传绝对路径
+	 */
+	public async addImages(...imageNames: string[]) {
+		if (!imageNames.length) {
+			return;
+		}
+		const config = await this.promise;
+		const filterImages = [] as string[];
+		for (const image of imageNames) {
+			if (!image) {
+				continue;
+			}
+			const imagePath = path.join(this.directory, image);
+			if (!(await isFileExist(imagePath))) {
+				continue;
+			}
+			const extension = path.extname(imagePath);
+			if (!allowedImageExtensions.includes(extension)) {
+				continue;
+			}
+			filterImages.push(image);
+		}
+		if (!filterImages.length) {
+			return;
+		}
+		const maxSort = Math.max(1, ...config.images.map((image) => image.sort));
+		config.images.push(
+			...filterImages.map((image, index) => {
+				return {
+					path: path.basename(image),
+					sort: maxSort + index + 1,
+				} satisfies SeriesImagesStoreStruct[number];
+			}),
+		);
+		this.registerImages();
+	}
+
+	/**
+	 * 从视频系列中移除指定图片
+	 *
+	 * @param imageNames 图片名称数组，仅删除位于当前系列目录下的图片，不要传绝对路径
+	 */
+	public async removeImages(...imageNames: string[]) {
+		if (!imageNames.length) {
+			return;
+		}
+		const config = await this.promise;
+		const oldImages = config.images;
+		const filterImages = imageNames.filter((image) => image).map((image) => path.basename(image));
+		const newImages = [] as SeriesImagesStoreStruct;
+		for (const image of oldImages) {
+			if (!filterImages.find((img) => img === image.path)) {
+				newImages.push({ path: image.path, sort: newImages.length + 1 });
+			}
+		}
+		if (oldImages.length !== newImages.length) {
+			config.images = newImages;
+			this.registerImages();
+		}
 	}
 
 	public async updateTags(tags: string[]) {

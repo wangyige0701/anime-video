@@ -11,7 +11,7 @@ import { isFileExist } from '~server/src/utils/fs';
  * - 需要对获取的数据进行代理，可以拦截数据更新行为，重新写入新的配置文件
  */
 export class Data<T extends object> {
-	private static delayTime = 500;
+	private static delayTime = Number(process.env.DATA_FILE_SAVE_DELAY || 500);
 	private static cache: Map<string, Data<any>> = new Map();
 	private static proxyMap: WeakMap<object, object> = new WeakMap();
 

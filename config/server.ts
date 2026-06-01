@@ -1,5 +1,13 @@
 import { isDef } from '@wang-yige/utils';
 
+/**
+ * - SERVER_PORT 服务器端口
+ * - VIDEO_CONFIG_PREFIX 配置文件前缀，默认为空字符串，如果需要区分不同环境的配置文件，可以设置不同的前缀
+ * - DATA_FILE_SAVE_DELAY 配置文件保存延迟时间，单位毫秒
+ */
+
+// 服务端配置数据
+
 const configs = {
 	port: {
 		defined: false,

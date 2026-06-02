@@ -69,11 +69,15 @@ describe('Video Data Config', () => {
 			expect(content.value).toBe(1);
 			expect(content.array).toEqual(['test3']);
 			expect(content.object).toEqual({ test4: 'test5' });
+
+			const fileContent = await fs.readFile(testFilePath, 'utf-8');
+			expect(JSON.parse(fileContent)).toEqual(content);
 		} catch (error) {
+			throw error;
+		} finally {
 			try {
 				await fs.unlink(testFilePath);
 			} catch (error) {}
-			throw error;
 		}
 	});
 
@@ -222,11 +226,12 @@ describe('Video Data Config', () => {
 			const seasonData = dataEpisode[0].seasons.find((item: any) => item.id === expectSeasonId);
 			expect(seasonData?.episodes.find((item: any) => item.id === expectEpisodeId)?.title).toBe('测试1');
 		} catch (error) {
+			throw error;
+		} finally {
 			try {
 				await fs.unlink(testImagePath1);
 				await fs.unlink(testImagePath2);
 			} catch (error) {}
-			throw error;
 		}
 	});
 });

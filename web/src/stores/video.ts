@@ -1,6 +1,4 @@
 import { createPromise, hasOwn, isObject, isString } from '@wang-yige/utils';
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
 import type { Series } from '~types/videos';
 
 export const useVideoStore = defineStore('video', () => {

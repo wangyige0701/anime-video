@@ -12,10 +12,8 @@
 
 <script setup lang="ts">
 import type { Series } from '~types/videos';
-import { computed } from 'vue';
 import { getImageUrl } from '~routes/server';
 import { WebRoute } from '~routes/web';
-import Image from '@/components/Image.vue';
 import { getSeriesPath } from '@/utils/series';
 import router from '@/router';
 
@@ -25,7 +23,7 @@ const imagePath = computed(() => {
 	if (!props.item.images.length) {
 		return '';
 	}
-	return getImageUrl(getSeriesPath(props.item.rootPath, props.item.images[0]!));
+	return getImageUrl(getSeriesPath(props.item.path, props.item.images[0]!));
 });
 
 function gotoDetail(item: Series) {

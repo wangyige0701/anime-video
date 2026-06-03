@@ -1,6 +1,3 @@
-import { ref, computed } from 'vue';
-import { defineStore } from 'pinia';
-
 export const usePlayerStore = defineStore('player', () => {
 	const name = ref('');
 	const progress = ref(0);

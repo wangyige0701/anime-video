@@ -46,12 +46,13 @@
 import type { Series } from '~types/videos';
 import { useVideoStore } from '@/stores/video';
 import { getSeriesPath } from '@/utils/series';
-import { computed, nextTick, onMounted, shallowRef, useTemplateRef } from 'vue';
-import { useRoute } from 'vue-router';
 import { getImageUrl } from '~routes/server';
 import { WebRoute } from '~routes/web';
 import router from '@/router';
-import { useVueStatusRef } from 'status-ref/vue';
+
+definePage({
+	name: WebRoute.DETAIL,
+});
 
 const seriesId = useRoute().params.seriesId as string;
 const status = useVueStatusRef('editDescription', 'modifyDescription');
@@ -59,7 +60,7 @@ const series = shallowRef<Series>({} as Series);
 const descContent = useTemplateRef('descContent');
 const image = computed(() => {
 	if (series.value.images?.length) {
-		return getImageUrl(getSeriesPath(series.value.rootPath, series.value.images[0]!));
+		return getImageUrl(getSeriesPath(series.value.path, series.value.images[0]!));
 	}
 	return '';
 });

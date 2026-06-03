@@ -15,7 +15,6 @@
 
 <script setup lang="ts">
 import { usePlayerStore } from '@/stores/player';
-import { computed, onBeforeUnmount, onMounted, ref, unref, useTemplateRef } from 'vue';
 
 let isPress = false;
 let oldValue = unref(usePlayerStore().progress);

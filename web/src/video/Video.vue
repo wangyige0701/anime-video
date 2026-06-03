@@ -12,10 +12,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, useTemplateRef, watchEffect } from 'vue';
+import { usePlayerStore } from '@/stores/player';
 import Player from './Player.vue';
 import Progress from './Progress.vue';
-import { usePlayerStore } from '@/stores/player';
 
 const player = useTemplateRef('player');
 

@@ -37,3 +37,7 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+typed-router.d.ts
+auto-imports.d.ts
+components.d.ts

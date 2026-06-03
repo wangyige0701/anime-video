@@ -10,9 +10,12 @@
 
 <script setup lang="ts">
 import type { Series } from '~types/videos';
-import { onBeforeMount, shallowReactive } from 'vue';
-import IndexVideoItem from '@/components/IndexVideoItem.vue';
 import { useVideoStore } from '@/stores/video';
+import { WebRoute } from '~routes/web';
+
+definePage({
+	name: WebRoute.INDEX,
+});
 
 const pageSize = 20;
 const videos = shallowReactive<Series[]>([]);

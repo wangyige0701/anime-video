@@ -3,7 +3,6 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, useTemplateRef, watchEffect } from 'vue';
 import Hls from 'hls.js';
 import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';

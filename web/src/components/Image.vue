@@ -8,7 +8,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, ref, useAttrs, type IntrinsicElementAttributes } from 'vue';
+import type { IntrinsicElementAttributes } from 'vue';
 
 const props = defineProps<{
 	src: string;

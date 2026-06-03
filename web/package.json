@@ -16,8 +16,8 @@
 		"hls.js": "^1.6.15",
 		"pinia": "^3.0.4",
 		"status-ref": "^1.0.2",
-		"vue": "^3.5.28",
-		"vue-router": "^5.0.2"
+		"vue": "^3.5.35",
+		"vue-router": "^5.1.0"
 	},
 	"devDependencies": {
 		"@tsconfig/node24": "^24.0.4",

@@ -51,10 +51,10 @@ import { WebRoute } from '~routes/web';
 import router from '@/router';
 
 definePage({
-	name: WebRoute.DETAIL,
+	name: 'Detail',
 });
 
-const seriesId = useRoute().params.seriesId as string;
+const seriesId = useRoute<WebRoute.DETAIL>().params.seriesId;
 const status = useVueStatusRef('editDescription', 'modifyDescription');
 const series = shallowRef<Series>({} as Series);
 const descContent = useTemplateRef('descContent');

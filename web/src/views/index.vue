@@ -11,10 +11,9 @@
 <script setup lang="ts">
 import type { Series } from '~types/videos';
 import { useVideoStore } from '@/stores/video';
-import { WebRoute } from '~routes/web';
 
 definePage({
-	name: WebRoute.INDEX,
+	name: 'Index',
 });
 
 const pageSize = 20;

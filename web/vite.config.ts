@@ -13,6 +13,7 @@ export default defineConfig({
 		getPathAlias(),
 		VueRouter({
 			dts: 'typed-router.d.ts',
+			routesFolder: 'src/views',
 			extendRoute(route) {
 				if (route.path.includes(':seriesId')) {
 					// 系列 ID 为 32 位十六进制字符串

@@ -3,9 +3,8 @@
 	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
-		"web:dev": "front dev",
-		"server:dev": "back dev",
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"web": "front",
+		"server": "back"
 	},
 	"keywords": [],
 	"author": "",

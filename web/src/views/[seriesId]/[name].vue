@@ -60,7 +60,7 @@ const series = shallowRef<Series>({} as Series);
 const descContent = useTemplateRef('descContent');
 const image = computed(() => {
 	if (series.value.images?.length) {
-		return getImageUrl(getSeriesPath(series.value.path, series.value.images[0]!));
+		return getImageUrl(getSeriesPath(series.value.images[0]!));
 	}
 	return '';
 });

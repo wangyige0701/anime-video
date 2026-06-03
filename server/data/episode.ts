@@ -78,6 +78,16 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		this.initialize(resolve, reject);
 	}
 
+	public async json(): Promise<IEpisode> {
+		return {
+			id: await this.id,
+			sort: await this.sort,
+			path: await this.path,
+			extension: await this.extension,
+			title: await this.title,
+		};
+	}
+
 	public getSeason() {
 		return this.season;
 	}

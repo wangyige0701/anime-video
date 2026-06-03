@@ -25,12 +25,13 @@ export class DataController {
 
 	@HttpMethod.Get('/series')
 	public async getSeries(@Context() ctx: Koa.Context) {
-		return ctx.Success(await Series.getAllSeries());
+		const series = Promise.all((await Series.getAllSeries()).map((series) => series.json()));
+		return ctx.Success(await series);
 	}
 
 	@HttpMethod.Post('/series/refresh')
 	public async refreshSeries(@Context() ctx: Koa.Context) {
 		await Series.updateSeries();
-		return ctx.Success(await Series.getAllSeries());
+		return ctx.Success(await this.getSeries(ctx));
 	}
 }

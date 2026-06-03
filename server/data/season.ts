@@ -88,6 +88,16 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.initialize(resolve, reject);
 	}
 
+	public async json(): Promise<ISeason> {
+		return {
+			id: await this.id,
+			sort: await this.sort,
+			path: await this.path,
+			title: await this.title,
+			episodes: await Promise.all((await this.episodes).map((episode) => episode.json())),
+		};
+	}
+
 	public getSeries() {
 		return this.series;
 	}

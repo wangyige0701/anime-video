@@ -23,7 +23,7 @@ const imagePath = computed(() => {
 	if (!props.item.images.length) {
 		return '';
 	}
-	return getImageUrl(getSeriesPath(props.item.path, props.item.images[0]!));
+	return getImageUrl(getSeriesPath(props.item.images[0]!));
 });
 
 function gotoDetail(item: Series) {

@@ -203,6 +203,19 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.initialize(resolve, reject);
 	}
 
+	public async json(): Promise<ISeries> {
+		return {
+			id: await this.id,
+			path: await this.path,
+			name: await this.name,
+			title: await this.title,
+			images: await this.images,
+			description: await this.description,
+			tags: await this.tags,
+			seasons: await Promise.all((await this.seasons).map((season) => season.json())),
+		};
+	}
+
 	/**
 	 * 获取视频系列目录绝对路径
 	 */

@@ -1,15 +1,16 @@
 import type { Middleware } from 'koa';
+import type { Response as ResponseImpl } from '~types/response';
 import { Status } from '~common/status';
 import Statuses from 'statuses';
 
-class Response {
-	private timestamp!: number;
+class Response<T extends any> implements ResponseImpl<T> {
+	public timestamp!: number;
 
 	constructor(
-		private data: any,
-		private code: number,
-		private success: boolean,
-		private message: string,
+		public data: any,
+		public code: number,
+		public success: boolean,
+		public message: string,
 	) {
 		if (data instanceof Response) {
 			return new Response(data.data, code, success, message);

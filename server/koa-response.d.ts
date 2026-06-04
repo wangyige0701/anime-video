@@ -4,7 +4,7 @@ import type { Response } from '~types/response';
 
 export {};
 
-type KoaResponse = (data?: any, message?: string) => Response;
+type KoaResponse = <T extends any>(data?: T, message?: string) => Response<T>;
 
 declare module 'koa' {
 	interface Context {

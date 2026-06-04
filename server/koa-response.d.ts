@@ -12,7 +12,10 @@ declare module 'koa' {
 		Ok: KoaResponse;
 		Failed: KoaResponse;
 		BadRequest: KoaResponse;
+		Unauthorized: KoaResponse;
+		Forbidden: KoaResponse;
 		NotFound: KoaResponse;
 		InternalServerError: KoaResponse;
+		BadGateway: KoaResponse;
 	}
 }

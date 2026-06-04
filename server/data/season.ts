@@ -33,11 +33,6 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.cache.delete(id);
 	}
 
-	public toJSON() {
-		const seriesName = this.getSeries().getSeriesName();
-		return `[season ${seriesName} / ${this.seasonName}]`;
-	}
-
 	/**
 	 * 获取所有视频实例
 	 * @param series 视频系列实例
@@ -131,6 +126,11 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			title,
 			episodes,
 		};
+	}
+
+	public toJSON() {
+		const seriesName = this.getSeries().getSeriesName();
+		return `[season ${seriesName} / ${this.seasonName}]`;
 	}
 
 	public getSeasonName() {

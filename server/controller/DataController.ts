@@ -1,5 +1,5 @@
 import type Koa from 'koa';
-import { Context, Controller, Cors, HttpMethod, Singleton } from 'koa-use-decorator-router';
+import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-use-decorator-router';
 import { isArray } from '@wang-yige/utils';
 import { ServerRoot } from '~routes/server';
 import { Series } from '~server/data/series';
@@ -45,5 +45,11 @@ export class DataController {
 	public async refreshSeries(@Context() ctx: Koa.Context) {
 		await Series.updateSeries();
 		return ctx.Success(await this.getAllSeries(ctx));
+	}
+
+	@HttpMethod.Get('/series/:seriesId')
+	public async getDetailSeries(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const series = await Series.getSeriesById(seriesId);
+		return ctx.Success(await series.getValue());
 	}
 }

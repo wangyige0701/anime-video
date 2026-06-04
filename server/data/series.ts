@@ -106,51 +106,51 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	/**
 	 * 根据视频系列 id 获取视频系列实例
 	 *
-	 * @param id 视频系列 id
+	 * @param seriesId 视频系列 id
 	 */
-	public static async getSeriesById(id: string) {
-		if (this.hasCache(id)) {
+	public static async getSeriesById(seriesId: string) {
+		if (this.hasCache(seriesId)) {
 			// 缓存中存在，直接返回
-			return this.getCache<Series>(id)!;
+			return this.getCache<Series>(seriesId)!;
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
-			if ((await series.id) === id) {
+			if ((await series.id) === seriesId) {
 				return series;
 			}
 		}
-		throw new Error(`没有找到 id 为 ${id} 的视频系列`);
+		throw new Error(`没有找到 id 为 ${seriesId} 的视频系列`);
 	}
 
 	/**
 	 * 根据视频季 id 获取视频季实例
 	 *
-	 * @param id 视频季 id
+	 * @param seasonId 视频季 id
 	 */
-	public static async getSeasonById(id: string) {
-		if (Season.hasCache(id)) {
-			return Season.getCache<Season>(id)!;
+	public static async getSeasonById(seasonId: string) {
+		if (Season.hasCache(seasonId)) {
+			return Season.getCache<Season>(seasonId)!;
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
 			const seasons = await Season.getAllSeasons(series);
 			for (const season of seasons) {
-				if ((await season.id) === id) {
+				if ((await season.id) === seasonId) {
 					return season;
 				}
 			}
 		}
-		throw new Error(`没有找到 id 为 ${id} 的视频季`);
+		throw new Error(`没有找到 id 为 ${seasonId} 的视频季`);
 	}
 
 	/**
 	 * 根据视频集 id 获取视频集实例
 	 *
-	 * @param id 视频集 id
+	 * @param episodeId 视频集 id
 	 */
-	public static async getEpisodeById(id: string) {
-		if (Episode.hasCache(id)) {
-			return Episode.getCache<Episode>(id)!;
+	public static async getEpisodeById(episodeId: string) {
+		if (Episode.hasCache(episodeId)) {
+			return Episode.getCache<Episode>(episodeId)!;
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
@@ -158,13 +158,13 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			for (const season of seasons) {
 				const episodes = await Episode.getAllEpisodes(season);
 				for (const episode of episodes) {
-					if ((await episode.id) === id) {
+					if ((await episode.id) === episodeId) {
 						return episode;
 					}
 				}
 			}
 		}
-		throw new Error(`没有找到 id 为 ${id} 的视频集`);
+		throw new Error(`没有找到 id 为 ${episodeId} 的视频集`);
 	}
 
 	private _id!: Promise<string>;

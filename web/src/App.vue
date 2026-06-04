@@ -13,7 +13,7 @@
 <script setup lang="ts">
 import { onBeforeMount } from 'vue';
 import { WebRoute } from '~routes/web';
-import { getSeries } from './api';
+import { getSeries } from './api/video';
 import { useVideoStore } from './stores/video';
 
 onBeforeMount(async () => {

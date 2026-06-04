@@ -3,22 +3,28 @@ import crypto from 'node:crypto';
 import { DATA_FILE } from '~config/server';
 import { Data } from './data';
 
-export class Common {
+export abstract class Common {
 	// 缓存处理
 	declare protected static cache: Map<string, any>;
 
-	protected static clearCache() {
-		this.cache.clear();
+	/**
+	 * 清空所有缓存，需要针对子类也执行清空操作，所以使用异步
+	 */
+	public static async clearCache() {
+		throw new Error('Method not implemented.');
 	}
 
-	protected static deleteCache(id: string) {
-		if (this.cache.has(id)) {
-			this.cache.delete(id);
-		}
+	/**
+	 * 删除指定缓存，需要针对子类也执行删除操作，所以使用异步
+	 *
+	 * @param id 缓存键
+	 */
+	public static async deleteCache(id: string) {
+		throw new Error('Method not implemented.');
 	}
 
-	protected static getCache(id: string) {
-		return this.cache.get(id);
+	protected static getCache<T>(id: string): T | undefined {
+		return this.cache.get(id) as T;
 	}
 
 	protected static hasCache(id: string) {

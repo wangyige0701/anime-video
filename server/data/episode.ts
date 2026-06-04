@@ -9,6 +9,17 @@ import { Common } from './common';
 export class Episode extends Common implements ServerToPromise<IEpisode> {
 	protected static cache: Map<string, Episode> = new Map();
 
+	public static async clearCache() {
+		this.cache.clear();
+	}
+
+	public static async deleteCache(id: string) {
+		if (!this.cache.has(id)) {
+			return;
+		}
+		this.cache.delete(id);
+	}
+
 	public static async getAllEpisodes(season: Season) {
 		const result = [] as Array<{ episode: Episode; sort: number }>;
 		for (const file of await fs.readdir(season.getDirectory())) {
@@ -79,13 +90,30 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	}
 
 	public async json(): Promise<IEpisode> {
+		const [id, sort, path, extension, title] = await Promise.all([
+			this.id,
+			this.sort,
+			this.path,
+			this.extension,
+			this.title,
+		]);
 		return {
-			id: await this.id,
-			sort: await this.sort,
-			path: await this.path,
-			extension: await this.extension,
-			title: await this.title,
+			id,
+			sort,
+			path,
+			extension,
+			title,
 		};
+	}
+
+	public toJSON() {
+		const seriesName = this.getSeason().getSeries().getSeriesName();
+		const seasonName = this.getSeason().getSeasonName();
+		return `[episode ${seriesName} / ${seasonName} / ${this.episodeName}]`;
+	}
+
+	public getEpisodeName() {
+		return this.episodeName;
 	}
 
 	public getSeason() {
@@ -94,10 +122,6 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 
 	public getDirectory() {
 		return this.directory;
-	}
-
-	public getEpisodeName() {
-		return this.episodeName;
 	}
 
 	public getConfig() {

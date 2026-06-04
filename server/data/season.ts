@@ -10,6 +10,34 @@ import { Common } from './common';
 export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'episodes'> {
 	protected static cache: Map<string, Season> = new Map();
 
+	public static async clearCache() {
+		for (const [_key, season] of this.cache) {
+			const episodes = await season.episodes;
+			for (const episode of episodes) {
+				await Episode.clearCache();
+			}
+		}
+		this.cache.clear();
+	}
+
+	public static async deleteCache(id: string) {
+		if (!this.cache.has(id)) {
+			return;
+		}
+		const season = this.cache.get(id)!;
+		// 循环移除季目录下的其它缓存
+		const episodes = await season.episodes;
+		for (const episode of episodes) {
+			await Episode.deleteCache(await episode.id);
+		}
+		this.cache.delete(id);
+	}
+
+	public toJSON() {
+		const seriesName = this.getSeries().getSeriesName();
+		return `[season ${seriesName} / ${this.seasonName}]`;
+	}
+
 	/**
 	 * 获取所有视频实例
 	 * @param series 视频系列实例
@@ -89,13 +117,24 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	}
 
 	public async json(): Promise<ISeason> {
+		const [id, sort, path, title, episodes] = await Promise.all([
+			this.id,
+			this.sort,
+			this.path,
+			this.title,
+			Promise.all((await this.episodes).map((episode) => episode.json())),
+		]);
 		return {
-			id: await this.id,
-			sort: await this.sort,
-			path: await this.path,
-			title: await this.title,
-			episodes: await Promise.all((await this.episodes).map((episode) => episode.json())),
+			id,
+			sort,
+			path,
+			title,
+			episodes,
 		};
+	}
+
+	public getSeasonName() {
+		return this.seasonName;
 	}
 
 	public getSeries() {

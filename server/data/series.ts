@@ -20,6 +20,30 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 */
 	protected static cache: Map<string, Series> = new Map();
 
+	public static async clearCache() {
+		for (const [_key, series] of this.cache) {
+			// 循环移除系列目录下的其它缓存
+			const seasons = await series.seasons;
+			for (const season of seasons) {
+				await Season.clearCache();
+			}
+		}
+		this.cache.clear();
+	}
+
+	public static async deleteCache(id: string) {
+		if (!this.cache.has(id)) {
+			return;
+		}
+		const series = this.cache.get(id)!;
+		// 循环移除系列目录下的其它缓存
+		const seasons = await series.seasons;
+		for (const season of seasons) {
+			await Season.deleteCache(await season.id);
+		}
+		this.cache.delete(id);
+	}
+
 	/**
 	 * 获取所有视频系列实例
 	 */
@@ -73,18 +97,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		for (const [key, series] of this.cache) {
 			const seriesPath = series.getDirectory();
 			if (!this.isAllowedDirectory(seriesPath)) {
-				this.deleteCache(key);
-
-				// 循环移除系列目录下的其它缓存
-				const seasons = await series.seasons;
-				for (const season of seasons) {
-					Season.deleteCache(await season.id);
-
-					const episodes = await season.episodes;
-					for (const episode of episodes) {
-						Episode.deleteCache(await episode.id);
-					}
-				}
+				await this.deleteCache(key);
 			}
 		}
 		await this.getAllSeries();
@@ -98,7 +111,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	public static async getSeriesById(id: string) {
 		if (this.hasCache(id)) {
 			// 缓存中存在，直接返回
-			return this.getCache(id) as Series;
+			return this.getCache<Series>(id)!;
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
@@ -116,7 +129,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 */
 	public static async getSeasonById(id: string) {
 		if (Season.hasCache(id)) {
-			return Season.getCache(id) as Season;
+			return Season.getCache<Season>(id)!;
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
@@ -137,7 +150,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 */
 	public static async getEpisodeById(id: string) {
 		if (Episode.hasCache(id)) {
-			return Episode.getCache(id) as Episode;
+			return Episode.getCache<Episode>(id)!;
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
@@ -163,6 +176,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	private _tags!: Promise<string[]>;
 	private _seasons!: Promise<Season[]>;
 
+	private seriesName!: string;
 	private directory!: string;
 	private dataFile!: string;
 	private hashId!: string;
@@ -184,6 +198,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		Series.cache.set(id, this);
 
 		this.directory = directory;
+		this.seriesName = path.basename(directory);
 		this.hashId = id;
 		this.dataFile = path.resolve(this.directory, '..', DATA_FILE);
 
@@ -204,16 +219,34 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	}
 
 	public async json(): Promise<ISeries> {
+		const [id, path, name, title, images, description, tags, seasons] = await Promise.all([
+			this.id,
+			this.path,
+			this.name,
+			this.title,
+			this.images,
+			this.description,
+			this.tags,
+			Promise.all((await this.seasons).map((season) => season.json())),
+		]);
 		return {
-			id: await this.id,
-			path: await this.path,
-			name: await this.name,
-			title: await this.title,
-			images: await this.images,
-			description: await this.description,
-			tags: await this.tags,
-			seasons: await Promise.all((await this.seasons).map((season) => season.json())),
+			id,
+			path,
+			name,
+			title,
+			images,
+			description,
+			tags,
+			seasons,
 		};
+	}
+
+	public toJSON() {
+		return `[series ${this.seriesName}]`;
+	}
+
+	public getSeriesName() {
+		return this.seriesName;
 	}
 
 	/**

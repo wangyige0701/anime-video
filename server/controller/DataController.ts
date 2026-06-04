@@ -23,15 +23,27 @@ export class DataController {
 		return ctx.Success();
 	}
 
+	/**
+	 * 获取所有视频系列信息，不包含视频季和视频集信息
+	 */
 	@HttpMethod.Get('/series')
 	public async getSeries(@Context() ctx: Koa.Context) {
-		const series = Promise.all((await Series.getAllSeries()).map((series) => series.json()));
+		const series = Promise.all((await Series.getAllSeries()).map((series) => series.getValueOmitSeasons()));
+		return ctx.Success(await series);
+	}
+
+	/**
+	 * 获取所有视频系列信息，包含视频季和视频集信息
+	 */
+	@HttpMethod.Get('/series/all')
+	public async getAllSeries(@Context() ctx: Koa.Context) {
+		const series = Promise.all((await Series.getAllSeries()).map((series) => series.getValue()));
 		return ctx.Success(await series);
 	}
 
 	@HttpMethod.Post('/series/refresh')
 	public async refreshSeries(@Context() ctx: Koa.Context) {
 		await Series.updateSeries();
-		return ctx.Success(await this.getSeries(ctx));
+		return ctx.Success(await this.getAllSeries(ctx));
 	}
 }

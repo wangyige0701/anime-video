@@ -111,13 +111,16 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.initialize(resolve, reject);
 	}
 
-	public async json(): Promise<ISeason> {
+	/**
+	 * 获取视频季信息，包含视频集信息
+	 */
+	public async getValue(): Promise<ISeason> {
 		const [id, sort, path, title, episodes] = await Promise.all([
 			this.id,
 			this.sort,
 			this.path,
 			this.title,
-			Promise.all((await this.episodes).map((episode) => episode.json())),
+			Promise.all((await this.episodes).map((episode) => episode.getValue())),
 		]);
 		return {
 			id,
@@ -126,6 +129,10 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			title,
 			episodes,
 		};
+	}
+
+	public async getValueOmitEpisodes() {
+		return Season.omit(await this.getValue(), ['episodes']);
 	}
 
 	public toJSON() {

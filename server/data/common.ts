@@ -2,6 +2,19 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { DATA_FILE } from '~config/server';
 import { Data } from './data';
+import { RestElements } from '@wang-yige/utils';
+
+type PickType<
+	T extends Record<string, any>,
+	K extends (keyof T)[],
+	U extends Record<string, any> = {},
+> = K['length'] extends 0 ? U : PickType<T, RestElements<K>, U & { [P in K[0]]: T[P] }>;
+
+type OmitType<
+	T extends Record<string, any>,
+	K extends (keyof T)[],
+	U extends Record<string, any> = T,
+> = K['length'] extends 0 ? U : OmitType<T, RestElements<K>, K[0] extends keyof T ? Omit<T, K[0]> : U>;
 
 export abstract class Common {
 	// 缓存处理
@@ -68,5 +81,27 @@ export abstract class Common {
 	 */
 	public static hash(str: string) {
 		return crypto.createHash('md5').update(str).digest('hex');
+	}
+
+	/**
+	 * 从对象中提取指定属性
+	 */
+	public static pick<T extends Record<string, any>, K extends (keyof T)[]>(obj: T, keys: K) {
+		return keys.reduce((prev, cur) => {
+			prev[cur] = obj[cur];
+			return prev;
+		}, {} as T) as PickType<T, K>;
+	}
+
+	/**
+	 * 从对象中移除指定属性
+	 */
+	public static omit<T extends Record<string, any>, K extends (keyof T)[]>(obj: T, keys: K) {
+		return Object.keys(obj).reduce((prev, cur) => {
+			if (!keys.includes(cur)) {
+				prev[cur as keyof T] = obj[cur];
+			}
+			return prev;
+		}, {} as T) as OmitType<T, K>;
 	}
 }

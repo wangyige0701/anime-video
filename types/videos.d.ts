@@ -1,5 +1,3 @@
-import { Fn } from '@wang-yige/utils';
-
 /**
  * 视频系列
  */

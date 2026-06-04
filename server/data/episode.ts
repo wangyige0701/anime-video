@@ -89,7 +89,10 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		this.initialize(resolve, reject);
 	}
 
-	public async json(): Promise<IEpisode> {
+	/**
+	 * 获取视频集信息
+	 */
+	public async getValue(): Promise<IEpisode> {
 		const [id, sort, path, extension, title] = await Promise.all([
 			this.id,
 			this.sort,

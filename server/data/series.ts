@@ -218,7 +218,10 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.initialize(resolve, reject);
 	}
 
-	public async json(): Promise<ISeries> {
+	/**
+	 * 获取视频系列信息，包含视频季和视频集信息
+	 */
+	public async getValue(): Promise<ISeries> {
 		const [id, path, name, title, images, description, tags, seasons] = await Promise.all([
 			this.id,
 			this.path,
@@ -227,7 +230,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			this.images,
 			this.description,
 			this.tags,
-			Promise.all((await this.seasons).map((season) => season.json())),
+			Promise.all((await this.seasons).map((season) => season.getValue())),
 		]);
 		return {
 			id,
@@ -239,6 +242,13 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			tags,
 			seasons,
 		};
+	}
+
+	/**
+	 * 获取视频系列信息，不包含视频季信息
+	 */
+	public async getValueOmitSeasons() {
+		return Series.omit(await this.getValue(), ['seasons']);
 	}
 
 	public toJSON() {

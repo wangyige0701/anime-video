@@ -48,11 +48,11 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		return result.map((item) => item.episode) as Episode[];
 	}
 
-	private _id!: Promise<string>;
-	private _sort!: Promise<number>;
-	private _path!: Promise<string>;
-	private _extension!: Promise<string>;
-	private _title!: Promise<string>;
+	private _id!: Promise<IEpisode['id']>;
+	private _sort!: Promise<IEpisode['sort']>;
+	private _path!: Promise<IEpisode['path']>;
+	private _extension!: Promise<IEpisode['extension']>;
+	private _title!: Promise<IEpisode['title']>;
 
 	private episodeName!: string;
 	private directory!: string;

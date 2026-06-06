@@ -65,10 +65,10 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		return result.map((item) => item.season) as Season[];
 	}
 
-	private _id!: Promise<string>;
-	private _sort!: Promise<number>;
-	private _path!: Promise<string>;
-	private _title!: Promise<string>;
+	private _id!: Promise<ISeason['id']>;
+	private _sort!: Promise<ISeason['sort']>;
+	private _path!: Promise<ISeason['path']>;
+	private _title!: Promise<ISeason['title']>;
 	private _episodes!: Promise<Episode[]>;
 
 	private seasonName!: string;

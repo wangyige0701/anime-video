@@ -34,9 +34,17 @@ export interface Series {
 	 */
 	description: string;
 	/**
-	 * 可手动添加的关键词
+	 * 视频系列日期，默认为空，可手动添加。
 	 */
-	tags: string[];
+	date: [year?: number, month?: number];
+	/**
+	 * 视频系列类型数组，默认为空，可手动添加。
+	 */
+	types: number[];
+	/**
+	 * 视频系列状态，默认为 0，即没有设置状态。
+	 */
+	status: number;
 }
 
 export type SeriesImagesStoreStruct = Array<{

@@ -167,13 +167,15 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		throw new Error(`没有找到 id 为 ${episodeId} 的视频集`);
 	}
 
-	private _id!: Promise<string>;
-	private _path!: Promise<string>;
-	private _name!: Promise<string>;
-	private _title!: Promise<string>;
-	private _images!: Promise<string[]>;
-	private _description!: Promise<string>;
-	private _tags!: Promise<string[]>;
+	private _id!: Promise<ISeries['id']>;
+	private _path!: Promise<ISeries['path']>;
+	private _name!: Promise<ISeries['name']>;
+	private _title!: Promise<ISeries['title']>;
+	private _images!: Promise<ISeries['images']>;
+	private _description!: Promise<ISeries['description']>;
+	private _date!: Promise<ISeries['date']>;
+	private _types!: Promise<ISeries['types']>;
+	private _status!: Promise<ISeries['status']>;
 	private _seasons!: Promise<Season[]>;
 
 	private seriesName!: string;
@@ -212,7 +214,9 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerTitle();
 		this.registerImages();
 		this.registerDescription();
-		this.registerTags();
+		this.registerDate();
+		this.registerTypes();
+		this.registerStatus();
 		this.registerSeasons();
 
 		this.initialize(resolve, reject);
@@ -222,14 +226,16 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * 获取视频系列信息，包含视频季和视频集信息
 	 */
 	public async getValue(): Promise<ISeries> {
-		const [id, path, name, title, images, description, tags, seasons] = await Promise.all([
+		const [id, path, name, title, images, description, date, types, status, seasons] = await Promise.all([
 			this.id,
 			this.path,
 			this.name,
 			this.title,
 			this.images,
 			this.description,
-			this.tags,
+			this.date,
+			this.types,
+			this.status,
 			Promise.all((await this.seasons).map((season) => season.getValue())),
 		]);
 		return {
@@ -239,7 +245,9 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			title,
 			images,
 			description,
-			tags,
+			date,
+			types,
+			status,
 			seasons,
 		};
 	}
@@ -299,8 +307,16 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		return this._description;
 	}
 
-	public get tags() {
-		return this._tags;
+	public get date() {
+		return this._date;
+	}
+
+	public get types() {
+		return this._types;
+	}
+
+	public get status() {
+		return this._status;
 	}
 
 	public get seasons() {
@@ -313,6 +329,8 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	public getPromise() {
 		return this.promise;
 	}
+
+	// region 更新数据方法，更新后会自动注册并更新对应的 get 属性代理
 
 	public async updateTitle(title: string) {
 		const config = await this.promise;
@@ -421,11 +439,45 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		}
 	}
 
-	public async updateTags(tags: string[]) {
+	public async updateDate(year: number, month: number) {
 		const config = await this.promise;
-		config.tags = tags;
-		this.registerTags();
+		config.date = [year, month];
+		this.registerDate();
 	}
+
+	public async updateTypes(...types: number[]) {
+		const config = await this.promise;
+		config.types = types;
+		this.registerTypes();
+	}
+
+	public async addTypes(...types: number[]) {
+		if (!types.length) {
+			return;
+		}
+		const config = await this.promise;
+		config.types.push(...types);
+		this.registerTypes();
+	}
+
+	public async removeTypes(...types: number[]) {
+		if (!types.length) {
+			return;
+		}
+		const config = await this.promise;
+		config.types = config.types.filter((type) => !types.includes(type));
+		this.registerTypes();
+	}
+
+	public async updateStatus(status: number) {
+		const config = await this.promise;
+		config.status = status;
+		this.registerStatus();
+	}
+
+	// endregion
+
+	// region 注册数据方法，注册后会更新对应的 get 属性代理
 
 	private registerId() {
 		this._id = this.promise.then(({ id }) => id);
@@ -458,9 +510,21 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this._description = this.promise.then(({ description }) => description);
 	}
 
-	private registerTags() {
-		this._tags = this.promise.then(({ tags }) => tags);
+	private registerDate() {
+		this._date = this.promise.then(({ date }) => date);
 	}
+
+	private registerTypes() {
+		this._types = this.promise.then(({ types }) => types);
+	}
+
+	private registerStatus() {
+		this._status = this.promise.then(({ status }) => status);
+	}
+
+	// endregion
+
+	// region 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
 
 	/**
 	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
@@ -514,7 +578,9 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				name: name,
 				title: name,
 				images: images,
-				tags: [],
+				date: [],
+				types: [],
+				status: 0,
 				description: '',
 				seasons: [],
 			} satisfies SeriesStore);
@@ -535,9 +601,13 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		config.name = name;
 		config.title = config.title || name;
 		config.images = images;
-		config.tags = config.tags || [];
+		config.date = config.date || [];
+		config.types = config.types || [];
+		config.status = config.status || 0;
 		config.description = config.description || '';
 		config.seasons = config.seasons || [];
 		return resolve(config);
 	}
+
+	// endregion
 }

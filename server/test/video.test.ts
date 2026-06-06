@@ -109,17 +109,23 @@ describe('Video Data Config', () => {
 			expect(await series.title).toBe('视频1');
 			expect(await series.images).toEqual([originImagePath1, originImagePath2]);
 			expect(await series.description).toBe('');
-			expect(await series.tags).toEqual([]);
+			expect(await series.date).toEqual([]);
+			expect(await series.types).toEqual([]);
+			expect(await series.status).toBe(0);
 
 			// 更新系列信息
 			await series.updateTitle('测试视频标题');
 			await series.updateDescription('测试视频描述');
-			await series.updateTags(['标签1', '标签2']);
+			await series.updateDate(2026, 1);
+			await series.updateTypes(1, 2);
+			await series.updateStatus(1);
 			await series.getDataInstance().save();
 			const dataSeries = await getJsonFIle();
 			expect(dataSeries[0].title).toBe('测试视频标题');
 			expect(dataSeries[0].description).toBe('测试视频描述');
-			expect(dataSeries[0].tags).toEqual(['标签1', '标签2']);
+			expect(dataSeries[0].date).toEqual([2026, 1]);
+			expect(dataSeries[0].types).toEqual([1, 2]);
+			expect(dataSeries[0].status).toBe(1);
 
 			// 测试系列图片
 			await fs.writeFile(testImagePath1, '');

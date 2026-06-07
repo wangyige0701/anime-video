@@ -92,3 +92,7 @@ export const seriesTypes = [
 		name: '日常',
 	},
 ];
+
+export function getSeriesTypeName(id: number) {
+	return seriesTypes.find((type) => type.id === id)?.name || '';
+}

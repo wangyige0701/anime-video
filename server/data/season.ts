@@ -132,7 +132,13 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	}
 
 	public async getValueOmitEpisodes() {
-		return Season.omit(await this.getValue(), ['episodes']);
+		const [id, sort, path, title] = await Promise.all([this.id, this.sort, this.path, this.title]);
+		return {
+			id,
+			sort,
+			path,
+			title,
+		};
 	}
 
 	public toJSON() {

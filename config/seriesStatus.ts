@@ -16,3 +16,7 @@ export const seriesStatus = [
 		name: '未放送',
 	},
 ];
+
+export function getSeriesStatusName(id: number) {
+	return seriesStatus.find((status) => status.id === id)?.name || '';
+}

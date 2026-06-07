@@ -255,8 +255,30 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	/**
 	 * 获取视频系列信息，不包含视频季信息
 	 */
-	public async getValueOmitSeasons() {
-		return Series.omit(await this.getValue(), ['seasons']);
+	public async getValueOmitSeasons(): Promise<Omit<ISeries, 'seasons'>> {
+		// 重复处理，避免此处调用 season 的数据获取方法
+		const [id, path, name, title, images, description, date, types, status] = await Promise.all([
+			this.id,
+			this.path,
+			this.name,
+			this.title,
+			this.images,
+			this.description,
+			this.date,
+			this.types,
+			this.status,
+		]);
+		return {
+			id,
+			path,
+			name,
+			title,
+			images,
+			description,
+			date,
+			types,
+			status,
+		};
 	}
 
 	public toJSON() {

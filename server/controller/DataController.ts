@@ -32,24 +32,22 @@ export class DataController {
 		return ctx.Success(await series);
 	}
 
-	/**
-	 * 获取所有视频系列信息，包含视频季和视频集信息
-	 */
-	@HttpMethod.Get('/series/all')
-	public async getAllSeries(@Context() ctx: Koa.Context) {
-		const series = Promise.all((await Series.getAllSeries()).map((series) => series.getValue()));
-		return ctx.Success(await series);
-	}
-
 	@HttpMethod.Post('/series/refresh')
 	public async refreshSeries(@Context() ctx: Koa.Context) {
 		await Series.updateSeries();
-		return ctx.Success(await this.getAllSeries(ctx));
+		return ctx.Success(await this.getSeries(ctx));
 	}
 
 	@HttpMethod.Get('/series/:seriesId')
-	public async getDetailSeries(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+	public async getSeriesDetail(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const series = await Series.getSeriesById(seriesId);
 		return ctx.Success(await series.getValue());
+	}
+
+	@HttpMethod.Get('/seasons/:seriesId')
+	public async getSeasonsBySeriesId(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const series = await Series.getSeriesById(seriesId);
+		const seasons = await Promise.all((await series.seasons).map((season) => season.getValue()));
+		return ctx.Success(seasons);
 	}
 }

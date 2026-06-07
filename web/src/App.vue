@@ -18,7 +18,7 @@ import { useVideoStore } from './stores/video';
 
 onBeforeMount(async () => {
 	const series = await getSeries();
-	useVideoStore().setData(series.data);
+	useVideoStore().setData(series);
 });
 </script>
 

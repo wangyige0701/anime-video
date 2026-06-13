@@ -3,6 +3,7 @@ import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-us
 import { isArray } from '@wang-yige/utils';
 import { ServerRoot } from '~routes/server';
 import { Series } from '~server/data/series';
+import { Validate } from '~server/decorators/validate';
 
 @Singleton()
 @Controller(ServerRoot.DATA)
@@ -14,14 +15,17 @@ export class DataController {
 	}
 
 	@HttpMethod.Put('/directories')
+	@Validate((z) => z.array(z.string()))
 	public async setDirectories(@Context() ctx: Koa.Context) {
-		const directories = ctx.req.body;
+		const directories = ctx.request.body;
 		if (isArray(directories)) {
 			await Series.setDirectories(...(directories as string[]));
 			await Series.updateSeries();
 		}
 		return ctx.Success();
 	}
+
+	// region 系列接口
 
 	/**
 	 * 获取所有视频系列信息，不包含视频季和视频集信息
@@ -42,6 +46,26 @@ export class DataController {
 	public async getSeriesDetail(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const series = await Series.getSeriesById(seriesId);
 		return ctx.Success(await series.getValue());
+	}
+
+	@HttpMethod.Put('/series/:seriesId/title')
+	@Validate((z) => z.object({ title: z.string().min(1) }))
+	public async updateSeriesTitle(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const { title } = ctx.request.body as { title: string };
+		const series = await Series.getSeriesById(seriesId);
+		await series.updateTitle(title);
+		await series.waitDataSave();
+		return ctx.Success();
+	}
+
+	@HttpMethod.Put('/series/:seriesId/description')
+	@Validate((z) => z.object({ description: z.string().min(0) }))
+	public async updateSeriesDescription(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const { description } = ctx.request.body as { description: string };
+		const series = await Series.getSeriesById(seriesId);
+		await series.updateDescription(description);
+		await series.waitDataSave();
+		return ctx.Success();
 	}
 
 	@HttpMethod.Get('/seasons/:seriesId')

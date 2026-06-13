@@ -3,7 +3,7 @@ import type { Response as ResponseImpl } from '~types/response';
 import { Status } from '~common/status';
 import Statuses from 'statuses';
 
-class Response<T extends any> implements ResponseImpl<T> {
+export class Response<T extends any> implements ResponseImpl<T> {
 	public timestamp!: number;
 
 	constructor(
@@ -18,7 +18,7 @@ class Response<T extends any> implements ResponseImpl<T> {
 		this.timestamp = Date.now();
 	}
 
-	public toJSON() {
+	public getBody() {
 		return {
 			code: this.code,
 			data: this.data,

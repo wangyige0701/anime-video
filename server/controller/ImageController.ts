@@ -12,7 +12,7 @@ import {
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { ServerRoot } from '~routes/server';
-import { ImageNotFoundError } from '~server/src/error/imageNotFound';
+import { ImageNotFoundError } from '~server/src/error/notFound';
 import { allowedImageExtensions } from '~config/server';
 import { Series } from '~server/data/series';
 

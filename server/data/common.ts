@@ -56,6 +56,8 @@ export abstract class Common {
 
 	/**
 	 * 重置视频系列目录配置数据，只会更新文件数据，不会刷新系列缓存，需要手动调用方法更新
+	 *
+	 * - 此方法会等待数据保存完成，确保数据一致性
 	 */
 	public static async setDirectories(...directories: string[]) {
 		const data = await this.getDirectories();

@@ -304,6 +304,13 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		return Data.instance<SeriesStore[]>(this.dataFile, []);
 	}
 
+	/**
+	 * 等待数据保存完成
+	 */
+	public async waitDataSave() {
+		return await this.getDataInstance().save();
+	}
+
 	// get 属性代理
 	public get id() {
 		return this._id;

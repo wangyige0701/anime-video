@@ -30,6 +30,7 @@
 		"koa-use-decorator-router": "^1.2.1",
 		"koa2-connect-history-api-fallback": "^0.1.3",
 		"reflect-metadata": "^0.2.2",
-		"statuses": "^2.0.2"
+		"statuses": "^2.0.2",
+		"zod": "^4.4.3"
 	}
 }

@@ -311,7 +311,8 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		return await this.getDataInstance().save();
 	}
 
-	// get 属性代理
+	// region 属性代理
+
 	public get id() {
 		return this._id;
 	}
@@ -351,6 +352,8 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	public get seasons() {
 		return this._seasons;
 	}
+
+	// endregion
 
 	/**
 	 * 获取系列初始化的 promise 示例，可以判断内部是否出现异常
@@ -409,7 +412,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 *
 	 * @param imageNames 图片名称数组，仅添加位于当前系列目录下的图片，不要传绝对路径
 	 */
-	public async addImages(...imageNames: string[]) {
+	public async addImages(imageNames: string[]) {
 		if (!imageNames.length) {
 			return;
 		}
@@ -449,7 +452,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 *
 	 * @param imageNames 图片名称数组，仅删除位于当前系列目录下的图片，不要传绝对路径
 	 */
-	public async removeImages(...imageNames: string[]) {
+	public async removeImages(imageNames: string[]) {
 		if (!imageNames.length) {
 			return;
 		}
@@ -474,13 +477,13 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerDate();
 	}
 
-	public async updateTypes(...types: number[]) {
+	public async updateTypes(types: number[]) {
 		const config = await this.promise;
 		config.types = types;
 		this.registerTypes();
 	}
 
-	public async addTypes(...types: number[]) {
+	public async addTypes(types: number[]) {
 		if (!types.length) {
 			return;
 		}
@@ -489,7 +492,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerTypes();
 	}
 
-	public async removeTypes(...types: number[]) {
+	public async removeTypes(types: number[]) {
 		if (!types.length) {
 			return;
 		}

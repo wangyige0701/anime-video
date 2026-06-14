@@ -123,6 +123,10 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		return this.season;
 	}
 
+	public async waitDataSave() {
+		return await this.getSeason().waitDataSave();
+	}
+
 	public getDirectory() {
 		return this.directory;
 	}
@@ -134,6 +138,8 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	public getPromise() {
 		return this.promise;
 	}
+
+	// region 属性代理
 
 	public get id() {
 		return this._id;
@@ -154,6 +160,8 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	public get title() {
 		return this._title;
 	}
+
+	// endregion
 
 	public async updateSort(sort: number) {
 		const config = await this.promise;

@@ -4,6 +4,9 @@ import { Status } from '~common/status';
 import { Response } from '~server/middlewares/response';
 import { ApiError } from '~server/src/error';
 
+/**
+ * 验证请求体是否符合指定的 Zod 模式
+ */
 export function Validate(getSchema: (zod: typeof z) => z.ZodSchema) {
 	const schema = getSchema(z);
 	return createMiddlewareDecorator(async (ctx, next) => {

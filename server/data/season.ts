@@ -154,6 +154,10 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		return this.series;
 	}
 
+	public async waitDataSave() {
+		return await this.getSeries().waitDataSave();
+	}
+
 	/**
 	 * 获取季目录绝对路径
 	 */
@@ -168,6 +172,8 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	public getPromise() {
 		return this.promise;
 	}
+
+	// region 属性代理
 
 	public get id() {
 		return this._id;
@@ -188,6 +194,8 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	public get episodes() {
 		return this._episodes;
 	}
+
+	// endregion
 
 	public async updateSort(sort: number) {
 		const config = await this.promise;

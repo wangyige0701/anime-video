@@ -1,17 +1,30 @@
 import type { Series as ISeries } from '~types/videos';
 import { Season } from './season';
 import { Common } from './common';
-import { getSeries } from '~web/src/api/video';
+import { getSeries } from '~web/src/api/series';
+import { createPromise } from '@wang-yige/utils';
 
 const initialize = useVueStatusRef('loading', 'initialized');
 
 export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	protected static cache: Map<string, Series> = new Map();
+	private static globalWaitPromise: Promise<Series[]> | null = null;
 
+	/**
+	 * 请求接口，初始化系列数据
+	 */
 	public static async initialized() {
-		if (initialize.initialized || initialize.loading) {
-			return [] as Series[];
+		if (initialize.loading) {
+			if (!this.globalWaitPromise) {
+				throw new Error('全局等待 Promise 不存在');
+			}
+			return await this.globalWaitPromise;
 		}
+		if (initialize.initialized) {
+			return [...this.cache.values()];
+		}
+		const { promise, resolve } = createPromise<Series[]>();
+		this.globalWaitPromise = promise;
 		const result = [] as Series[];
 		initialize.onLoading();
 		try {
@@ -20,8 +33,11 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 			for (const seriesItem of series) {
 				result.push(new Series(seriesItem));
 			}
-		} catch (error) {}
+		} catch (error) {
+			console.error('初始化系列数据失败', error);
+		}
 		initialize.offLoading();
+		resolve(result);
 		return result;
 	}
 
@@ -63,6 +79,7 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		Series.cache.set(series.id, this);
 	}
 
+	// region 系列属性值
 	public get id() {
 		return this._id.value;
 	}
@@ -102,4 +119,49 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	public get seasons() {
 		return this._seasons.value;
 	}
+	// endregion
+
+	// region 系列属性更新时的响应式状态
+	/**
+	 * 系列标题更新时的响应式状态
+	 */
+	public get titleRef() {
+		return this.useStatus.title;
+	}
+
+	/**
+	 * 系列描述更新时的响应式状态
+	 */
+	public get descriptionRef() {
+		return this.useStatus.description;
+	}
+
+	/**
+	 * 系列日期更新时的响应式状态
+	 */
+	public get dateRef() {
+		return this.useStatus.date;
+	}
+
+	/**
+	 * 系列类型更新时的响应式状态
+	 */
+	public get typesRef() {
+		return this.useStatus.types;
+	}
+
+	/**
+	 * 系列状态更新时的响应式状态
+	 */
+	public get statusRef() {
+		return this.useStatus.status;
+	}
+
+	/**
+	 * 系列图片更新时的响应式状态
+	 */
+	public get imagesRef() {
+		return this.useStatus.images;
+	}
+	// endregion
 }

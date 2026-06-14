@@ -15,13 +15,13 @@ export class EpisodeController {
 		return ctx.Success(episodes);
 	}
 
-	@HttpMethod.Get('/episodes/:episodeId')
+	@HttpMethod.Get('/episode/:episodeId')
 	public async getEpisodeById(@Context() ctx: Koa.Context, @Inject('episodeId') episodeId: string) {
 		const episode = await Series.getEpisodeById(episodeId);
 		return ctx.Success(episode.getValue());
 	}
 
-	@HttpMethod.Put('/episodes/:episodeId/sort')
+	@HttpMethod.Put('/episode/:episodeId/sort')
 	@Validate((z) => z.object({ sort: z.number().int().min(1) }))
 	public async updateEpisodeSort(@Context() ctx: Koa.Context, @Inject('episodeId') episodeId: string) {
 		const { sort } = ctx.request.body as { sort: number };
@@ -31,7 +31,7 @@ export class EpisodeController {
 		return ctx.Success();
 	}
 
-	@HttpMethod.Put('/episodes/:episodeId/title')
+	@HttpMethod.Put('/episode/:episodeId/title')
 	@Validate((z) => z.object({ title: z.string().min(1) }))
 	public async updateEpisodeTitle(@Context() ctx: Koa.Context, @Inject('episodeId') episodeId: string) {
 		const { title } = ctx.request.body as { title: string };

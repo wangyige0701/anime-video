@@ -31,7 +31,7 @@ export class SeasonController {
 		return ctx.Success();
 	}
 
-	@HttpMethod.Put('/season/:seasonId')
+	@HttpMethod.Put('/season/:seasonId/title')
 	@Validate((z) => z.object({ title: z.string().min(1) }))
 	public async updateSeasonTitle(@Context() ctx: Koa.Context, @Inject('seasonId') seasonId: string) {
 		const { title } = ctx.request.body as { title: string };

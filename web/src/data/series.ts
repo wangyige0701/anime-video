@@ -1,8 +1,8 @@
 import type { Series as ISeries } from '~types/videos';
-import { getSeries } from '~web/src/api/series';
 import { createPromise } from '@wang-yige/utils';
-import { getSeasons } from '~web/src/api/season';
-import { getEpisodes } from '~web/src/api/episode';
+import { getSeries } from '@/api/series';
+import { getSeasons } from '@/api/season';
+import { getEpisodes } from '@/api/episode';
 import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';

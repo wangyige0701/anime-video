@@ -25,12 +25,13 @@
 							:contenteditable="status.editDescription"
 							:data-modify="series.descriptionRef"
 							@blur="endEditDescription"
+							@paste.prevent="handleDescriptionPaste"
 						>
 							{{ series.description ?? '' }}
 
-							<div v-if="series.descriptionRef" class="detail-desc-loading">
+							<span v-if="series.descriptionRef" class="detail-desc-loading">
 								<i class="icon-loading loading-anime"></i>
-							</div>
+							</span>
 						</span>
 						<span
 							v-if="!isWaiting && !status.editDescription && !series.descriptionRef"
@@ -60,6 +61,7 @@ definePage({
 	name: 'Detail',
 });
 
+let descriptionText: Text | null = null;
 const seriesId = useRoute<WebRoute.DETAIL>().params.seriesId;
 const status = useVueStatusRef('editDescription');
 const series = shallowRef<Series>({} as Series);
@@ -72,20 +74,10 @@ const image = computed(() => {
 	return '';
 });
 
-async function editDescription() {
-	if (series.value.descriptionRef) {
-		return;
-	}
-	status.onEditDescription();
-	await nextTick();
-	focusDescription();
-}
-
 async function endEditDescription() {
 	if (!status.editDescription || !descContent.value) {
 		return;
 	}
-
 	const text = descContent.value.textContent ?? '';
 	if (!text) {
 		console.error('描述不能为空');
@@ -94,9 +86,21 @@ async function endEditDescription() {
 	if (text === series.value.description) {
 		return;
 	}
-
 	status.offEditDescription();
+	if (descriptionText) {
+		descriptionText.remove();
+		descriptionText = null;
+	}
 	await series.value.updateDescription(text);
+}
+
+async function editDescription() {
+	if (series.value.descriptionRef) {
+		return;
+	}
+	status.onEditDescription();
+	await nextTick();
+	focusDescription();
 }
 
 function focusDescription() {
@@ -113,6 +117,23 @@ function focusDescription() {
 			selection.removeAllRanges();
 			selection.addRange(range);
 		}
+	}
+}
+
+function handleDescriptionPaste(e: ClipboardEvent) {
+	const text = e.clipboardData?.getData?.('text/plain');
+	if (text) {
+		const selection = window.getSelection();
+		if (!selection?.rangeCount) {
+			return;
+		}
+		const range = selection.getRangeAt(0);
+		range.deleteContents();
+		descriptionText = document.createTextNode(text);
+		range.insertNode(descriptionText);
+		range.collapse(false);
+		selection.removeAllRanges();
+		selection.addRange(range);
 	}
 }
 
@@ -209,7 +230,7 @@ onMounted(async () => {
 }
 
 .detail-desc-loading {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	justify-content: center;
 	position: absolute;

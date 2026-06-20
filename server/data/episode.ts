@@ -140,7 +140,6 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	}
 
 	// region 属性代理
-
 	public get id() {
 		return this._id;
 	}
@@ -160,12 +159,20 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	public get title() {
 		return this._title;
 	}
-
 	// endregion
 
+	// region 更新集数据
 	public async updateSort(sort: number) {
-		const config = await this.promise;
-		config.sort = Math.max(1, sort);
+		await this.promise;
+		await this.season.updateEpisodeSort(await this.sort, Math.max(1, sort));
+		this.registerSort();
+	}
+
+	/**
+	 * 更新排序时，由 Season 调用，重新注册排序属性
+	 */
+	public async rewriteSort(sort: number) {
+		(await this.getConfig()).sort = sort;
 		this.registerSort();
 	}
 
@@ -174,7 +181,9 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		config.title = title;
 		this.registerTitle();
 	}
+	// endregion
 
+	// region 注册数据方法
 	private registerId() {
 		this._id = this.promise.then(({ id }) => id);
 	}
@@ -194,6 +203,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	private registerTitle() {
 		this._title = this.promise.then(({ title }) => title);
 	}
+	// endregion
 
 	private async initialize(resolve: PromiseResolve<IEpisode>, reject: PromiseReject) {
 		if (!(await isFileExist(this.directory))) {

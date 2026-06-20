@@ -174,7 +174,6 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	}
 
 	// region 属性代理
-
 	public get id() {
 		return this._id;
 	}
@@ -194,12 +193,22 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	public get episodes() {
 		return this._episodes;
 	}
-
 	// endregion
 
+	// region 更新季数据
+	/**
+	 * 更新排序，通过调用 Series 中的方法将所有季的排序更新为新的排序
+	 */
 	public async updateSort(sort: number) {
-		const config = await this.promise;
-		config.sort = Math.max(1, sort);
+		await this.promise;
+		await this.series.updateSeasonSort(await this.sort, Math.max(1, sort));
+	}
+
+	/**
+	 * 更新排序时，由 Series 调用，重新注册排序属性
+	 */
+	public async rewriteSort(sort: number) {
+		(await this.getConfig()).sort = sort;
 		this.registerSort();
 	}
 
@@ -209,6 +218,43 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.registerTitle();
 	}
 
+	public async updateEpisodeSort(oldSort: number, newSort: number) {
+		if (oldSort === newSort) {
+			return;
+		}
+		const episodes = await this.episodes;
+		if (newSort < 1) {
+			newSort = 1;
+		}
+		if (newSort > episodes.length) {
+			newSort = episodes.length;
+		}
+		for (const episode of episodes) {
+			const sort = await episode.sort;
+			const minSort = Math.min(oldSort, newSort);
+			const maxSort = Math.max(oldSort, newSort);
+			if (sort < minSort) {
+				continue;
+			}
+			if (sort > maxSort) {
+				break;
+			}
+			if (sort === oldSort) {
+				await episode.rewriteSort(newSort);
+				continue;
+			}
+			if (oldSort < newSort) {
+				// 其余项需要减一
+				await episode.rewriteSort(sort - 1);
+			} else {
+				// 其余项需要加一
+				await episode.rewriteSort(sort + 1);
+			}
+		}
+	}
+	// endregion
+
+	// region 注册数据方法
 	private registerId() {
 		this._id = this.promise.then(({ id }) => id);
 	}
@@ -228,6 +274,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	private registerEpisodes() {
 		this._episodes = this.promise.then(() => Episode.getAllEpisodes(this));
 	}
+	// endregion
 
 	private async initialize(resolve: PromiseResolve<ISeason>, reject: PromiseReject) {
 		if (!(await isFileExist(this.directory))) {

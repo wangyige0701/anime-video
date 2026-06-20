@@ -316,8 +316,14 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		return await this.getDataInstance().save();
 	}
 
-	// region 属性代理
+	/**
+	 * 获取系列初始化的 promise 示例，可以判断内部是否出现异常
+	 */
+	public getPromise() {
+		return this.promise;
+	}
 
+	// region 属性代理
 	public get id() {
 		return this._id;
 	}
@@ -357,18 +363,9 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	public get seasons() {
 		return this._seasons;
 	}
-
 	// endregion
 
-	/**
-	 * 获取系列初始化的 promise 示例，可以判断内部是否出现异常
-	 */
-	public getPromise() {
-		return this.promise;
-	}
-
 	// region 更新数据方法，更新后会自动注册并更新对应的 get 属性代理
-
 	public async updateTitle(title: string) {
 		const config = await this.promise;
 		config.title = title;
@@ -512,10 +509,43 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerStatus();
 	}
 
+	public async updateSeasonSort(oldSort: number, newSort: number) {
+		if (oldSort === newSort) {
+			return;
+		}
+		const seasons = await this.seasons;
+		if (newSort < 1) {
+			newSort = 1;
+		}
+		if (newSort > seasons.length) {
+			newSort = seasons.length;
+		}
+		for (const season of seasons) {
+			const sort = await season.sort;
+			const minSort = Math.min(oldSort, newSort);
+			const maxSort = Math.max(oldSort, newSort);
+			if (sort < minSort) {
+				continue;
+			}
+			if (sort > maxSort) {
+				break;
+			}
+			if (sort === oldSort) {
+				await season.rewriteSort(newSort);
+				continue;
+			}
+			if (oldSort < newSort) {
+				// 其余项需要减一
+				await season.rewriteSort(sort - 1);
+			} else {
+				// 其余项需要加一
+				await season.rewriteSort(sort + 1);
+			}
+		}
+	}
 	// endregion
 
 	// region 注册数据方法，注册后会更新对应的 get 属性代理
-
 	private registerId() {
 		this._id = this.promise.then(({ id }) => id);
 	}
@@ -558,11 +588,9 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	private registerStatus() {
 		this._status = this.promise.then(({ status }) => status);
 	}
-
 	// endregion
 
 	// region 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
-
 	/**
 	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
 	 */
@@ -645,6 +673,5 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		config.seasons = config.seasons || [];
 		return resolve(config);
 	}
-
 	// endregion
 }

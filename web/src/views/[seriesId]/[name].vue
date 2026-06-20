@@ -7,7 +7,7 @@
 						<template v-if="image">
 							<img class="image" :src="image" :alt="series.name ?? ''" />
 						</template>
-						<template v-else-if="useVideoStore().isWaiting">
+						<template v-else-if="isWaiting">
 							<div class="image image-loading" style="min-height: calc(var(--image-width) * 1.1)"></div>
 						</template>
 					</div>
@@ -23,16 +23,22 @@
 							ref="descContent"
 							class="detail-desc-content"
 							:contenteditable="status.editDescription"
-							:data-modify="status.modifyDescription"
+							:data-modify="series.descriptionRef"
 							@blur="endEditDescription"
 						>
 							{{ series.description ?? '' }}
+
+							<div v-if="series.descriptionRef" class="detail-desc-loading">
+								<i class="icon-loading loading-anime"></i>
+							</div>
 						</span>
-						<template v-if="!status.editDescription && !status.modifyDescription">
-							<span class="detail-desc-edit" @click="editDescription">
-								<i class="icon-edit"></i>
-							</span>
-						</template>
+						<span
+							v-if="!isWaiting && !status.editDescription && !series.descriptionRef"
+							class="detail-desc-edit"
+							@click="editDescription"
+						>
+							<i class="icon-edit"></i>
+						</span>
 					</div>
 				</div>
 			</div>
@@ -43,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Series } from '~types/videos';
+import type { Series } from '@/data/series';
 import { useVideoStore } from '@/stores/video';
 import { getSeriesPath } from '@/utils/series';
 import { getImageUrl } from '~routes/server';
@@ -55,9 +61,10 @@ definePage({
 });
 
 const seriesId = useRoute<WebRoute.DETAIL>().params.seriesId;
-const status = useVueStatusRef('editDescription', 'modifyDescription');
+const status = useVueStatusRef('editDescription');
 const series = shallowRef<Series>({} as Series);
 const descContent = useTemplateRef('descContent');
+const isWaiting = ref(true);
 const image = computed(() => {
 	if (series.value.images?.length) {
 		return getImageUrl(getSeriesPath(series.value.images[0]!));
@@ -66,7 +73,7 @@ const image = computed(() => {
 });
 
 async function editDescription() {
-	if (status.modifyDescription) {
+	if (series.value.descriptionRef) {
 		return;
 	}
 	status.onEditDescription();
@@ -78,22 +85,18 @@ async function endEditDescription() {
 	if (!status.editDescription || !descContent.value) {
 		return;
 	}
-	status.onModifyDescription();
+
+	const text = descContent.value.textContent ?? '';
+	if (!text) {
+		console.error('描述不能为空');
+		return;
+	}
+	if (text === series.value.description) {
+		return;
+	}
+
 	status.offEditDescription();
-	const div = document.createElement('div');
-	div.style.position = 'absolute';
-	div.style.inset = '0';
-	div.style.display = 'flex';
-	div.style.alignItems = 'center';
-	div.style.justifyContent = 'center';
-	div.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-	div.style.borderRadius = '5px';
-	const i = document.createElement('i');
-	i.className = 'icon-loading loading-anime';
-	i.style.color = 'var(--primary-color)';
-	i.style.fontSize = '1.2em';
-	div.appendChild(i);
-	descContent.value.appendChild(div);
+	await series.value.updateDescription(text);
 }
 
 function focusDescription() {
@@ -114,12 +117,13 @@ function focusDescription() {
 }
 
 onMounted(async () => {
-	const info = await useVideoStore().getSeriesInfo(seriesId);
-	if (!info || !info.id) {
+	try {
+		const info = await useVideoStore().getSeriesDetail(seriesId);
+		isWaiting.value = false;
+		series.value = info;
+	} catch (error) {
 		router.push({ name: WebRoute.INDEX, replace: true });
-		return;
 	}
-	series.value = info;
 });
 </script>
 
@@ -201,6 +205,20 @@ onMounted(async () => {
 		display: inline-block;
 		width: 100%;
 		padding: var(--inner-padding);
+	}
+}
+
+.detail-desc-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: absolute;
+	inset: 0;
+	background-color: rgba(255, 255, 255, 0.8);
+	border-radius: 5px;
+	.icon-loading {
+		color: var(--primary-color);
+		font-size: 1.2em;
 	}
 }
 

@@ -13,12 +13,10 @@
 <script setup lang="ts">
 import { onBeforeMount } from 'vue';
 import { WebRoute } from '~routes/web';
-import { getSeries } from './api/series';
 import { useVideoStore } from './stores/video';
 
 onBeforeMount(async () => {
-	const series = await getSeries();
-	useVideoStore().setData(series);
+	await useVideoStore().initialize();
 });
 </script>
 

@@ -1,8 +1,11 @@
 import type { Series as ISeries } from '~types/videos';
-import { Season } from './season';
-import { Common } from './common';
 import { getSeries } from '~web/src/api/series';
 import { createPromise } from '@wang-yige/utils';
+import { getSeasons } from '~web/src/api/season';
+import { getEpisodes } from '~web/src/api/episode';
+import { Common } from './common';
+import { Season } from './season';
+import { Episode } from './episode';
 
 const initialize = useVueStatusRef('loading', 'initialized');
 
@@ -41,9 +44,44 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		return result;
 	}
 
+	/**
+	 * 刷新系列的全部缓存，并重新初始化数据
+	 */
 	public static async refresh() {
 		initialize.offInitialized();
 		return await this.initialized();
+	}
+
+	/**
+	 * 请求具体系列的详细信息，优先取缓存，没有则请求接口
+	 */
+	public static async getSeriesDetail(seriesId: string) {
+		await this.initialized();
+		const series = this.cache.get(seriesId);
+		if (!series) {
+			throw new Error(`系列 ${seriesId} 不存在`);
+		}
+		if (!series.seasons.length) {
+			try {
+				const seasonsData = await getSeasons(seriesId);
+				// 读取季和集数据
+				const seasons = await Promise.all(
+					seasonsData.map(async (seasonData) => {
+						const season = new Season(seasonData);
+						if (season.episodes.length) {
+							return season;
+						}
+						const episodes = await getEpisodes(season.id);
+						season.setEpisodes(episodes.map((episode) => new Episode(episode)));
+						return season;
+					}),
+				);
+				series.seasons.splice(0, series.seasons.length, ...seasons);
+			} catch (error) {
+				console.error('获取系列季数据失败', error);
+			}
+		}
+		return series;
 	}
 
 	private _id: Ref<ISeries['id']> = ref('');
@@ -59,6 +97,9 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 
 	private useStatus = useVueStatusRef('title', 'images', 'description', 'date', 'types', 'status');
 
+	/**
+	 * 系列构造函数，因为季和集需要初始化后才能有数据，所以不要直接实例化系列对象，而是通过静态成员方法获取
+	 */
 	constructor(series: ISeries) {
 		if (Series.cache.has(series.id)) {
 			return Series.cache.get(series.id)!;

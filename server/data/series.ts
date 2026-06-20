@@ -91,10 +91,15 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 	/**
 	 * 刷新所有视频系列信息，移除不存在于配置目录中的视频系列，并更新视频系列信息
+	 *
+	 * @param seriesId 视频系列 id，如果指定，只刷新该系列的缓存
 	 */
-	public static async updateSeries() {
+	public static async updateSeries(seriesId?: string) {
 		// 移除不存在于配置目录中的视频系列
 		for (const [key, series] of this.cache) {
+			if (seriesId && key !== seriesId) {
+				continue;
+			}
 			const seriesPath = series.getDirectory();
 			if (!this.isAllowedDirectory(seriesPath)) {
 				await this.deleteCache(key);

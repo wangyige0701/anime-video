@@ -7,7 +7,7 @@ API.interceptors.response.use(
 	(response) => {
 		const data = response.data as Response<any>;
 		if (data.success) {
-			return data as any;
+			return data.data as any;
 		}
 		throw new Error(data.message);
 	},

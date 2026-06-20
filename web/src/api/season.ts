@@ -1,6 +1,6 @@
 import type { Season } from '~types/videos';
 import { ServerRoot } from '~routes/server';
-import { API } from './base';
+import { API } from '@/api';
 
 /**
  * 获取系列的所有季

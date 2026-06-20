@@ -1,4 +1,5 @@
 import type { Season as ISeason } from '~types/videos';
+import { updateSeasonSort, updateSeasonTitle } from '@/api/season';
 import { Episode } from './episode';
 import { Common } from './common';
 
@@ -29,11 +30,10 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	}
 
 	public setEpisodes(episodes: Episode[]) {
-		this.episodes.splice(0, this.episodes.length, ...episodes);
+		this._episodes.value = episodes;
 	}
 
 	// region 属性访问器
-
 	public get id() {
 		return this._id.value;
 	}
@@ -56,13 +56,40 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	// endregion
 
 	// region 属性更新时的响应式状态
-
 	public get titleRef() {
 		return this.useStatus.title;
 	}
 
 	public get sortRef() {
 		return this.useStatus.sort;
+	}
+	// endregion
+
+	// region 更新标题
+	public async updateTitle(title: string) {
+		const oldValue = this._title.value;
+		this._title.value = title;
+		this.useStatus.onTitle();
+		try {
+			await updateSeasonTitle(this.id, title);
+		} catch (error) {
+			this._title.value = oldValue;
+		}
+		this.useStatus.offTitle();
+	}
+	// endregion
+
+	// region 更新排序
+	public async updateSort(sort: number) {
+		const oldValue = this._sort.value;
+		this._sort.value = sort;
+		this.useStatus.onSort();
+		try {
+			await updateSeasonSort(this.id, sort);
+		} catch (error) {
+			this._sort.value = oldValue;
+		}
+		this.useStatus.offSort();
 	}
 	// endregion
 }

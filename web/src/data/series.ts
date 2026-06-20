@@ -1,8 +1,18 @@
 import type { Series as ISeries } from '~types/videos';
 import { createPromise } from '@wang-yige/utils';
-import { getSeries } from '@/api/series';
+import {
+	getSeries,
+	getSeriesDetail,
+	refreshSeries,
+	refreshSeriesById,
+	updateSeriesDate,
+	updateSeriesDescription,
+	updateSeriesImages,
+	updateSeriesStatus,
+	updateSeriesTitle,
+	updateSeriesTypes,
+} from '@/api/series';
 import { getSeasons } from '@/api/season';
-import { getEpisodes } from '@/api/episode';
 import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
@@ -32,10 +42,10 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		initialize.onLoading();
 		try {
 			const series = await getSeries();
-			initialize.onInitialized();
 			for (const seriesItem of series) {
 				result.push(new Series(seriesItem));
 			}
+			initialize.onInitialized();
 		} catch (error) {
 			console.error('初始化系列数据失败', error);
 		}
@@ -49,6 +59,7 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	 */
 	public static async refresh() {
 		initialize.offInitialized();
+		await refreshSeries();
 		return await this.initialized();
 	}
 
@@ -57,31 +68,58 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	 */
 	public static async getSeriesDetail(seriesId: string) {
 		await this.initialized();
-		const series = this.cache.get(seriesId);
+		let series = this.cache.get(seriesId);
 		if (!series) {
-			throw new Error(`系列 ${seriesId} 不存在`);
+			// 没有数据时，直接请求详细信息的接口
+			const seriesDetail = await getSeriesDetail(seriesId);
+			series = new Series(seriesDetail);
+			series.setSeasons(
+				seriesDetail.seasons.map((season) => {
+					const seasonItem = new Season(season);
+					seasonItem.setEpisodes(season.episodes.map((episode) => new Episode(episode)));
+					return seasonItem;
+				}),
+			);
+			return series;
 		}
 		if (!series.seasons.length) {
-			try {
-				const seasonsData = await getSeasons(seriesId);
-				// 读取季和集数据
-				const seasons = await Promise.all(
-					seasonsData.map(async (seasonData) => {
-						const season = new Season(seasonData);
-						if (season.episodes.length) {
-							return season;
-						}
-						const episodes = await getEpisodes(season.id);
-						season.setEpisodes(episodes.map((episode) => new Episode(episode)));
-						return season;
-					}),
-				);
-				series.seasons.splice(0, series.seasons.length, ...seasons);
-			} catch (error) {
-				console.error('获取系列季数据失败', error);
-			}
+			const seasons = await getSeasons(seriesId);
+			series.setSeasons(
+				seasons.map((season) => {
+					const seasonItem = new Season(season);
+					seasonItem.setEpisodes(season.episodes.map((episode) => new Episode(episode)));
+					return seasonItem;
+				}),
+			);
 		}
 		return series;
+	}
+
+	/**
+	 * 刷新指定系列的缓存，包括季和集数据，并重新请求系列数据
+	 * @param seriesId 系列 ID
+	 * @returns 刷新后的系列对象
+	 */
+	public static async refreshSeries(seriesId: string) {
+		if (this.hasCache(seriesId)) {
+			const series = this.cache.get(seriesId)!;
+			for (const season of series.seasons) {
+				for (const episode of season.episodes) {
+					Episode.deleteCache(episode.id);
+				}
+				Season.deleteCache(season.id);
+			}
+		}
+		this.deleteCache(seriesId);
+		await refreshSeriesById(seriesId);
+		return await this.getSeriesDetail(seriesId);
+	}
+
+	public static async getSeriesByPage(page: number, pageSize: number) {
+		await this.initialized();
+		const start = (page - 1) * pageSize;
+		const end = start + pageSize;
+		return [...this.cache.values()].slice(start, end);
 	}
 
 	private _id: Ref<ISeries['id']> = ref('');
@@ -118,6 +156,10 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		this._status.value = series.status;
 
 		Series.cache.set(series.id, this);
+	}
+
+	public setSeasons(seasons: Season[]) {
+		this._seasons.value = seasons;
 	}
 
 	// region 系列属性值
@@ -203,6 +245,138 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	 */
 	public get imagesRef() {
 		return this.useStatus.images;
+	}
+	// endregion
+
+	// region 更新标题
+	public async updateTitle(title: string) {
+		let oldValue = this._title.value;
+		this._title.value = title;
+		this.useStatus.onTitle();
+		try {
+			await updateSeriesTitle(this.id, title);
+		} catch (error) {
+			this._title.value = oldValue;
+		}
+		this.useStatus.offTitle();
+	}
+	// endregion
+
+	// region 更新描述
+	public async updateDescription(description: string) {
+		let oldValue = this._description.value;
+		this._description.value = description;
+		this.useStatus.onDescription();
+		try {
+			await updateSeriesDescription(this.id, description);
+		} catch (error) {
+			this._description.value = oldValue;
+		}
+		this.useStatus.offDescription();
+	}
+	// endregion
+
+	// region 更新日期
+	public async updateDate(year: number, month: number) {
+		let oldValue = this._date.value;
+		this._date.value = [year, month];
+		this.useStatus.onDate();
+		try {
+			await updateSeriesDate(this.id, year, month);
+		} catch (error) {
+			this._date.value = oldValue;
+		}
+		this.useStatus.offDate();
+	}
+	// endregion
+
+	// region 更新类型
+	public async addTypes(types: number[]) {
+		let oldValue = this._types.value;
+		this._types.value = types;
+		this.useStatus.onTypes();
+		try {
+			await updateSeriesTypes('add', this.id, types);
+		} catch (error) {
+			this._types.value = oldValue;
+		}
+		this.useStatus.offTypes();
+	}
+
+	public async removeTypes(types: number[]) {
+		let oldValue = this._types.value;
+		this._types.value = types;
+		this.useStatus.onTypes();
+		try {
+			await updateSeriesTypes('remove', this.id, types);
+		} catch (error) {
+			this._types.value = oldValue;
+		}
+		this.useStatus.offTypes();
+	}
+
+	public async updateTypes(types: number[]) {
+		let oldValue = this._types.value;
+		this._types.value = types;
+		this.useStatus.onTypes();
+		try {
+			await updateSeriesTypes('set', this.id, types);
+		} catch (error) {
+			this._types.value = oldValue;
+		}
+		this.useStatus.offTypes();
+	}
+	// endregion
+
+	// region 更新图片
+	public async addImages(images: string[]) {
+		let oldValue = this._images.value;
+		this._images.value = images;
+		this.useStatus.onImages();
+		try {
+			await updateSeriesImages('add', this.id, images);
+		} catch (error) {
+			this._images.value = oldValue;
+		}
+		this.useStatus.offImages();
+	}
+
+	public async removeImages(images: string[]) {
+		let oldValue = this._images.value;
+		this._images.value = images;
+		this.useStatus.onImages();
+		try {
+			await updateSeriesImages('remove', this.id, images);
+		} catch (error) {
+			this._images.value = oldValue;
+		}
+		this.useStatus.offImages();
+	}
+
+	public async updateImages(images: string[]) {
+		let oldValue = this._images.value;
+		this._images.value = images;
+		this.useStatus.onImages();
+		try {
+			await updateSeriesImages('set', this.id, images);
+		} catch (error) {
+			this._images.value = oldValue;
+		}
+		this.useStatus.offImages();
+	}
+	// endregion
+
+	// region 更新状态
+	public async updateStatus(status: number) {
+		let oldValue = this._status.value;
+		this._status.value = status;
+		this.useStatus.onStatus();
+		try {
+			await updateSeriesStatus(this.id, status);
+		} catch (error) {
+			this._status.value = oldValue;
+		}
+		this.useStatus.offStatus();
 	}
 	// endregion
 }

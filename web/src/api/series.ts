@@ -1,6 +1,6 @@
 import type { Series } from '~types/videos';
 import { ServerRoot } from '~routes/server';
-import { API } from './base';
+import { API } from '@/api';
 
 /**
  * 获取所有系列信息，不包含视频集和视频季信息
@@ -11,6 +11,10 @@ export function getSeries() {
 
 export function refreshSeries() {
 	return API.post<any, null>(`${ServerRoot.DATA}/series/refresh`);
+}
+
+export function refreshSeriesById(seriesId: string) {
+	return API.post<any, null>(`${ServerRoot.DATA}/series/refresh/${seriesId}`);
 }
 
 export function getSeriesDetail(seriesId: string) {
@@ -42,3 +46,5 @@ export function updateSeriesTypes(type: 'add' | 'remove' | 'set', seriesId: stri
 export function updateSeriesImages(type: 'add' | 'remove' | 'set', seriesId: string, images: string[]) {
 	return API.put<any, null>(`${ServerRoot.DATA}/series/${seriesId}/images/${type}`, { images });
 }
+
+// endregion

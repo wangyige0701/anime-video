@@ -6,6 +6,7 @@ export function error(): Middleware {
 		try {
 			await next();
 		} catch (error) {
+			console.error(error);
 			if (error instanceof ApiError) {
 				ctx.status = error.getCode();
 				ctx.body = error.getBody();

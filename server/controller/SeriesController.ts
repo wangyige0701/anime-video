@@ -5,6 +5,7 @@ import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
 import { seriesStatus } from '~config/seriesStatus';
 import { seriesTypes } from '~config/seriesTypes';
+import { ApiError } from '~server/src/error';
 
 const minSeriesStatus = seriesStatus[0].id;
 const maxSeriesStatus = seriesStatus[seriesStatus.length - 1].id;
@@ -27,7 +28,13 @@ export class SeriesController {
 	@HttpMethod.Post('/series/refresh')
 	public async refreshSeries(@Context() ctx: Koa.Context) {
 		await Series.updateSeries();
-		return ctx.Success(await this.getSeries(ctx));
+		return ctx.Success();
+	}
+
+	@HttpMethod.Post('/series/refresh/:seriesId')
+	public async refreshSeriesById(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		await Series.updateSeries(seriesId);
+		return ctx.Success();
 	}
 
 	@HttpMethod.Get('/series/:seriesId')
@@ -80,12 +87,12 @@ export class SeriesController {
 		return ctx.Success();
 	}
 
-	@HttpMethod.Put('/series/:seriesId/types/:operation(add|remove|set)')
+	@HttpMethod.Put('/series/:seriesId/types/:operation')
 	@Validate((z) => z.object({ types: z.array(z.number().int().min(minSeriesType).max(maxSeriesType)) }))
 	public async updateSeriesTypes(
 		@Context() ctx: Koa.Context,
 		@Inject('seriesId') seriesId: string,
-		@Inject('operation') operation: 'add' | 'remove' | 'set',
+		@Inject('operation', validateOperation) operation: 'add' | 'remove' | 'set',
 	) {
 		const { types } = ctx.request.body as { types: number[] };
 		const series = await Series.getSeriesById(seriesId);
@@ -100,12 +107,12 @@ export class SeriesController {
 		return ctx.Success();
 	}
 
-	@HttpMethod.Put('/series/:seriesId/images/:operation(add|remove|set)')
+	@HttpMethod.Put('/series/:seriesId/images/:operation')
 	@Validate((z) => z.object({ images: z.array(z.string().min(1)) }))
 	public async updateSeriesImages(
 		@Context() ctx: Koa.Context,
 		@Inject('seriesId') seriesId: string,
-		@Inject('operation') operation: 'add' | 'remove' | 'set',
+		@Inject('operation', validateOperation) operation: 'add' | 'remove' | 'set',
 	) {
 		const { images } = ctx.request.body as { images: string[] };
 		const series = await Series.getSeriesById(seriesId);
@@ -119,4 +126,11 @@ export class SeriesController {
 		await series.waitDataSave();
 		return ctx.Success();
 	}
+}
+
+function validateOperation(param: string) {
+	if (!['add', 'remove', 'set'].includes(param)) {
+		throw new ApiError(400, 'operation 参数必须是 add, remove, 或 set');
+	}
+	return param;
 }

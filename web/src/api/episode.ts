@@ -1,6 +1,6 @@
 import type { Episode } from '~types/videos';
 import { ServerRoot } from '~routes/server';
-import { API } from './base';
+import { API } from '@/api';
 
 /**
  * 获取季的所有集

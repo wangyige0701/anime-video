@@ -1,11 +1,11 @@
 <template>
-	<div class="app">
+	<div class="app" :class="useDeviceStore().className">
 		<main class="main">
-			<RouterView v-slot="{ Component }">
-				<KeepAlive :include="[WebRoute.INDEX]">
+			<router-view v-slot="{ Component }">
+				<keep-alive :include="[WebRoute.INDEX]">
 					<component :is="Component"></component>
-				</KeepAlive>
-			</RouterView>
+				</keep-alive>
+			</router-view>
 		</main>
 	</div>
 </template>
@@ -14,6 +14,7 @@
 import { onBeforeMount } from 'vue';
 import { WebRoute } from '~routes/web';
 import { useVideoStore } from './stores/video';
+import { useDeviceStore } from './stores/device';
 
 onBeforeMount(async () => {
 	await useVideoStore().initialize();

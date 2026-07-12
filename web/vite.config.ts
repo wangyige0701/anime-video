@@ -30,6 +30,7 @@ export default defineConfig({
 		}),
 		Components({
 			dirs: ['src/components'],
+			globsExclude: ['src/components/**/layouts/**/*.vue'],
 			extensions: ['vue', 'tsx'],
 			deep: true,
 			dts: 'components.d.ts',

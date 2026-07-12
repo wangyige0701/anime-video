@@ -52,3 +52,23 @@
 .icon-loading::before {
 	content: '\e634';
 }
+
+/* 首页 &#xe622; */
+.icon-home::before {
+	content: '\e622';
+}
+
+/* 设置 &#xe620; */
+.icon-settiing::before {
+	content: '\e620';
+}
+
+/* 历史 &#xe61a; */
+.icon-history::before {
+	content: '\e61a';
+}
+
+/* 喜欢 &#xe613; */
+.icon-like::before {
+	content: '\e613';
+}

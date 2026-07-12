@@ -1,5 +1,7 @@
-import '@/assets/style.scss';
-import '@/assets/iconfont.css';
+import '@/assets/iconfont.scss';
+import '@/assets/root.scss';
+import '@/assets/main.scss';
+import '@/assets/elements.scss';
 
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';

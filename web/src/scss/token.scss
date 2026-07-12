@@ -1,0 +1,26 @@
+@use 'sass:map';
+
+$themes: (
+	xingyezi: #7b61ff,
+	shenhailan: #4a90e2,
+	boheqing: #21c7ab,
+	yinghuafen: #ff6fa7,
+	riluocheng: #ff9e4d,
+);
+
+$radius-base: 8px;
+$radius-lg: 10px;
+$radius-ex-lg: 12px;
+$radius-sm: 6px;
+$radius-ex-sm: 4px;
+
+// css 变量名
+$var-color: ();
+@for $i from 1 through 9 {
+	@if ($i == 1) {
+		$var-color: map.set($var-color, 'theme', var(--theme-color));
+	} @else {
+		$var-color: map.set($var-color, 'theme-l-#{$i}', var(--theme-color-light-#{$i}));
+		$var-color: map.set($var-color, 'theme-d-#{$i}', var(--theme-color-dark-#{$i}));
+	}
+}

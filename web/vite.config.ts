@@ -5,6 +5,7 @@ import vueDevTools from 'vite-plugin-vue-devtools';
 import VueRouter from 'vue-router/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 import { getPathAlias } from './vite/alias';
 
 // https://vite.dev/config/
@@ -25,10 +26,12 @@ export default defineConfig({
 		vueJsx(),
 		vueDevTools(),
 		AutoImport({
+			resolvers: [ElementPlusResolver()],
 			imports: ['vue', 'vue-router', 'pinia', { 'status-ref/vue': ['useVueStatusRef'] }],
 			dts: 'auto-imports.d.ts',
 		}),
 		Components({
+			resolvers: [ElementPlusResolver()],
 			dirs: ['src/components'],
 			globsExclude: ['src/components/**/layouts/**/*.vue'],
 			extensions: ['vue', 'tsx'],

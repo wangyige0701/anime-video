@@ -1,0 +1,9 @@
+@function varName($names...) {
+	$result: '';
+	@each $name in $names {
+		@if $name != '' {
+			$result: $result + '-' + $name;
+		}
+	}
+	@return '-' + $result;
+}

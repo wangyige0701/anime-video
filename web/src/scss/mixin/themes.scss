@@ -1,0 +1,36 @@
+@use 'sass:color';
+@use 'sass:math';
+@use '@/scss/token.scss' as token;
+@use '@/scss/function/var.scss' as var;
+
+@mixin themes() {
+	@each $name, $color in token.$themes {
+		@for $i from 1 through 9 {
+			@if $i == 1 {
+				#{var.varName('theme', $name)}: #{$color};
+			} @else {
+				#{var.varName('theme', $name, 'light', $i)}: #{color.mix(
+						#fff,
+						$color,
+						math.percentage(math.div($i - 1, 10))
+					)};
+				#{var.varName('theme', $name, 'dark', $i)}: #{color.mix(
+						#000,
+						$color,
+						math.percentage(math.div($i - 1, 10))
+					)};
+			}
+		}
+	}
+}
+
+@mixin useTheme($name) {
+	@for $i from 1 through 9 {
+		@if $i == 1 {
+			--theme-color: var(#{var.varName('theme', $name)});
+		} @else {
+			--theme-color-light-#{$i}: var(#{var.varName('theme', $name, 'light', $i)});
+			--theme-color-dark-#{$i}: var(#{var.varName('theme', $name, 'dark', $i)});
+		}
+	}
+}

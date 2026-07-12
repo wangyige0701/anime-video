@@ -1,0 +1,19 @@
+@font-face {
+	font-family: 'icofont';
+	src:
+		url(./icon/iconfont.woff2) format('woff2'),
+		url(./icon/iconfont.woff) format('woff'),
+		url(./icon/iconfont.ttf) format('truetype');
+}
+
+[class^='icon-'],
+[class*=' icon-'],
+.iconfont {
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	line-height: 1em;
+	font-family: 'icofont' !important;
+	font-size: inherit;
+	font-style: normal;
+}

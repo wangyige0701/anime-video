@@ -63,6 +63,10 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		return await this.initialized();
 	}
 
+	public static get isInitialized() {
+		return initialize.initialized;
+	}
+
 	/**
 	 * 请求具体系列的详细信息，优先取缓存，没有则请求接口
 	 */

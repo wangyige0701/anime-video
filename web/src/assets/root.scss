@@ -3,7 +3,6 @@
 @use '@/scss/token.scss' as token;
 
 html:root {
-	@include theme.useTheme('xingyezi');
 	@include theme.themes();
 
 	font-size: 16px;
@@ -20,11 +19,15 @@ html:root {
 }
 
 html:root {
-	--el-color-primary: #{map.get(token.$var-color, 'theme')};
-	--el-color-primary-light-3: #{map.get(token.$var-color, 'theme-l-3')};
-	--el-color-primary-light-5: #{map.get(token.$var-color, 'theme-l-5')};
-	--el-color-primary-light-7: #{map.get(token.$var-color, 'theme-l-7')};
-	--el-color-primary-light-8: #{map.get(token.$var-color, 'theme-l-8')};
-	--el-color-primary-light-9: #{map.get(token.$var-color, 'theme-l-9')};
-	--el-color-primary-dark-2: #{map.get(token.$var-color, 'theme-d-2')};
+	@include theme.useTheme('xingyezi');
+}
+
+html:root {
+	--el-color-primary: #{map.get(token.$theme-color, 'primary')};
+	--el-color-primary-light-3: #{map.get(token.$theme-color, 'l-3')};
+	--el-color-primary-light-5: #{map.get(token.$theme-color, 'l-5')};
+	--el-color-primary-light-7: #{map.get(token.$theme-color, 'l-7')};
+	--el-color-primary-light-8: #{map.get(token.$theme-color, 'l-8')};
+	--el-color-primary-light-9: #{map.get(token.$theme-color, 'l-9')};
+	--el-color-primary-dark-2: #{map.get(token.$theme-color, 'd-2')};
 }

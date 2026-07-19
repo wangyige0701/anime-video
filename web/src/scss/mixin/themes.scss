@@ -1,10 +1,21 @@
 @use 'sass:color';
 @use 'sass:math';
-@use '@/scss/token.scss' as token;
+@use 'sass:map';
 @use '@/scss/function/var.scss' as var;
 
+$themes: (
+	xingyezi: #7b61ff,
+	shenhailan: #4a90e2,
+	boheqing: #21c7ab,
+	yinghuafen: #ff6fa7,
+	riluocheng: #ff9e4d,
+);
+
+// css 变量名
+$theme-color: ();
+
 @mixin themes() {
-	@each $name, $color in token.$themes {
+	@each $name, $color in $themes {
 		@for $i from 1 through 9 {
 			@if $i == 1 {
 				#{var.varName('theme', $name)}: #{$color};
@@ -21,6 +32,9 @@
 					)};
 			}
 		}
+		#{var.varName('theme', 'bg', $name)}:
+			radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
+			linear-gradient(180deg, color.mix(#000, $color, 5%), color.mix(#000, $color, 50%));
 	}
 }
 
@@ -33,4 +47,15 @@
 			--theme-color-dark-#{$i}: var(#{var.varName('theme', $name, 'dark', $i)});
 		}
 	}
+	--theme-bg: var(#{var.varName('theme', 'bg', $name)});
+}
+
+@for $i from 1 through 9 {
+	@if ($i == 1) {
+		$theme-color: map.set($theme-color, 'primary', var(--theme-color));
+	} @else {
+		$theme-color: map.set($theme-color, 'l-#{$i}', var(--theme-color-light-#{$i}));
+		$theme-color: map.set($theme-color, 'd-#{$i}', var(--theme-color-dark-#{$i}));
+	}
+	$theme-color: map.set($theme-color, 'bg', var(--theme-bg));
 }

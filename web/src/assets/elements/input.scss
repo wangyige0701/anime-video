@@ -1,0 +1,14 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+body {
+	.el-input {
+		--el-border-color: #{token.$border-color};
+		--el-input-hover-border-color: #{token.$border-hover-color};
+		--el-input-focus-border-color: #{token.$border-focus-color};
+		--el-input-bg-color: #{token.$input-bg-color};
+		--el-input-placeholder-color: #{token.$text-color-placeholder};
+		--el-input-icon-color: #{token.$text-color-placeholder};
+		--el-input-text-color: #{token.$text-color-primary};
+	}
+}

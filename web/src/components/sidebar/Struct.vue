@@ -78,13 +78,13 @@ router.beforeEach((to, from) => {
 	top: calc((100% - token.$main-padding) / 2);
 	left: token.$main-padding;
 	transform: translateY(-50%);
-	background-color: map.get(token.$theme-color, 'l-2');
+	background-color: map.get(token.$theme-color, 'sidebar-bg');
 	padding: 1rem 0;
 	border-radius: 15px;
 	color: map.get(token.$theme-color, 'l-9');
 	box-shadow:
 		0 5px 10px map.get(token.$theme-color, 'd-3'),
-		0 0 2px map.get(token.$theme-color, 'l-9');
+		0 0 0 1px map.get(token.$theme-color, 'primary');
 }
 
 .sidebar-item {

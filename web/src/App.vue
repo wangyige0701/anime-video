@@ -10,6 +10,8 @@
 						<component :is="Component"></component>
 					</keep-alive>
 				</router-view>
+
+				<Sidebar />
 			</el-main>
 		</el-container>
 	</el-config-provider>
@@ -51,5 +53,7 @@ onBeforeMount(async () => {
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
+	padding: token.$main-padding;
+	padding-left: calc(token.$menu-width + token.$main-padding * 2);
 }
 </style>

@@ -100,7 +100,8 @@ router.beforeEach((to, from) => {
 	line-height: 1;
 	transition:
 		background-color 0.3s ease,
-		color 0.3s ease;
+		color 0.3s ease,
+		filter 0.3s ease;
 	&.active,
 	&:hover {
 		background-color: map.get(token.$theme-color, 'd-2');

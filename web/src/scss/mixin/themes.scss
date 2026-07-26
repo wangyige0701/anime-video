@@ -36,6 +36,9 @@ $theme-color: ();
 			radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
 			linear-gradient(180deg, color.mix(#000, $color, 5%), color.mix(#000, $color, 50%));
 		#{var.varName('sidebar', 'bg', $name)}: rgba(color.mix(#fff, $color, 10%), 0.8);
+		#{var.varName('header', 'bg', $name)}:
+			radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
+			rgba(color.mix(#000, $color, 10%), 0.5);
 	}
 }
 
@@ -50,6 +53,7 @@ $theme-color: ();
 	}
 	--theme-bg: var(#{var.varName('theme', 'bg', $name)});
 	--sidebar-bg: var(#{var.varName('sidebar', 'bg', $name)});
+	--header-bg: var(#{var.varName('header', 'bg', $name)});
 }
 
 @for $i from 1 through 9 {
@@ -61,4 +65,5 @@ $theme-color: ();
 	}
 	$theme-color: map.set($theme-color, 'bg', var(--theme-bg));
 	$theme-color: map.set($theme-color, 'sidebar-bg', var(--sidebar-bg));
+	$theme-color: map.set($theme-color, 'header-bg', var(--header-bg));
 }

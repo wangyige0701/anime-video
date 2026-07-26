@@ -31,3 +31,8 @@ html:root {
 	--el-color-primary-light-9: #{map.get(token.$theme-color, 'l-9')};
 	--el-color-primary-dark-2: #{map.get(token.$theme-color, 'd-2')};
 }
+
+::selection {
+	background: map.get(token.$theme-color, 'd-2');
+	color: #fff;
+}

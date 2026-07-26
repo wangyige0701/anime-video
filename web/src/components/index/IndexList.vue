@@ -1,0 +1,161 @@
+<template>
+	<div class="index-list">
+		<template v-for="item in datas" :key="item.id">
+			<router-link class="item" :to="{ name: WebRoute.DETAIL, params: { seriesId: item.id, name: item.name } }">
+				<div class="img-wrap">
+					<el-image
+						class="img"
+						:src="getImageUrl(getSeriesPath(item.images[0] ?? ''))"
+						fit="cover"
+					></el-image>
+				</div>
+				<div class="name">
+					<el-tooltip :content="item.name" placement="bottom">
+						<span class="name-text">{{ item.name }}</span>
+					</el-tooltip>
+				</div>
+			</router-link>
+		</template>
+	</div>
+</template>
+
+<script setup lang="ts">
+import type { Series } from '~types/videos';
+import { endReachedEmitter } from '@/events/end-reached';
+import { useVideoStore } from '@/stores/video';
+import { getSeriesPath } from '@/utils/series';
+import { getImageUrl } from '~routes/server';
+import { WebRoute } from '~routes/web';
+
+const props = withDefaults(
+	defineProps<{
+		pageSize?: number;
+	}>(),
+	{
+		pageSize: 20,
+	},
+);
+
+const status = useVueStatusRef('loading', 'over');
+const datas = shallowReactive<Series[]>([]);
+const page = ref(1);
+
+endReachedEmitter.on('endReached', (event) => {
+	if (status.over || status.loading) {
+		return;
+	}
+	if (event.direction !== 'bottom') {
+		return;
+	}
+	page.value++;
+	getData();
+});
+
+async function getData() {
+	status.onLoading();
+	try {
+		const data = await useVideoStore().pagination(page.value, props.pageSize);
+		if (!data.length) {
+			status.onOver();
+		} else {
+			datas.push(...data);
+		}
+	} catch (error) {}
+	status.offLoading();
+}
+
+onBeforeMount(() => {
+	getData();
+});
+</script>
+
+<style scoped lang="scss">
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+.index-list {
+	--count: 8;
+	display: grid;
+	grid-template-columns: repeat(var(--count), 1fr);
+	column-gap: token.$main-padding;
+	row-gap: calc(#{token.$main-padding} - 1rem);
+	@media (min-width: 1921px) {
+		--count: 10;
+	}
+	@media (max-width: 1720px) {
+		--count: 7;
+	}
+	@media (max-width: 1520px) {
+		--count: 6;
+	}
+	@media (max-width: 1320px) {
+		--count: 5;
+	}
+	@media (max-width: 1120px) {
+		--count: 4;
+	}
+	@media (max-width: 920px) {
+		--count: 3;
+	}
+	@media (max-width: 768px) {
+		--count: 2;
+	}
+}
+
+.item {
+	cursor: pointer;
+	display: block;
+	width: 100%;
+	min-width: 0;
+	.img-wrap {
+		width: 100%;
+		padding-top: 150%;
+		border-radius: 10px;
+		overflow: hidden;
+		position: relative;
+		transition: box-shadow 0.3s ease;
+	}
+	.img {
+		width: 100%;
+		height: 100%;
+		position: absolute;
+		top: 0;
+		left: 0;
+		transition: transform 0.3s ease;
+	}
+	.name {
+		width: 100%;
+		color: token.$text-color-regular;
+		font-size: 0.875rem;
+		line-height: 1;
+		padding: 1em 5px;
+		text-align: center;
+		overflow: hidden;
+	}
+	.name-text {
+		display: inline-block;
+		width: 100%;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		transition:
+			filter 0.3s ease,
+			color 0.3s ease;
+	}
+	&:hover {
+		.img-wrap {
+			box-shadow:
+				0 0 4px 0 map.get(token.$theme-color, 'primary'),
+				0 0 8px 0 map.get(token.$theme-color, 'l-5'),
+				0 0 12px 0 map.get(token.$theme-color, 'l-9');
+		}
+		.img {
+			transform: scale(1.1);
+		}
+		.name-text {
+			color: token.$text-color-regular;
+			filter: drop-shadow(0 0 6px map.get(token.$theme-color, 'l-9'));
+		}
+	}
+}
+</style>

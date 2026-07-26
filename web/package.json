@@ -13,10 +13,12 @@
 	},
 	"dependencies": {
 		"@element-plus/icons-vue": "^2.3.2",
+		"@vueuse/components": "^14.3.0",
 		"@vueuse/core": "^14.3.0",
 		"axios-useful": "^0.0.1",
 		"element-plus": "^2.14.3",
 		"hls.js": "^1.6.15",
+		"mitt": "^3.0.1",
 		"pinia": "^3.0.4",
 		"status-ref": "^1.0.2",
 		"vue": "^3.5.35",

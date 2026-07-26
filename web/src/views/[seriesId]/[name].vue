@@ -1,13 +1,13 @@
 <template></template>
 
 <script setup lang="ts">
+import { ElMessage } from 'element-plus';
 import { Series } from '@/data/series';
 import { useVideoStore } from '@/stores/video';
 import { getSeriesPath } from '@/utils/series';
 import { getImageUrl } from '~routes/server';
 import { WebRoute } from '~routes/web';
 import router from '@/router';
-import { ElMessage } from 'element-plus';
 
 definePage({
 	name: 'Detail',

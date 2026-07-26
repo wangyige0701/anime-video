@@ -1,24 +1,37 @@
-<template></template>
+<template>
+	<div class="index">
+		<div class="list">
+			<IndexList :page-size="40" />
+		</div>
+		<div class="types"></div>
+	</div>
+</template>
 
 <script setup lang="ts">
-import type { Series } from '~types/videos';
-import { useVideoStore } from '@/stores/video';
-
 definePage({
 	name: 'Index',
 });
-
-const pageSize = 20;
-const videos = shallowReactive<Series[]>([]);
-
-async function getVideos(page = 1) {
-	const data = await useVideoStore().pagination(page, pageSize);
-	videos.splice(0, videos.length, ...data);
-}
-
-onBeforeMount(async () => {
-	await getVideos();
-});
 </script>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+.index {
+	--type-bar-height: 45px;
+	--type-bar-gap: 5px;
+	width: 100%;
+	flex: 1;
+	position: relative;
+}
+
+.list {
+	height: auto;
+	padding-bottom: calc(var(--type-bar-height) + var(--type-bar-gap) * 2);
+}
+
+.types {
+	width: 100%;
+	height: var(--type-bar-height);
+	position: absolute;
+	left: 0;
+	bottom: 5px;
+}
+</style>

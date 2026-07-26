@@ -2,14 +2,18 @@
 	<el-config-provider>
 		<el-container class="container" :class="useDeviceStore().className">
 			<el-header class="header">
-				<Search />
+				<Search v-model:keyword="keyword" />
 			</el-header>
 			<el-main class="main">
-				<router-view v-slot="{ Component }">
-					<keep-alive :include="[WebRoute.INDEX]">
-						<component :is="Component"></component>
-					</keep-alive>
-				</router-view>
+				<el-scrollbar view-class="main-container" @end-reached="endReached">
+					<div class="scroll-container">
+						<router-view v-slot="{ Component }">
+							<keep-alive :include="[WebRoute.INDEX]">
+								<component :is="Component"></component>
+							</keep-alive>
+						</router-view>
+					</div>
+				</el-scrollbar>
 
 				<Sidebar />
 			</el-main>
@@ -18,10 +22,18 @@
 </template>
 
 <script setup lang="ts">
+import type { ScrollbarDirection } from 'element-plus';
 import { onBeforeMount } from 'vue';
 import { WebRoute } from '~routes/web';
 import { useVideoStore } from './stores/video';
 import { useDeviceStore } from './stores/device';
+import { endReachedEmitter } from './events/end-reached';
+
+const keyword = ref('');
+
+function endReached(direction: ScrollbarDirection) {
+	endReachedEmitter.emit('endReached', { direction });
+}
 
 onBeforeMount(async () => {
 	await useVideoStore().initialize();
@@ -41,11 +53,15 @@ onBeforeMount(async () => {
 
 .header {
 	--el-header-height: #{token.$header-height};
+	width: 100%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	position: sticky;
+	position: fixed;
 	top: 0;
+	left: 0;
+	background: map.get(token.$theme-color, 'header-bg');
+	backdrop-filter: blur(5px);
 	z-index: 100;
 }
 
@@ -53,7 +69,34 @@ onBeforeMount(async () => {
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
-	padding: token.$main-padding;
-	padding-left: calc(token.$menu-width + token.$main-padding * 2);
+	padding-top: 0;
+	padding-left: calc(token.$menu-width + token.$main-padding);
+	padding-right: 0;
+	padding-bottom: 0;
+	.el-scrollbar {
+		--el-scrollbar-bg-color: #{map.get(token.$theme-color, 'l-9')};
+		--el-scrollbar-hover-bg-color: #{map.get(token.$theme-color, 'l-6')};
+	}
+	:deep(.el-scrollbar__wrap) {
+		padding-left: token.$main-padding;
+	}
+	:deep(.el-scrollbar__bar) {
+		z-index: 9999;
+	}
+	:deep(.main-container) {
+		display: flex;
+		flex-direction: column;
+		min-height: 100%;
+		padding-right: token.$main-padding;
+		padding-bottom: token.$main-padding;
+	}
+}
+
+.scroll-container {
+	width: 100%;
+	display: flex;
+	flex-direction: column;
+	flex: auto;
+	padding-top: calc(token.$main-padding + token.$header-height);
 }
 </style>

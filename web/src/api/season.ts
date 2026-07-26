@@ -1,4 +1,5 @@
 import type { Season } from '~types/videos';
+import { AxiosRequest } from 'axios-useful';
 import { ServerRoot } from '~routes/server';
 import { API } from '@/api';
 
@@ -7,7 +8,12 @@ import { API } from '@/api';
  * @param seriesId 系列ID
  */
 export function getSeasons(seriesId: string) {
-	return API.get<any, Season[]>(`${ServerRoot.DATA}/seasons/${seriesId}`);
+	return API.get<any, Season[]>(`${ServerRoot.DATA}/seasons/${seriesId}`, {
+		retry: {
+			count: 2,
+			delay: 500,
+		},
+	});
 }
 
 /**
@@ -15,13 +21,34 @@ export function getSeasons(seriesId: string) {
  * @param seasonId 季ID
  */
 export function getSeasonById(seasonId: string) {
-	return API.get<any, Season>(`${ServerRoot.DATA}/season/${seasonId}`);
+	return API.get<any, Season>(`${ServerRoot.DATA}/season/${seasonId}`, {
+		retry: {
+			count: 2,
+			delay: 500,
+		},
+	});
 }
 
 export function updateSeasonSort(seasonId: string, sort: number) {
-	return API.put<any, null>(`${ServerRoot.DATA}/season/${seasonId}/sort`, { sort });
+	return API.put<any, null>(
+		`${ServerRoot.DATA}/season/${seasonId}/sort`,
+		{ sort },
+		{
+			single: {
+				type: AxiosRequest.Single.PREV,
+			},
+		},
+	);
 }
 
 export function updateSeasonTitle(seasonId: string, title: string) {
-	return API.put<any, null>(`${ServerRoot.DATA}/season/${seasonId}/title`, { title });
+	return API.put<any, null>(
+		`${ServerRoot.DATA}/season/${seasonId}/title`,
+		{ title },
+		{
+			single: {
+				type: AxiosRequest.Single.PREV,
+			},
+		},
+	);
 }

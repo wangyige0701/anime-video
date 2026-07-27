@@ -2,7 +2,7 @@
 	<el-config-provider>
 		<el-container class="container" :class="useDeviceStore().className">
 			<el-header class="header">
-				<Search v-model:keyword="keyword" />
+				<Search />
 			</el-header>
 			<el-main class="main">
 				<el-scrollbar view-class="main-container" @end-reached="endReached">
@@ -28,8 +28,6 @@ import { WebRoute } from '~routes/web';
 import { useVideoStore } from './stores/video';
 import { useDeviceStore } from './stores/device';
 import { endReachedEmitter } from './events/end-reached';
-
-const keyword = ref('');
 
 function endReached(direction: ScrollbarDirection) {
 	endReachedEmitter.emit('endReached', { direction });

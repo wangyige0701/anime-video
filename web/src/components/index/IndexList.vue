@@ -36,9 +36,22 @@ const props = withDefaults(
 	},
 );
 
+const route = useRoute();
 const status = useVueStatusRef('loading', 'over');
 const datas = shallowReactive<Series[]>([]);
 const page = ref(1);
+const keyword = ref<string>((route.query.keyword as string) || '');
+
+watch(
+	() => route.query.keyword,
+	(newValue) => {
+		keyword.value = newValue as string;
+		datas.length = 0;
+		page.value = 1;
+		getData();
+	},
+	{ flush: 'post' },
+);
 
 endReachedEmitter.on('endReached', (event) => {
 	if (status.over || status.loading) {
@@ -54,7 +67,7 @@ endReachedEmitter.on('endReached', (event) => {
 async function getData() {
 	status.onLoading();
 	try {
-		const data = await useVideoStore().pagination(page.value, props.pageSize);
+		const data = await useVideoStore().pagination(page.value, props.pageSize, keyword.value);
 		if (!data.length) {
 			status.onOver();
 		} else {
@@ -109,7 +122,7 @@ onBeforeMount(() => {
 	min-width: 0;
 	.img-wrap {
 		width: 100%;
-		padding-top: 150%;
+		padding-top: token.$image-radio;
 		border-radius: 10px;
 		overflow: hidden;
 		position: relative;

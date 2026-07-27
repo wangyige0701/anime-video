@@ -57,6 +57,7 @@ function updateRoute(route: RouteLocationNormalized) {
 			return;
 		}
 	}
+	active.value = '';
 }
 
 router.beforeEach((to, from) => {

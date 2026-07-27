@@ -119,10 +119,17 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		return await this.getSeriesDetail(seriesId);
 	}
 
-	public static async getSeriesByPage(page: number, pageSize: number) {
+	public static async getSeriesByPage(page: number, pageSize: number, keyword?: string) {
 		await this.initialized();
 		const start = (page - 1) * pageSize;
 		const end = start + pageSize;
+		if (keyword) {
+			return [...this.cache.values()]
+				.filter((series) => {
+					return series.title.includes(keyword) || series.description.includes(keyword);
+				})
+				.slice(start, end);
+		}
 		return [...this.cache.values()].slice(start, end);
 	}
 

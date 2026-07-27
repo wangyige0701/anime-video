@@ -85,6 +85,7 @@ onBeforeMount(() => {
 <style scoped lang="scss">
 @use 'sass:map';
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/image.scss' as image;
 
 .index-list {
 	--count: 8;
@@ -121,19 +122,11 @@ onBeforeMount(() => {
 	width: 100%;
 	min-width: 0;
 	.img-wrap {
-		width: 100%;
-		padding-top: token.$image-radio;
-		border-radius: 10px;
-		overflow: hidden;
-		position: relative;
+		@include image.image-wrap;
 		transition: box-shadow 0.3s ease;
 	}
 	.img {
-		width: 100%;
-		height: 100%;
-		position: absolute;
-		top: 0;
-		left: 0;
+		@include image.image;
 		transition: transform 0.3s ease;
 	}
 	.name {
@@ -158,16 +151,16 @@ onBeforeMount(() => {
 	&:hover {
 		.img-wrap {
 			box-shadow:
-				0 0 4px 0 map.get(token.$theme-color, 'primary'),
-				0 0 8px 0 map.get(token.$theme-color, 'l-5'),
-				0 0 12px 0 map.get(token.$theme-color, 'l-9');
+				0 0 4px 0 map.get(token.$theme, 'primary'),
+				0 0 8px 0 map.get(token.$theme, 'l-5'),
+				0 0 12px 0 map.get(token.$theme, 'l-9');
 		}
 		.img {
 			transform: scale(1.1);
 		}
 		.name-text {
 			color: token.$text-color-regular;
-			filter: drop-shadow(0 0 6px map.get(token.$theme-color, 'l-9'));
+			filter: drop-shadow(0 0 6px map.get(token.$theme, 'l-9'));
 		}
 	}
 }

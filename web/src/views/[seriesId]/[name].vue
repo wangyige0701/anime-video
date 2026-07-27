@@ -1,4 +1,24 @@
-<template></template>
+<template>
+	<div class="detail">
+		<div class="top">
+			<div class="image-container">
+				<div class="image-wrap">
+					<div class="image">
+						<template v-for="(image, index) in series.images" :key="image">
+							<el-image
+								class="image-view"
+								:src="getImageUrl(getSeriesPath(image))"
+								fit="cover"
+								:preview-src-list="previewSrcList"
+								:initial-index="index"
+							></el-image>
+						</template>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</template>
 
 <script setup lang="ts">
 import { ElMessage } from 'element-plus';
@@ -16,11 +36,11 @@ definePage({
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
 const status = useVueStatusRef('waiting', 'modifyDescription').onWaiting();
 const series = shallowRef<Series>({} as Series);
-const image = computed(() => {
+const previewSrcList = computed(() => {
 	if (series.value.images?.length) {
-		return getImageUrl(getSeriesPath(series.value.images[0]!));
+		return series.value.images.map((image) => getImageUrl(getSeriesPath(image)));
 	}
-	return '';
+	return [];
 });
 
 async function endEditDescription(value: string) {
@@ -44,4 +64,37 @@ onMounted(async () => {
 });
 </script>
 
-<style scoped lang="scss"></style>
+<style scoped lang="scss">
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+@use '@/scss/mixin/image.scss' as image;
+
+.detail {
+	width: 100%;
+}
+
+.top {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	gap: 20px;
+}
+
+.image-container {
+	width: 220px;
+}
+
+.image-wrap {
+	cursor: pointer;
+	@include image.image-wrap;
+	box-shadow: 0 0 5px map.get(token.$theme, 'l-9');
+	background-color: map.get(token.$theme, 'l-3');
+}
+.image {
+	@include image.image;
+}
+.image-view {
+	width: 100%;
+	height: 100%;
+}
+</style>

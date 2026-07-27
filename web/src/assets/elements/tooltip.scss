@@ -3,9 +3,9 @@
 
 body {
 	.el-tooltip.el-popper {
-		--el-popper-bg-color-dark: #{map.get(token.$theme-color, 'd-5')};
+		--el-popper-bg-color-dark: #{map.get(token.$theme, 'd-5')};
 		&.is-dark {
-			color: map.get(token.$theme-color, 'l-8');
+			color: map.get(token.$theme, 'l-8');
 			border-color: var(--el-popper-bg-color-dark);
 		}
 	}

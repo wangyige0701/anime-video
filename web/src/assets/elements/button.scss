@@ -8,8 +8,8 @@ body {
 			--el-button-disabled-border-color: transparent;
 			--el-button-bg-color: transparent;
 			--el-button-disabled-bg-color: transparent;
-			--el-button-hover-bg-color: #{map.get(token.$theme-color, 'primary')};
-			--el-button-hover-border-color: #{map.get(token.$theme-color, 'primary')};
+			--el-button-hover-bg-color: #{map.get(token.$theme, 'primary')};
+			--el-button-hover-border-color: #{map.get(token.$theme, 'primary')};
 			--el-button-hover-text-color: #fff;
 		}
 	}

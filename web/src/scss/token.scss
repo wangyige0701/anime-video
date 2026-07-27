@@ -1,6 +1,6 @@
 @use 'sass:map';
 @use '@/scss/mixin/themes.scss' as theme;
-@forward '@/scss/mixin/themes.scss' show $theme-color;
+@forward '@/scss/mixin/themes.scss' show $theme;
 
 $radius-base: 8px;
 $radius-lg: 10px;
@@ -12,14 +12,16 @@ $radius-ex-sm: 4px;
 $mix-bg: #000;
 
 $text-color-primary: #fff;
-$text-color-regular: #{map.get(theme.$theme-color, 'l-9')};
-$text-color-secondary: #{map.get(theme.$theme-color, 'l-7')};
-$text-color-placeholder: #{map.get(theme.$theme-color, 'l-8')};
-$border-color: #{map.get(theme.$theme-color, 'l-4')};
-$border-hover-color: #{map.get(theme.$theme-color, 'l-6')};
-$border-focus-color: #{map.get(theme.$theme-color, 'l-8')};
-$input-bg-color: #{map.get(theme.$theme-color, 'l-2')};
+$text-color-regular: #{map.get(theme.$theme, 'l-9')};
+$text-color-secondary: #{map.get(theme.$theme, 'l-7')};
+$text-color-placeholder: #{map.get(theme.$theme, 'l-8')};
+$border-color: #{map.get(theme.$theme, 'l-4')};
+$border-hover-color: #{map.get(theme.$theme, 'l-6')};
+$border-focus-color: #{map.get(theme.$theme, 'l-8')};
+$input-bg-color: #{map.get(theme.$theme, 'l-2')};
 
 $header-height: 60px;
 $menu-width: 100px;
 $main-padding: 30px;
+
+$image-radio: 150%;

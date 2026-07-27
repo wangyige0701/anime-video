@@ -12,33 +12,35 @@ $themes: (
 );
 
 // css 变量名
-$theme-color: ();
+$theme: ();
 
 @mixin themes() {
 	@each $name, $color in $themes {
-		@for $i from 1 through 9 {
-			@if $i == 1 {
-				#{var.varName('theme', $name)}: #{$color};
-			} @else {
-				#{var.varName('theme', $name, 'light', $i)}: #{color.mix(
-						#fff,
-						$color,
-						math.percentage(math.div($i - 1, 10))
-					)};
-				#{var.varName('theme', $name, 'dark', $i)}: #{color.mix(
-						#000,
-						$color,
-						math.percentage(math.div($i - 1, 10))
-					)};
+		&.#{$name} {
+			@for $i from 1 through 9 {
+				@if $i == 1 {
+					#{var.varName('theme')}: #{$color};
+				} @else {
+					#{var.varName('theme', 'light', $i)}: #{color.mix(
+							#fff,
+							$color,
+							math.percentage(math.div($i - 1, 10))
+						)};
+					#{var.varName('theme', 'dark', $i)}: #{color.mix(
+							#000,
+							$color,
+							math.percentage(math.div($i - 1, 10))
+						)};
+				}
 			}
+			#{var.varName('theme', 'bg')}:
+				radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
+				linear-gradient(180deg, color.mix(#000, $color, 5%), color.mix(#000, $color, 50%));
+			#{var.varName('sidebar', 'bg')}: rgba(color.mix(#fff, $color, 10%), 0.8);
+			#{var.varName('header', 'bg')}:
+				radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
+				rgba(color.mix(#000, $color, 10%), 0.5);
 		}
-		#{var.varName('theme', 'bg', $name)}:
-			radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
-			linear-gradient(180deg, color.mix(#000, $color, 5%), color.mix(#000, $color, 50%));
-		#{var.varName('sidebar', 'bg', $name)}: rgba(color.mix(#fff, $color, 10%), 0.8);
-		#{var.varName('header', 'bg', $name)}:
-			radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
-			rgba(color.mix(#000, $color, 10%), 0.5);
 	}
 }
 
@@ -58,12 +60,12 @@ $theme-color: ();
 
 @for $i from 1 through 9 {
 	@if ($i == 1) {
-		$theme-color: map.set($theme-color, 'primary', var(--theme-color));
+		$theme: map.set($theme, 'primary', var(--theme));
 	} @else {
-		$theme-color: map.set($theme-color, 'l-#{$i}', var(--theme-color-light-#{$i}));
-		$theme-color: map.set($theme-color, 'd-#{$i}', var(--theme-color-dark-#{$i}));
+		$theme: map.set($theme, 'l-#{$i}', var(--theme-light-#{$i}));
+		$theme: map.set($theme, 'd-#{$i}', var(--theme-dark-#{$i}));
 	}
-	$theme-color: map.set($theme-color, 'bg', var(--theme-bg));
-	$theme-color: map.set($theme-color, 'sidebar-bg', var(--sidebar-bg));
-	$theme-color: map.set($theme-color, 'header-bg', var(--header-bg));
+	$theme: map.set($theme, 'bg', var(--theme-bg));
+	$theme: map.set($theme, 'sidebar-bg', var(--sidebar-bg));
+	$theme: map.set($theme, 'header-bg', var(--header-bg));
 }

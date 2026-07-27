@@ -28,6 +28,9 @@ import { WebRoute } from '~routes/web';
 import { useVideoStore } from './stores/video';
 import { useDeviceStore } from './stores/device';
 import { endReachedEmitter } from './events/end-reached';
+import { useThemeStore } from './stores/theme';
+
+useThemeStore().initialize();
 
 function endReached(direction: ScrollbarDirection) {
 	endReachedEmitter.emit('endReached', { direction });
@@ -46,7 +49,7 @@ onBeforeMount(async () => {
 	width: 100%;
 	height: 100%;
 	overflow: hidden;
-	background: map.get(token.$theme-color, 'bg');
+	background: map.get(token.$theme, 'bg');
 }
 
 .header {
@@ -58,7 +61,7 @@ onBeforeMount(async () => {
 	position: fixed;
 	top: 0;
 	left: 0;
-	background: map.get(token.$theme-color, 'header-bg');
+	background: map.get(token.$theme, 'header-bg');
 	backdrop-filter: blur(5px);
 	z-index: 100;
 }
@@ -72,8 +75,8 @@ onBeforeMount(async () => {
 	padding-right: 0;
 	padding-bottom: 0;
 	.el-scrollbar {
-		--el-scrollbar-bg-color: #{map.get(token.$theme-color, 'l-9')};
-		--el-scrollbar-hover-bg-color: #{map.get(token.$theme-color, 'l-6')};
+		--el-scrollbar-bg-color: #{map.get(token.$theme, 'l-9')};
+		--el-scrollbar-hover-bg-color: #{map.get(token.$theme, 'l-6')};
 	}
 	:deep(.el-scrollbar__wrap) {
 		padding-left: token.$main-padding;

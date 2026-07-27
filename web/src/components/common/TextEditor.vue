@@ -159,7 +159,7 @@ defineExpose({
 	inset: 0;
 	background-color: rgba($color: #fff, $alpha: 0.3);
 	border-radius: token.$radius-ex-sm;
-	color: map.get(token.$theme-color, 'primary');
+	color: map.get(token.$theme, 'primary');
 	font-size: 1.5rem;
 }
 </style>

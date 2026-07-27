@@ -17,8 +17,8 @@ export const useVideoStore = defineStore('video', () => {
 		return await Series.refreshSeries(seriesId);
 	}
 
-	async function pagination(page: number, pageSize: number) {
-		return await Series.getSeriesByPage(page, pageSize);
+	async function pagination(page: number, pageSize: number, keyword?: string) {
+		return await Series.getSeriesByPage(page, pageSize, keyword);
 	}
 
 	return {

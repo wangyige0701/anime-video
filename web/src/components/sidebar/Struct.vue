@@ -78,13 +78,13 @@ router.beforeEach((to, from) => {
 	top: calc((100% - token.$main-padding) / 2);
 	left: token.$main-padding;
 	transform: translateY(-50%);
-	background-color: map.get(token.$theme-color, 'sidebar-bg');
+	background-color: map.get(token.$theme, 'sidebar-bg');
 	padding: 1rem 0;
 	border-radius: 15px;
-	color: map.get(token.$theme-color, 'l-9');
+	color: map.get(token.$theme, 'l-9');
 	box-shadow:
-		0 5px 10px map.get(token.$theme-color, 'd-3'),
-		0 0 0 1px map.get(token.$theme-color, 'primary');
+		0 5px 10px map.get(token.$theme, 'd-3'),
+		0 0 0 1px map.get(token.$theme, 'primary');
 }
 
 .sidebar-item {
@@ -104,13 +104,13 @@ router.beforeEach((to, from) => {
 		filter 0.3s ease;
 	&.active,
 	&:hover {
-		background-color: map.get(token.$theme-color, 'd-2');
+		background-color: map.get(token.$theme, 'd-2');
 	}
 	&.active {
 		color: token.$text-color-primary;
 		.icon,
 		.label {
-			filter: drop-shadow(0 0 4px map.get(token.$theme-color, 'l-9'));
+			filter: drop-shadow(0 0 4px map.get(token.$theme, 'l-9'));
 		}
 	}
 }

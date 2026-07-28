@@ -40,22 +40,9 @@ $theme: ();
 			#{var.varName('header', 'bg')}:
 				radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
 				rgba(color.mix(#000, $color, 10%), 0.5);
+			#{var.varName('loading', 'bg')}: rgba(color.mix(#000, $color, 80%), 0.3);
 		}
 	}
-}
-
-@mixin useTheme($name) {
-	@for $i from 1 through 9 {
-		@if $i == 1 {
-			--theme-color: var(#{var.varName('theme', $name)});
-		} @else {
-			--theme-color-light-#{$i}: var(#{var.varName('theme', $name, 'light', $i)});
-			--theme-color-dark-#{$i}: var(#{var.varName('theme', $name, 'dark', $i)});
-		}
-	}
-	--theme-bg: var(#{var.varName('theme', 'bg', $name)});
-	--sidebar-bg: var(#{var.varName('sidebar', 'bg', $name)});
-	--header-bg: var(#{var.varName('header', 'bg', $name)});
 }
 
 @for $i from 1 through 9 {
@@ -68,4 +55,5 @@ $theme: ();
 	$theme: map.set($theme, 'bg', var(--theme-bg));
 	$theme: map.set($theme, 'sidebar-bg', var(--sidebar-bg));
 	$theme: map.set($theme, 'header-bg', var(--header-bg));
+	$theme: map.set($theme, 'loading-bg', var(--loading-bg));
 }

@@ -22,7 +22,7 @@
 			class="edit icon"
 			@click.stop="onEdit"
 		>
-			<el-icon size="0.9em">
+			<el-icon size="inherit">
 				<Edit />
 			</el-icon>
 		</el-button>
@@ -53,6 +53,7 @@ const emit = defineEmits<{
 }>();
 
 let descriptionText: Text | null = null;
+let text = '';
 const editor = useTemplateRef('editor');
 const status = useVueStatusRef('editor');
 
@@ -77,14 +78,17 @@ async function onEdit() {
 	if (props.loading || props.disabled) {
 		return;
 	}
+	text = props.value || '';
 	status.onEditor();
 	await nextTick();
 	focusEditor();
 }
 
 function onBlur() {
-	const text = editor.value?.textContent || '';
-	emit('blur', text);
+	const content = editor.value?.textContent || '';
+	if (text !== content) {
+		emit('blur', content);
+	}
 	status.offEditor();
 	if (descriptionText) {
 		descriptionText.remove();
@@ -127,7 +131,7 @@ defineExpose({
 	transition: border-color 0.2s ease;
 	position: relative;
 	&:has(.content[contenteditable='true'], .content[data-modify='true']) {
-		--editor-border-color: token.$var-primary-color;
+		--editor-border-color: #{map.get(token.$theme, 'l-8')};
 		padding: 0;
 	}
 }
@@ -137,7 +141,8 @@ defineExpose({
 	outline: none;
 	border: none;
 	&[contenteditable='true'],
-	&[data-modify='true'] {
+	&[data-modify='true'],
+	&[data-loading='true'] {
 		display: inline-block;
 		width: 100%;
 		padding: var(--inner-padding);
@@ -149,6 +154,7 @@ defineExpose({
 	display: inline-flex;
 	padding: 2px;
 	margin-left: 5px;
+	color: inherit;
 }
 
 .loading {
@@ -157,9 +163,9 @@ defineExpose({
 	justify-content: center;
 	position: absolute;
 	inset: 0;
-	background-color: rgba($color: #fff, $alpha: 0.3);
+	background-color: map.get(token.$theme, 'loading-bg');
 	border-radius: token.$radius-ex-sm;
-	color: map.get(token.$theme, 'primary');
-	font-size: 1.5rem;
+	font-size: 1.3rem;
+	color: map.get(token.$theme, 'l-9');
 }
 </style>

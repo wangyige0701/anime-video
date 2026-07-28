@@ -29,6 +29,6 @@ html:root {
 }
 
 ::selection {
-	background: map.get(token.$theme, 'd-2');
-	color: #fff;
+	background: map.get(token.$theme, 'l-6');
+	color: map.get(token.$theme, 'd-3');
 }

@@ -1,0 +1,11 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+body {
+	.el-loading-mask {
+		--el-mask-color: #{map.get(token.$theme, 'loading-bg')};
+	}
+	.el-loading-spinner .path {
+		stroke: map.get(token.$theme, 'l-9');
+	}
+}

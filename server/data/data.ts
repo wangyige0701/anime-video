@@ -86,7 +86,7 @@ export class Data<T extends object> {
 		}
 		if (!(await isFileExist(this.configPath))) {
 			// 数据文件不存在，使用默认内容填充
-			await fs.writeFile(this.configPath, JSON.stringify(this.defaultContent, null, 2), 'utf-8');
+			await fs.writeFile(this.configPath, JSON.stringify(this.defaultContent), 'utf-8');
 		}
 		const content = await fs.readFile(this.configPath, 'utf-8');
 		return this.proxy<T>(JSON.parse(content) as T);
@@ -116,7 +116,7 @@ export class Data<T extends object> {
 		this.isSaveWorking = true;
 
 		try {
-			await fs.writeFile(this.tmpPath, JSON.stringify(await this.data, null, 2), 'utf-8');
+			await fs.writeFile(this.tmpPath, JSON.stringify(await this.data), 'utf-8');
 			await fs.rename(this.tmpPath, this.configPath);
 			this.saveWorkQueue.forEach(([resolve]) => resolve());
 		} catch (error) {

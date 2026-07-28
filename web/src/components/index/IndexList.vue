@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Series } from '~types/videos';
+import type { Series } from '@/data/series';
 import { endReachedEmitter } from '@/events/end-reached';
 import { useVideoStore } from '@/stores/video';
 import { getSeriesPath } from '@/utils/series';

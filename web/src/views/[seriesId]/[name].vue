@@ -12,21 +12,13 @@
 				<div class="status">
 					<span>{{ getSeriesStatusName(series.status) }}</span>
 				</div>
-				<div class="description">
-					<TextEditor
-						:value="series.description"
-						:loading="status.modifyDescription"
-						:disabled="status.waiting"
-						@blur="endEditDescription"
-					/>
-				</div>
+				<DetailDescription :series="series" :disabled="status.waiting" />
 			</div>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { ElMessage } from 'element-plus';
 import { Series } from '@/data/series';
 import { useVideoStore } from '@/stores/video';
 import { WebRoute } from '~routes/web';
@@ -39,18 +31,8 @@ definePage({
 });
 
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
-const status = useVueStatusRef('waiting', 'modifyDescription').onWaiting();
+const status = useVueStatusRef('waiting').onWaiting();
 const series = shallowRef<Series>({} as Series);
-
-async function endEditDescription(value: string) {
-	if (!value) {
-		ElMessage.error('描述不能为空');
-		return;
-	}
-	status.onModifyDescription();
-	await series.value.updateDescription(value);
-	status.offModifyDescription();
-}
 
 onMounted(async () => {
 	try {

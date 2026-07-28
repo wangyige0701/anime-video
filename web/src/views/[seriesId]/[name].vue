@@ -15,6 +15,12 @@
 				<DetailDescription :series="series" :disabled="status.waiting" />
 			</div>
 		</div>
+
+		<el-collapse accordion class="list">
+			<template v-for="season in series.seasons" :key="season.id">
+				<DetailSeason :season="season"></DetailSeason>
+			</template>
+		</el-collapse>
 	</div>
 </template>
 
@@ -61,6 +67,7 @@ onMounted(async () => {
 	flex-direction: row;
 	flex-wrap: nowrap;
 	gap: 20px;
+	margin-bottom: 30px;
 
 	.info {
 		display: flex;
@@ -74,5 +81,9 @@ onMounted(async () => {
 		color: token.$text-color-primary;
 		font-size: 1.4rem;
 	}
+}
+
+.list {
+	border: 0;
 }
 </style>

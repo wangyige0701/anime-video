@@ -41,6 +41,7 @@ $theme: ();
 				radial-gradient(circle at top, color.mix(#000, $color, 18%), transparent 55%),
 				rgba(color.mix(#000, $color, 10%), 0.5);
 			#{var.varName('loading', 'bg')}: rgba(color.mix(#000, $color, 80%), 0.3);
+			#{var.varName('season', 'bg')}: rgba(color.mix(#fff, $color, 10%), 0.3);
 		}
 	}
 }
@@ -56,4 +57,5 @@ $theme: ();
 	$theme: map.set($theme, 'sidebar-bg', var(--sidebar-bg));
 	$theme: map.set($theme, 'header-bg', var(--header-bg));
 	$theme: map.set($theme, 'loading-bg', var(--loading-bg));
+	$theme: map.set($theme, 'season-bg', var(--season-bg));
 }

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
 import vueDevTools from 'vite-plugin-vue-devtools';
@@ -39,4 +39,9 @@ export default defineConfig({
 			dts: 'components.d.ts',
 		}),
 	],
+	server: {
+		fs: {
+			allow: [searchForWorkspaceRoot(process.cwd())],
+		},
+	},
 });

@@ -1,5 +1,6 @@
 import type { Episode as IEpisode } from '~types/videos';
 import { Common } from './common';
+import { updateEpisodeSort, updateEpisodeTitle } from '@/api/episode';
 
 export class Episode extends Common implements IEpisode {
 	protected static cache: Map<string, Episode> = new Map();
@@ -31,34 +32,61 @@ export class Episode extends Common implements IEpisode {
 	// region 属性访问器
 
 	public get id() {
-		return this._id.value;
+		return unref(this._id);
 	}
 
 	public get sort() {
-		return this._sort.value;
+		return unref(this._sort);
 	}
 
 	public get path() {
-		return this._path.value;
+		return unref(this._path);
 	}
 
 	public get extension() {
-		return this._extension.value;
+		return unref(this._extension);
 	}
 
 	public get title() {
-		return this._title.value;
+		return unref(this._title);
 	}
 	// endregion
 
 	// region 属性更新时的响应式状态
-
 	public get titleRef() {
 		return this.useStatus.title;
 	}
 
 	public get sortRef() {
 		return this.useStatus.sort;
+	}
+	// endregion
+
+	// region 更新标题
+	public async updateTitle(title: string) {
+		const oldValue = this._title.value;
+		this._title.value = title;
+		this.useStatus.onTitle();
+		try {
+			await updateEpisodeTitle(this.id, title);
+		} catch (error) {
+			this._title.value = oldValue;
+		}
+		this.useStatus.offTitle();
+	}
+	// endregion
+
+	// region 更新排序
+	public async updateSort(sort: number) {
+		const oldValue = this._sort.value;
+		this._sort.value = sort;
+		this.useStatus.onSort();
+		try {
+			await updateEpisodeSort(this.id, sort);
+		} catch (error) {
+			this._sort.value = oldValue;
+		}
+		this.useStatus.offSort();
 	}
 	// endregion
 }

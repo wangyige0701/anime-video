@@ -175,43 +175,43 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 
 	// region 系列属性值
 	public get id() {
-		return this._id.value;
+		return unref(this._id);
 	}
 
 	public get path() {
-		return this._path.value;
+		return unref(this._path);
 	}
 
 	public get name() {
-		return this._name.value;
+		return unref(this._name);
 	}
 
 	public get title() {
-		return this._title.value;
+		return unref(this._title);
 	}
 
 	public get images() {
-		return this._images.value;
+		return unref(this._images);
 	}
 
 	public get description() {
-		return this._description.value;
+		return unref(this._description);
 	}
 
 	public get date() {
-		return this._date.value;
+		return unref(this._date);
 	}
 
 	public get types() {
-		return this._types.value;
+		return unref(this._types);
 	}
 
 	public get status() {
-		return this._status.value;
+		return unref(this._status);
 	}
 
 	public get seasons() {
-		return this._seasons.value;
+		return unref(this._seasons);
 	}
 	// endregion
 

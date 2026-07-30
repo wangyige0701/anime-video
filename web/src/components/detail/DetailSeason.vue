@@ -6,7 +6,16 @@
 				<span class="count">（共 {{ seasonCount }} 集）</span>
 			</div>
 		</template>
-		<div class="episodes"></div>
+		<el-scrollbar :max-height="`calc(${maxEpisodeCount} * (0.875rem * 3) + (${maxEpisodeCount} - 1) * 10px)`">
+			<div class="episodes">
+				<template v-for="(episode, index) in props.season.episodes" :key="episode.id">
+					<div class="episode">
+						<span class="index">第 {{ index + 1 }} 集</span>
+						<span class="title">{{ episode.title }}</span>
+					</div>
+				</template>
+			</div>
+		</el-scrollbar>
 	</el-collapse-item>
 </template>
 
@@ -17,6 +26,7 @@ const props = defineProps<{
 	season: Season;
 }>();
 
+const maxEpisodeCount = 6;
 const seasonCount = computed(() => props.season.episodes.length);
 </script>
 
@@ -50,6 +60,10 @@ const seasonCount = computed(() => props.season.episodes.length);
 	:deep(.el-collapse-item__content) {
 		padding: 0;
 	}
+	:deep(.el-scrollbar__wrap) {
+		padding: 0;
+		margin-bottom: 5px;
+	}
 }
 
 .season-title {
@@ -69,6 +83,44 @@ const seasonCount = computed(() => props.season.episodes.length);
 }
 
 .episodes {
-	padding: 20px;
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 10px;
+	padding: 5px 20px;
+}
+
+.episode {
+	cursor: pointer;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: 1em;
+	padding: calc(0.9em - 1px) 0.9em;
+	font-size: 0.875rem;
+	line-height: 1.2em;
+	color: token.$text-color-primary;
+	border-radius: 10px;
+	border: 1px solid transparent;
+	background-color: map.get(token.$theme, 'd-4');
+	transition:
+		border-color 0.3s ease,
+		box-shadow 0.3s ease,
+		background-color 0.3s ease;
+	&:hover,
+	&.active {
+		border-color: map.get(token.$theme, 'l-2');
+		box-shadow:
+			0 0 5px map.get(token.$theme, 'l-2') inset,
+			0 0 3px map.get(token.$theme, 'd-3') inset;
+		background-color: map.get(token.$theme, 'd-3');
+	}
+	&.active {
+		background-color: map.get(token.$theme, 'd-2');
+	}
+	.title {
+		flex: 1;
+		word-break: break-all;
+		color: token.$text-color-secondary;
+	}
 }
 </style>

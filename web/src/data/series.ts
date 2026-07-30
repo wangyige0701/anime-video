@@ -142,7 +142,7 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	private _date: Ref<ISeries['date']> = ref([]);
 	private _types: Ref<ISeries['types']> = ref([]);
 	private _status: Ref<ISeries['status']> = ref(0);
-	private _seasons: ShallowRef<Season[]> = shallowRef([]);
+	private _seasons: Ref<{ value: Season[] }> = ref({ value: [] });
 
 	private useStatus = useVueStatusRef('title', 'images', 'description', 'date', 'types', 'status');
 
@@ -170,7 +170,7 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	}
 
 	public setSeasons(seasons: Season[]) {
-		this._seasons.value = seasons;
+		this._seasons.value.value = seasons;
 	}
 
 	// region 系列属性值
@@ -211,7 +211,7 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	}
 
 	public get seasons() {
-		return unref(this._seasons);
+		return unref(this._seasons).value;
 	}
 	// endregion
 

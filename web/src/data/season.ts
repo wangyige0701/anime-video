@@ -10,7 +10,7 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	private _sort: Ref<ISeason['sort']> = ref(0);
 	private _path: Ref<ISeason['path']> = ref('');
 	private _title: Ref<ISeason['title']> = ref('');
-	private _episodes: ShallowRef<Episode[]> = shallowRef([]);
+	private _episodes: Ref<{ value: Episode[] }> = ref({ value: [] });
 
 	private useStatus = useVueStatusRef('title', 'sort');
 
@@ -30,7 +30,7 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	}
 
 	public setEpisodes(episodes: Episode[]) {
-		this._episodes.value = episodes;
+		this._episodes.value.value = episodes;
 	}
 
 	// region 属性访问器
@@ -51,7 +51,7 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	}
 
 	public get episodes() {
-		return unref(this._episodes);
+		return unref(this._episodes).value;
 	}
 	// endregion
 

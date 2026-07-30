@@ -16,7 +16,7 @@
 			</div>
 		</div>
 
-		<el-collapse accordion class="list">
+		<el-collapse accordion class="list" v-model="activeSeasonId">
 			<template v-for="season in series.seasons" :key="season.id">
 				<DetailSeason :season="season"></DetailSeason>
 			</template>
@@ -39,6 +39,15 @@ definePage({
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
 const status = useVueStatusRef('waiting').onWaiting();
 const series = shallowRef<Series>({} as Series);
+let _activeSeasonId = '';
+const activeSeasonId = computed({
+	get() {
+		return _activeSeasonId || series.value.seasons?.[0]?.id || '';
+	},
+	set(value) {
+		_activeSeasonId = value;
+	},
+});
 
 onMounted(async () => {
 	try {

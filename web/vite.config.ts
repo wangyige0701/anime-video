@@ -7,6 +7,7 @@ import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 import { getPathAlias } from './vite/alias';
+import path from 'node:path';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -41,7 +42,7 @@ export default defineConfig({
 	],
 	server: {
 		fs: {
-			allow: [searchForWorkspaceRoot(process.cwd())],
+			allow: [path.resolve(searchForWorkspaceRoot(process.cwd()), '..')],
 		},
 	},
 });

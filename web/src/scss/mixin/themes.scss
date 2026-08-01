@@ -42,6 +42,12 @@ $theme: ();
 				rgba(color.mix(#000, $color, 10%), 0.5);
 			#{var.varName('loading', 'bg')}: rgba(color.mix(#000, $color, 80%), 0.3);
 			#{var.varName('season', 'bg')}: rgba(color.mix(#fff, $color, 10%), 0.3);
+			#{var.varName('video', 'mask', 'bg')}: rgba(color.mix(#000, $color, 80%), 0.76);
+			#{var.varName('video', 'bg')}: color.mix(#000, $color, 92%);
+			#{var.varName('video', 'shadow')}:
+				0 24px 80px rgba(#000, 0.45),
+				0 0 0 1px rgba(color.mix(#fff, $color, 20%), 0.22),
+				0 0 36px rgba($color, 0.18);
 		}
 	}
 }
@@ -58,4 +64,7 @@ $theme: ();
 	$theme: map.set($theme, 'header-bg', var(--header-bg));
 	$theme: map.set($theme, 'loading-bg', var(--loading-bg));
 	$theme: map.set($theme, 'season-bg', var(--season-bg));
+	$theme: map.set($theme, 'video-mask-bg', var(--video-mask-bg));
+	$theme: map.set($theme, 'video-bg', var(--video-bg));
+	$theme: map.set($theme, 'video-shadow', var(--video-shadow));
 }

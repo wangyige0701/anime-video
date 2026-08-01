@@ -18,10 +18,17 @@
 
 		<el-collapse accordion class="list" v-model="activeSeasonId">
 			<template v-for="season in series.seasons" :key="season.id">
-				<DetailSeason :season="season"></DetailSeason>
+				<DetailSeason
+					:season="season"
+					:active-episode-id="activeEpisodeId"
+					@play="play($event, season, series)"
+				></DetailSeason>
 			</template>
 		</el-collapse>
 	</div>
+
+	<!-- 视频播放器 -->
+	<VideoBox ref="videoBoxRef" @hide="activeEpisodeId = ''"></VideoBox>
 </template>
 
 <script setup lang="ts">
@@ -31,6 +38,8 @@ import { WebRoute } from '~routes/web';
 import router from '@/router';
 import { getSeriesTypeName } from '~config/seriesTypes';
 import { getSeriesStatusName } from '~config/seriesStatus';
+import type { Episode } from '@/data/episode';
+import type { Season } from '@/data/season';
 
 definePage({
 	name: 'Detail',
@@ -38,21 +47,28 @@ definePage({
 
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
 const status = useVueStatusRef('waiting').onWaiting();
+const videoBoxRef = useTemplateRef('videoBoxRef');
 const series = shallowRef<Series>({} as Series);
-let _activeSeasonId = '';
-const activeSeasonId = computed({
-	get() {
-		return _activeSeasonId || series.value.seasons?.[0]?.id || '';
-	},
-	set(value) {
-		_activeSeasonId = value;
-	},
-});
+const activeSeasonId = ref<string>('');
+const activeEpisodeId = ref<string>('');
+
+function play(episode: Episode, season: Season, series: Series) {
+	if (episode.id && videoBoxRef.value) {
+		activeEpisodeId.value = episode.id;
+		videoBoxRef.value.openAndPlay({
+			seriesTitle: series.title || '',
+			seasonTitle: season.title || '',
+			episodeTitle: episode.title || '',
+			url: episode.path || '',
+		});
+	}
+}
 
 onMounted(async () => {
 	try {
 		const info = await useVideoStore().getSeriesDetail(seriesId);
 		series.value = info;
+		activeSeasonId.value = series.value.seasons?.[0]?.id || '';
 		status.offWaiting();
 	} catch (error) {
 		router.replace({ name: WebRoute.INDEX, replace: true });

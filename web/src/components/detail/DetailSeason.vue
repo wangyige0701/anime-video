@@ -9,7 +9,11 @@
 		<el-scrollbar :max-height="`calc(${maxEpisodeCount} * (0.875rem * 3) + (${maxEpisodeCount} - 1) * 10px)`">
 			<div class="episodes">
 				<template v-for="(episode, index) in props.season.episodes" :key="episode.id">
-					<div class="episode">
+					<div
+						class="episode"
+						:class="{ active: props.activeEpisodeId === episode.id }"
+						@click.stop="$emit('play', episode)"
+					>
 						<span class="index">第 {{ index + 1 }} 集</span>
 						<span class="title">{{ episode.title }}</span>
 					</div>
@@ -20,10 +24,15 @@
 </template>
 
 <script setup lang="ts">
+import type { Episode } from '@/data/episode';
 import type { Season } from '@/data/season';
 
 const props = defineProps<{
 	season: Season;
+	activeEpisodeId?: string;
+}>();
+defineEmits<{
+	(e: 'play', episode: Episode): void;
 }>();
 
 const maxEpisodeCount = 6;

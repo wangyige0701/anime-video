@@ -1,25 +1,19 @@
 <template>
 	<div class="sidebar-container">
 		<template v-for="item in items" :key="item.name">
-			<div
-				class="sidebar-item"
-				:class="{ active: active === item.name }"
-				@click.stop="$router.push({ name: item.name })"
-			>
+			<router-link class="sidebar-item" :to="{ name: item.name }">
 				<el-icon size="1.2rem" class="icon">
 					<component :is="item.icon"></component>
 				</el-icon>
 				<span class="label">{{ item.label }}</span>
-			</div>
+			</router-link>
 		</template>
 	</div>
 </template>
 
 <script setup lang="ts">
-import type { RouteLocationNormalized } from 'vue-router';
 import type { SidebarItem } from '@/@types/sidebar';
 import { Clock, HomeFilled, Setting, Star } from '@element-plus/icons-vue';
-import router from '@/router';
 
 const items: Array<SidebarItem> = [
 	{
@@ -43,26 +37,6 @@ const items: Array<SidebarItem> = [
 		icon: Setting,
 	},
 ];
-const active = ref('');
-
-function updateRoute(route: RouteLocationNormalized) {
-	const keys = items.map((item) => item.name);
-	if (keys.includes(route.name)) {
-		active.value = route.name;
-		return;
-	}
-	for (const matcher of route.matched) {
-		if (keys.includes(matcher.name as RouteLocationNormalized['name'])) {
-			active.value = matcher.name as RouteLocationNormalized['name'];
-			return;
-		}
-	}
-	active.value = '';
-}
-
-router.beforeEach((to, from) => {
-	updateRoute(to);
-});
 </script>
 
 <style scoped lang="scss">
@@ -99,15 +73,17 @@ router.beforeEach((to, from) => {
 	border-radius: 10px;
 	padding: 10px 1rem;
 	line-height: 1;
+	text-decoration: none;
+	color: inherit;
 	transition:
 		background-color 0.3s ease,
 		color 0.3s ease,
 		filter 0.3s ease;
-	&.active,
+	&.router-link-active,
 	&:hover {
 		background-color: map.get(token.$theme, 'd-2');
 	}
-	&.active {
+	&.router-link-active {
 		color: token.$text-color-primary;
 		.icon,
 		.label {

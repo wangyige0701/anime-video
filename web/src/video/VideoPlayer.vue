@@ -7,53 +7,49 @@ import Hls from 'hls.js';
 import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
 
-const HLS_SUPPORTED = Symbol('HLS_SUPPORTED');
-const HLS_NATIVE_SUPPORTED = Symbol('HLS_NATIVE_SUPPORTED');
-
 let hls: Hls | null = null;
-let hlsSupported: symbol | null = null;
+const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
-const videoPath = ref('');
 
-const watchProgress = watchEffect(() => {
-	const process = usePlayerStore().changedProgress;
+watchEffect(() => {
+	const currentTime = playerStore.currentTime;
 	video.value?.addEventListener?.(
 		'loadedmetadata',
 		() => {
 			if (video.value) {
-				video.value.currentTime = process;
+				video.value.currentTime = currentTime;
 			}
 		},
 		{ once: true },
 	);
 });
 
-const watchVideoPath = watchEffect(() => {
-	const path = videoPath.value;
+watchEffect(() => {
+	const path = playerStore.videoPath;
 	if (!path) {
 		return;
 	}
 	const src = getMasterM3u8Url(path);
-	if (hlsSupported === HLS_SUPPORTED) {
-		hls?.loadSource?.(src);
-	} else if (hlsSupported === HLS_NATIVE_SUPPORTED) {
+	if (playerStore.isSupportedHls) {
+		hls?.loadSource(src);
+	} else if (playerStore.isSupportedNative) {
 		video.value && (video.value.src = src);
 	}
 });
 
-function play() {
-	video.value?.play?.();
-}
+watch(
+	() => playerStore.isPlaying,
+	() => {
+		playState();
+	},
+);
 
-function pause() {
-	video.value?.pause?.();
-}
-
-function setVideo(path: string, name: string, fullTime: number, seek: number = 0) {
-	if (path && video.value) {
-		video.value.style.opacity = '1';
-		video.value.src = path;
-		usePlayerStore().setVideo(name, fullTime, seek);
+async function playState() {
+	await nextTick();
+	if (playerStore.isPlaying) {
+		video.value?.play();
+	} else {
+		video.value?.pause();
 	}
 }
 
@@ -64,12 +60,12 @@ onMounted(() => {
 	const el = video.value!;
 
 	el.addEventListener('timeupdate', () => {
-		usePlayerStore().setCurrentTime(el.currentTime || 0);
+		if (el.currentTime !== playerStore.currentTime) {
+			playerStore.setCurrentTime(el.currentTime || 0);
+		}
 	});
 
-	if (Hls.isSupported()) {
-		hlsSupported = HLS_SUPPORTED;
-
+	if (playerStore.isSupportedHls) {
 		hls = new Hls({
 			maxBufferLength: 30, // 最多缓存 30 秒
 			maxMaxBufferLength: 100, // 最大允许缓存
@@ -81,17 +77,15 @@ onMounted(() => {
 		hls.attachMedia(el);
 
 		hls.on(Hls.Events.MANIFEST_PARSED, () => {
-			el.play();
+			playState();
 		});
 
 		hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, function (event, data) {
 			console.log(data.subtitleTracks);
 		});
-	} else if (el.canPlayType('application/vnd.apple.mpegurl')) {
-		// Safari 原生支持 HLS
-		hlsSupported = HLS_NATIVE_SUPPORTED;
+	} else if (playerStore.isSupportedNative) {
 		el.addEventListener('loadedmetadata', () => {
-			el.play();
+			playState();
 		});
 	} else {
 		throw new Error('浏览器不支持 HLS');
@@ -99,19 +93,13 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-	hls?.destroy?.();
-	hlsSupported = null;
-	watchProgress();
-	watchVideoPath();
+	hls?.destroy();
 });
 
 defineExpose({
-	play,
-	pause,
 	get isPlay() {
 		return !video.value?.paused;
 	},
-	setVideo,
 });
 </script>
 

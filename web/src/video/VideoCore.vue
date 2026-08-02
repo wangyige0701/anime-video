@@ -1,12 +1,10 @@
 <template>
-	<div class="video-popup">
-		<div class="video-container" @click="clickContainer">
-			<div class="video-player">
-				<VideoPlayer ref="player"></VideoPlayer>
-			</div>
-			<div class="video-progress">
-				<VideoProgress></VideoProgress>
-			</div>
+	<div class="video-core" @click="clickContainer">
+		<div class="video-player">
+			<VideoPlayer ref="player"></VideoPlayer>
+		</div>
+		<div class="video-progress">
+			<VideoProgress></VideoProgress>
 		</div>
 	</div>
 </template>
@@ -17,10 +15,6 @@ import VideoPlayer from './VideoPlayer.vue';
 import VideoProgress from './VideoProgress.vue';
 
 const player = useTemplateRef('player');
-
-watchEffect(() => {
-	console.log(usePlayerStore().progress);
-});
 
 function clickContainer() {
 	if (player.value && player.value instanceof HTMLVideoElement) {
@@ -34,35 +28,9 @@ function clickContainer() {
 </script>
 
 <style scoped lang="scss">
-.video-popup {
-	width: 100%;
-	height: 100%;
-	position: relative;
-	background-color: rgba($color: #000000, $alpha: 0.5);
-}
-
-.video-container {
-	width: 960px;
-	height: 540px;
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
-}
-
+.video-core,
 .video-player {
-	pointer-events: none;
 	width: 100%;
 	height: 100%;
-	background-color: black;
-}
-
-.video-progress {
-	width: 100%;
-	padding: 10px;
-	position: absolute;
-	left: 0;
-	bottom: 0;
-	background-color: rgba($color: #000000, $alpha: 0.5);
 }
 </style>

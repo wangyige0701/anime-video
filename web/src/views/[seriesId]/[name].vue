@@ -59,7 +59,7 @@ function play(episode: Episode, season: Season, series: Series) {
 			seriesTitle: series.title || '',
 			seasonTitle: season.title || '',
 			episodeTitle: episode.title || '',
-			url: episode.path || '',
+			videoPath: episode.path || '',
 		});
 	}
 }

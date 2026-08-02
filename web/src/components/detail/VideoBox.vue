@@ -1,13 +1,17 @@
 <template>
 	<div class="video-box" :class="{ transition: status.transition, show: status.show, hide: !status.show }">
-		<div ref="container" class="video-container" :style="{ height: containerHeight + 'px' }"></div>
+		<div ref="container" class="video-container" :style="{ height: containerHeight + 'px' }">
+			<VideoCore />
+		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { videoEmitter, type VideoEvents } from '@/events/video-data';
 import { delay } from '@wang-yige/utils';
 import { useEventListener, useResizeObserver } from '@vueuse/core';
+import VideoCore from '@/video/VideoCore.vue';
+import { usePlayerStore } from '@/stores/player';
+import type { VideoPlayData } from '@/@types/video';
 
 const props = withDefaults(
 	defineProps<{
@@ -28,6 +32,7 @@ const emit = defineEmits<{
 }>();
 
 const status = useVueStatusRef('show', 'transition');
+const playerStore = usePlayerStore();
 const container = useTemplateRef('container');
 const containerHeight = ref(0);
 
@@ -71,22 +76,22 @@ async function hide() {
 	emit('hide');
 }
 
-async function openAndPlay(data: VideoEvents['video']) {
+async function openAndPlay(data: VideoPlayData) {
 	setVideo(data);
 	await show();
 	play();
 }
 
-function setVideo(data: VideoEvents['video']) {
-	videoEmitter.emit('video', data);
+function setVideo(data: VideoPlayData) {
+	playerStore.setVideo(data);
 }
 
 function play() {
-	videoEmitter.emit('play');
+	playerStore.play();
 }
 
 function pause() {
-	videoEmitter.emit('pause');
+	playerStore.pause();
 }
 
 defineExpose({
@@ -176,18 +181,18 @@ defineExpose({
 }
 @keyframes container-show {
 	from {
-		transform: translateY(5%);
+		transform: scale(0.96) translateY(5%);
 	}
 	to {
-		transform: translateY(0);
+		transform: scale(1) translateY(0);
 	}
 }
 @keyframes container-hide {
 	from {
-		transform: translateY(0);
+		transform: scale(1) translateY(0);
 	}
 	to {
-		transform: translateY(5%);
+		transform: scale(0.96) translateY(5%);
 	}
 }
 </style>

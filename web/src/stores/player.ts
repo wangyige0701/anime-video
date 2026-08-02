@@ -1,73 +1,73 @@
+import type { VideoPlayData } from '@/@types/video';
+import Hls from 'hls.js';
+
 export const usePlayerStore = defineStore('player', () => {
-	const name = ref('');
-	const progress = ref(0);
-	const fullTime = ref(0);
-	/** 手动更新进度条后的数据，用于触发视频更新 */
-	const changedProgress = ref(0);
-	// 每1%对应的时间
-	const step = computed(() => {
-		return Number((fullTime.value / 100).toFixed(2)) || 0;
-	});
-	// 当前进度对应的时长
-	const position = computed(() => {
-		if (progress.value >= 100) {
-			return fullTime.value;
+	const isSupportedHls = Hls.isSupported();
+	let video = document.createElement('video');
+	const isSupportedNative = video.canPlayType('application/vnd.apple.mpegurl');
+	video.remove();
+	(video as unknown) = null;
+
+	const isPlaying = ref(false);
+	const seriesTitle = ref('');
+	const seasonTitle = ref('');
+	const episodeTitle = ref('');
+	const videoPath = ref('');
+	const currentTime = ref(0);
+
+	function setVideo(data: VideoPlayData) {
+		seriesTitle.value = data.seriesTitle;
+		seasonTitle.value = data.seasonTitle;
+		episodeTitle.value = data.episodeTitle;
+		videoPath.value = data.videoPath;
+		currentTime.value = data.currentTime ?? 0;
+		if (currentTime.value < 0) {
+			currentTime.value = 0;
 		}
-		if (progress.value <= 0) {
-			return 0;
-		}
-		return Number((progress.value * step.value).toFixed(2)) || 0;
-	});
-
-	function setVideo(videoName: string, fullTimeValue: number, defaultProcess = 0) {
-		name.value = videoName;
-		fullTime.value = fullTimeValue;
-		progress.value = defaultProcess;
-	}
-
-	function resetProgress() {
-		progress.value = 0;
-		changedProgress.value = 0;
-	}
-
-	/**
-	 * @param value 进度值，范围为0-100
-	 */
-	function setProgress(value: number) {
-		console.log(value);
-		progress.value = value;
-		changedProgress.value = value;
 	}
 
 	function setCurrentTime(time: number) {
-		if (time >= fullTime.value) {
-			setProgress(100);
-			return;
-		}
-		if (time <= 0) {
-			setProgress(0);
-			return;
-		}
-		setProgress(Number(((time / fullTime.value) * 100).toFixed(2)) || 0);
+		currentTime.value = time;
+	}
+
+	function play() {
+		isPlaying.value = true;
+	}
+
+	function pause() {
+		isPlaying.value = false;
 	}
 
 	return {
-		name,
-		progress,
-		changedProgress,
-		position,
+		isPlaying,
+		seriesTitle,
+		seasonTitle,
+		episodeTitle,
+		videoPath,
+		currentTime,
+		/**
+		 * 是否支持 HLS
+		 */
+		isSupportedHls,
+		/**
+		 * Safari 原生支持 HLS
+		 */
+		isSupportedNative,
 		/**
 		 * 设置视频信息
 		 */
 		setVideo,
 		/**
-		 * 重置进度
+		 * 播放视频
 		 */
-		resetProgress,
+		play,
 		/**
-		 * 设置进度
+		 * 暂停视频
 		 */
-		setProgress,
+		pause,
+		/**
+		 * 设置当前播放时间
+		 */
 		setCurrentTime,
 	};
 });

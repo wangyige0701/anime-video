@@ -2,10 +2,10 @@
 	<div class="video-popup">
 		<div class="video-container" @click="clickContainer">
 			<div class="video-player">
-				<Player ref="player"></Player>
+				<VideoPlayer ref="player"></VideoPlayer>
 			</div>
 			<div class="video-progress">
-				<Progress></Progress>
+				<VideoProgress></VideoProgress>
 			</div>
 		</div>
 	</div>
@@ -13,8 +13,8 @@
 
 <script setup lang="ts">
 import { usePlayerStore } from '@/stores/player';
-import Player from './Player.vue';
-import Progress from './Progress.vue';
+import VideoPlayer from './VideoPlayer.vue';
+import VideoProgress from './VideoProgress.vue';
 
 const player = useTemplateRef('player');
 

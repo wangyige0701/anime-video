@@ -62,7 +62,7 @@ export class HlsManage {
 
 	private getHls(): Hls {
 		if (!this.hls) {
-			const HlsConstructor = require('~hls/hls.node') as typeof Hls;
+			const HlsConstructor = (require('~hls/hls.node') as { Hls: typeof Hls }).Hls;
 			this.hls = new HlsConstructor(this.inputPath, SEGMENT_MIN_DURATION, {
 				mediaM3u8Name: M3u8Config.MEDIA_M3U8_NAME,
 				subtitleM3u8Name: M3u8Config.SUBTITLE_M3U8_NAME,

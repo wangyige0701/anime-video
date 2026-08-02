@@ -160,6 +160,7 @@ defineExpose({
 	border-radius: 15px;
 	background-color: map.get(token.$theme, 'video-bg');
 	box-shadow: map.get(token.$theme, 'video-shadow');
+	overflow: hidden;
 }
 
 @keyframes box-show {

@@ -1,5 +1,5 @@
 <template>
-	<video ref="video" class="video-target" loop="false" autoplay="false" playsinline muted controls></video>
+	<video ref="video" class="video-target" loop="false" autoplay="false" playsinline controls></video>
 </template>
 
 <script setup lang="ts">
@@ -109,6 +109,5 @@ defineExpose({
 	height: 100%;
 	object-fit: cover;
 	object-position: center;
-	opacity: 0;
 }
 </style>

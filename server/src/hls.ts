@@ -3,9 +3,13 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { ParallelTask } from '@wang-yige/utils';
-import { M3u8Config, SEGMENT_MIN_DURATION } from '~config/hls';
+import { M3u8Config, CONTEXT_POOL_SIZE, SEGMENT_MIN_DURATION } from '~config/hls';
 
 const require = createRequire(import.meta.url);
+const HlsConstructor = (require('~hls/hls.node') as { Hls: typeof Hls }).Hls;
+HlsConstructor.configure({
+	globalSegmentConcurrency: 2,
+});
 
 /**
  * 接入缓存管理 Hls 实例
@@ -62,8 +66,9 @@ export class HlsManage {
 
 	private getHls(): Hls {
 		if (!this.hls) {
-			const HlsConstructor = (require('~hls/hls.node') as { Hls: typeof Hls }).Hls;
-			this.hls = new HlsConstructor(this.inputPath, SEGMENT_MIN_DURATION, {
+			this.hls = new HlsConstructor(this.inputPath, {
+				contextPoolSize: CONTEXT_POOL_SIZE,
+				segmentMinDuration: SEGMENT_MIN_DURATION,
 				mediaM3u8Name: M3u8Config.MEDIA_M3U8_NAME,
 				subtitleM3u8Name: M3u8Config.SUBTITLE_M3U8_NAME,
 			});

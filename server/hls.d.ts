@@ -1,5 +1,12 @@
 declare module '~hls/hls.node' {
 	class Hls {
+		public static configure(options: {
+			/**
+			 * 全局 TS 调度器并发数
+			 */
+			globalSegmentConcurrency?: number;
+		}): void;
+
 		/**
 		 * 创建 Hls 实例
 		 * @param inputPath 输入文件路径
@@ -7,10 +14,12 @@ declare module '~hls/hls.node' {
 		 */
 		constructor(
 			inputPath: string,
-			segmentMinDuration?: number,
 			options?: {
+				contextPoolSize?: number;
+				segmentMinDuration?: number;
 				mediaM3u8Name?: string;
 				subtitleM3u8Name?: string;
+				onLog?: (level: 'info' | 'error' | 'debug' | 'warn', msg: string) => void;
 			},
 		);
 

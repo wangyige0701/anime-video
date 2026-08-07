@@ -5,3 +5,5 @@ export enum M3u8Config {
 }
 
 export const SEGMENT_MIN_DURATION = 4;
+
+export const CONTEXT_POOL_SIZE = 4;

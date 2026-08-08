@@ -7,7 +7,9 @@ import { isEqual } from '~server/src/utils/is';
 /** 负责 JSON 配置文件的读取、代理修改和防抖持久化。 */
 export class Data<T extends object> {
 	private static delayTime = Number(process.env.DATA_FILE_SAVE_DELAY || 500);
+	// 相同配置路径在进程内共享一个实例，避免多套保存队列同时写入同一文件。
 	private static cache: Map<string, Data<any>> = new Map();
+	// 代理会递归包装嵌套对象；用 WeakMap 保证同一原始对象只生成一次代理且可被回收。
 	private static proxyMap: WeakMap<object, object> = new WeakMap();
 
 	public static instance<T extends object>(configPath: string, defaultContent: T = [] as T) {
@@ -24,6 +26,7 @@ export class Data<T extends object> {
 	) {
 		const resolvedPath = path.resolve(configPath);
 		if (Data.cache.has(resolvedPath)) {
+			// 构造函数允许直接返回已存在实例，保证调用方始终写入同一份内存数据。
 			return Data.cache.get(resolvedPath)! as Data<T>;
 		}
 		Data.cache.set(resolvedPath, this);
@@ -41,10 +44,12 @@ export class Data<T extends object> {
 		const proxy = new Proxy<P>(data, {
 			get: (target, prop, receiver) => {
 				const value = Reflect.get(target, prop, receiver);
+				// 嵌套对象和数组也必须代理，才能感知如 config.items.push() 的修改。
 				return isObject(value) || isArray(value) ? this.proxy(value) : value;
 			},
 			set: (target, prop, value, receiver) => {
 				const oldValue = Reflect.get(target, prop, receiver);
+				// 值没有实际变化时不增加版本号，也不会触发无意义的磁盘写入。
 				if (isEqual(oldValue, value)) {
 					return true;
 				}
@@ -72,21 +77,20 @@ export class Data<T extends object> {
 
 	private async doRead() {
 		if (await isFileExist(this.tmpPath)) {
-			if (await isFileExist(this.configPath)) {
-				// 正式文件存在时，临时文件仅代表未完成或过期的写入。
+			try {
+				// 临时文件写入完成但 rename 尚未执行时，临时文件才是最新的完整快照。
+				JSON.parse(await fs.readFile(this.tmpPath, 'utf-8'));
+			} catch {
+				// 损坏的临时文件不能覆盖正式配置；删除后继续读取已有文件或创建默认值。
 				await fs.unlink(this.tmpPath);
-			} else {
-				try {
-					// 只有可解析的临时文件才能恢复为正式文件。
-					JSON.parse(await fs.readFile(this.tmpPath, 'utf-8'));
-					await fs.rename(this.tmpPath, this.configPath);
-				} catch {
-					// 孤立且损坏的临时文件不是可靠数据，移除后按默认配置重新创建。
-					await fs.unlink(this.tmpPath);
-				}
+			}
+			if (await isFileExist(this.tmpPath)) {
+				// rename 在同一目录内完成替换，避免直接写正式文件时进程中断导致半截 JSON。
+				await fs.rename(this.tmpPath, this.configPath);
 			}
 		}
 		if (!(await isFileExist(this.configPath))) {
+			// 首次使用或无法恢复旧数据时，写入调用方给出的默认配置。
 			await fs.writeFile(this.configPath, JSON.stringify(this.defaultContent), 'utf-8');
 		}
 		return this.proxy<T>(JSON.parse(await fs.readFile(this.configPath, 'utf-8')) as T);
@@ -97,8 +101,11 @@ export class Data<T extends object> {
 	}
 
 	private saveTimeout?: NodeJS.Timeout;
+	// 同一 Data 实例内一次只允许一个实际写盘任务执行。
 	private isSaveWorking = false;
+	// 脏标记用于跳过没有修改的数据扫描所触发的 save()。
 	private isDirty = false;
+	// revision 是内存版本，savedRevision 是最后确认落盘的版本。
 	private revision = 0;
 	private savedRevision = 0;
 	private saveWaiters: Array<{
@@ -110,6 +117,7 @@ export class Data<T extends object> {
 	private markDirty() {
 		this.isDirty = true;
 		this.revision++;
+		// 每次修改重置定时器，将短时间内的连续更新合并为一次写盘。
 		this.scheduleSave();
 	}
 
@@ -126,6 +134,7 @@ export class Data<T extends object> {
 	private settleSaveWaiters(revision: number, error?: unknown) {
 		const pendingWaiters: typeof this.saveWaiters = [];
 		for (const waiter of this.saveWaiters) {
+			// 更晚版本的调用者必须等待下一次写盘，不能随当前快照提前完成。
 			if (waiter.revision > revision) {
 				pendingWaiters.push(waiter);
 			} else if (error) {
@@ -139,6 +148,7 @@ export class Data<T extends object> {
 
 	private async doSave() {
 		if (this.isSaveWorking || this.savedRevision >= this.revision) {
+			// 已有任务在写入或当前版本已落盘时，无需重复启动写盘。
 			return;
 		}
 
@@ -146,6 +156,7 @@ export class Data<T extends object> {
 		const revision = this.revision;
 		let didSave = false;
 		try {
+			// 先写临时文件，再替换正式文件，保证正式文件始终是完整 JSON。
 			await fs.writeFile(this.tmpPath, JSON.stringify(await this.data), 'utf-8');
 			await fs.rename(this.tmpPath, this.configPath);
 			this.savedRevision = revision;

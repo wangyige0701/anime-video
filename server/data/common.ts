@@ -68,6 +68,13 @@ export abstract class Common {
 
 	/**
 	 * 解析真实路径；不存在的叶子节点会基于最近的可解析祖先重建路径。
+	 *
+	 * 例子：
+	 * - `C:\\videos` 是指向 `D:\\media` 的 Junction，`C:\\videos\\series\\.video.json`
+	 *   尚未创建时，会解析为 `D:\\media\\series\\.video.json`。
+	 * - 已存在的 `C:\\videos\\series\\1.mp4` 会直接由 `realpath` 解析为真实位置。
+	 * - `C:\\videos\\new-series` 尚未创建时，会先解析 `C:\\videos`，再拼回
+	 *   `new-series`，从而仍可按真实根目录判断授权范围。
 	 */
 	private static async resolveRealPath(directory: string) {
 		const resolvedDirectory = path.resolve(directory);

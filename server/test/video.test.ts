@@ -30,14 +30,15 @@ describe('Video Data Config', () => {
 		expect(await Series.isAllowedDirectory(`${dir}-outside`)).toBe(false);
 	});
 
-	it('Should preserve the valid data file when a stale temporary file exists', async () => {
+	it('Should recover the latest valid data from a temporary file', async () => {
 		const tempPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data-recovery.test.video.json');
 		const tempFilePath = `${tempPath}.tmp`;
 		try {
 			await fs.writeFile(tempPath, JSON.stringify({ value: 'current' }));
 			await fs.writeFile(tempFilePath, JSON.stringify({ value: 'stale' }));
 			const data = new Data(tempPath, { value: 'default' });
-			expect(await data.read()).toEqual({ value: 'current' });
+			expect(await data.read()).toEqual({ value: 'stale' });
+			expect(await fs.readFile(tempPath, 'utf-8')).toBe(JSON.stringify({ value: 'stale' }));
 			await expect(fs.access(tempFilePath)).rejects.toThrow();
 		} finally {
 			await Promise.all([fs.rm(tempPath, { force: true }), fs.rm(tempFilePath, { force: true })]);
@@ -52,6 +53,24 @@ describe('Video Data Config', () => {
 			const data = new Data(tempPath, { value: 'default' });
 			expect(await data.read()).toEqual({ value: 'default' });
 			expect(await fs.readFile(tempPath, 'utf-8')).toBe(JSON.stringify({ value: 'default' }));
+			await expect(fs.access(tempFilePath)).rejects.toThrow();
+		} finally {
+			await Promise.all([fs.rm(tempPath, { force: true }), fs.rm(tempFilePath, { force: true })]);
+		}
+	});
+
+	it('Should preserve the data file when the temporary file is invalid', async () => {
+		const tempPath = path.join(
+			path.dirname(fileURLToPath(import.meta.url)),
+			'data-invalid-tmp-preserve.test.video.json',
+		);
+		const tempFilePath = `${tempPath}.tmp`;
+		try {
+			await fs.writeFile(tempPath, JSON.stringify({ value: 'current' }));
+			await fs.writeFile(tempFilePath, '{invalid json');
+			const data = new Data(tempPath, { value: 'default' });
+			expect(await data.read()).toEqual({ value: 'current' });
+			expect(await fs.readFile(tempPath, 'utf-8')).toBe(JSON.stringify({ value: 'current' }));
 			await expect(fs.access(tempFilePath)).rejects.toThrow();
 		} finally {
 			await Promise.all([fs.rm(tempPath, { force: true }), fs.rm(tempFilePath, { force: true })]);

@@ -5,6 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { response } from '~server/middlewares/response';
 import { error } from '~server/middlewares/error';
+import { logger, requestLog } from '~server/middlewares/logger';
 import { getServerPort } from '~config/server';
 
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), './controller');
@@ -12,8 +13,13 @@ const dir = resolve(dirname(fileURLToPath(import.meta.url)), './controller');
 const app = new Koa();
 const decorator = new Decorator(dir);
 
-app.use(error()).use(body()).use(response()).use(decorator.middleware()).use(decorator.allowedMethods());
+app.use(requestLog())
+	.use(error())
+	.use(body())
+	.use(response())
+	.use(decorator.middleware())
+	.use(decorator.allowedMethods());
 
 app.listen(getServerPort(), () => {
-	console.log(`server is running on http://localhost:${getServerPort()}`);
+	logger.info({ port: getServerPort() }, 'Server is listening');
 });

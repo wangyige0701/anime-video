@@ -7,7 +7,7 @@ export {};
 type KoaResponse = <T extends any>(data?: T, message?: string) => Response<T>;
 
 declare module 'koa' {
-	interface Context {
+	interface DefaultContext {
 		Success: KoaResponse;
 		Ok: KoaResponse;
 		Failed: KoaResponse;

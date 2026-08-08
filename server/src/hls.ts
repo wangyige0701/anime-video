@@ -4,6 +4,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { ParallelTask } from '@wang-yige/utils';
 import { M3u8Config, CONTEXT_POOL_SIZE, SEGMENT_MIN_DURATION } from '~config/hls';
+import { createLogger, type LogLevel } from '~server/middlewares/logger';
 
 const require = createRequire(import.meta.url);
 const HlsConstructor = (require('~hls/hls.node') as { Hls: typeof Hls }).Hls;
@@ -35,6 +36,7 @@ export class HlsManage {
 	/** Hls 实例输入路径 hash 值 */
 	private hashPath!: string;
 	private inputPath!: string;
+	private hlsLogger!: ReturnType<typeof createLogger>;
 	/** Hls 实例清除的定时器 */
 	private gcTimeout!: NodeJS.Timeout;
 	/** 当前正在生成的分片索引 */
@@ -58,10 +60,12 @@ export class HlsManage {
 
 		this.inputPath = inputPath;
 		this.hashPath = hashPath;
+		this.hlsLogger = createLogger({ component: 'hls', hlsId: hashPath });
 
 		this.getHls();
 		this.size = this.getHls().size();
 		this.cache = new Array(this.size);
+		this.hlsLogger.info({ segmentCount: this.size }, 'HLS instance created');
 	}
 
 	private getHls(): Hls {
@@ -71,13 +75,16 @@ export class HlsManage {
 				segmentMinDuration: SEGMENT_MIN_DURATION,
 				mediaM3u8Name: M3u8Config.MEDIA_M3U8_NAME,
 				subtitleM3u8Name: M3u8Config.SUBTITLE_M3U8_NAME,
+				onLog: (level, msg) => {
+					this.log(level, msg, 'hls-native');
+				},
 			});
 		}
 		return this.hls;
 	}
 
-	private log(...params: any[]) {
-		// return console.log(...params);
+	private log(level: LogLevel, msg: string, source = 'hls-manager') {
+		this.hlsLogger[level]({ source }, msg);
 	}
 
 	public master() {
@@ -100,13 +107,13 @@ export class HlsManage {
 		this.resetTsCacheClear();
 
 		if (this.cache[index]) {
-			this.log(`从缓存中获取 ${index} 分片`);
+			this.log('debug', `从缓存中获取 ${index} 分片`);
 			// 向后检索两个分片，如果有一个没有缓存，则开始预加载
 			for (let i = index + 1; i < this.size && i <= index + 2; i++) {
 				if (this.cache[i]) {
 					continue;
 				}
-				this.log(`开始预加载 ${i} 后的分片`);
+				this.log('debug', `开始预加载 ${i} 后的分片`);
 				this.preloadTs(i);
 				break;
 			}
@@ -114,7 +121,7 @@ export class HlsManage {
 		}
 
 		const ts = this.getHls().ts(index);
-		this.log(`生成 ${index} 分片`);
+		this.log('debug', `生成 ${index} 分片`);
 
 		this.preloadTs(index + 1);
 
@@ -146,7 +153,7 @@ export class HlsManage {
 					return;
 				}
 				const buffer = await this.getHls().ts(index);
-				this.log(`生成 ${index} 分片`);
+				this.log('debug', `生成 ${index} 分片`);
 				this.setTsCache(index, buffer);
 			}, i);
 		}
@@ -169,7 +176,7 @@ export class HlsManage {
 	private resetTsCacheClear() {
 		this.waitToClear.forEach((waitTime, i) => {
 			if (i >= this.currentIndex && i <= this.currentIndex + this.clearMaxRange) {
-				this.log(`清除 ${i} 分片缓存定时器`);
+				this.log('debug', `清除 ${i} 分片缓存定时器`);
 				waitTime && clearTimeout(waitTime);
 				this.waitToClear.delete(i);
 			}
@@ -183,7 +190,7 @@ export class HlsManage {
 			) {
 				return;
 			}
-			this.log(`设置 ${i} 分片缓存定时器`);
+			this.log('debug', `设置 ${i} 分片缓存定时器`);
 			this.waitToClear.set(i, setTimeout(this.clearTsCache.bind(this, i), 10 * 1000));
 		});
 	}
@@ -195,10 +202,10 @@ export class HlsManage {
 	private clearTsCache(index: number) {
 		this.waitToClear.delete(index);
 		if (index >= this.currentIndex && index <= this.currentIndex + this.clearMaxRange) {
-			this.log(`${index} 分片缓存在当前播放序列之后，无需清除`);
+			this.log('debug', `${index} 分片缓存在当前播放序列之后，无需清除`);
 			return;
 		}
-		this.log(`清除 ${index} 分片缓存`);
+		this.log('debug', `清除 ${index} 分片缓存`);
 		this.cache[index] = undefined as unknown as Buffer;
 	}
 
@@ -207,7 +214,7 @@ export class HlsManage {
 	 */
 	private gc() {
 		this.gcTimeout = setTimeout(() => {
-			this.log(`清除实例缓存`);
+			this.log('info', `清除实例缓存`);
 
 			if (this.hls) {
 				this.hls.destroy();

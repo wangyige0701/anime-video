@@ -7,6 +7,7 @@ import { DATA_FILE } from '~config/server';
 import { Season } from '~server/data/season';
 import { Episode } from '~server/data/episode';
 import { Data } from '~server/data/data';
+import { NotFoundError } from '~server/src/error/notFound';
 
 describe('Video Data Config', () => {
 	const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), './videos');
@@ -334,5 +335,9 @@ describe('Video Data Config', () => {
 				await fs.rm(path.join(dir, '视频1', '第一季', 'metadata.txt'), { force: true });
 			} catch (error) {}
 		}
+	});
+
+	it('Should map a missing video resource to a not-found error', async () => {
+		await expect(Series.getSeriesById('not-found')).rejects.toBeInstanceOf(NotFoundError);
 	});
 });

@@ -12,6 +12,7 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: {
+			'~common': path.resolve(__dirname, 'common'),
 			'~server': path.resolve(__dirname, 'server'),
 			'~config': path.resolve(__dirname, 'config'),
 		},

@@ -20,6 +20,6 @@ app.use(requestLog())
 	.use(decorator.middleware())
 	.use(decorator.allowedMethods());
 
-app.listen(getServerPort(), () => {
+app.listen(getServerPort(), '0.0.0.0', () => {
 	logger.info({ port: getServerPort() }, 'Server is listening');
 });

@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Series as ISeries, SeriesImagesStoreStruct, ServerToPromise } from '~types/videos';
 import { allowedImageExtensions, DATA_FILE } from '~config/server';
+import { NotFoundError } from '~server/src/error/notFound';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Data } from './data';
 import { Common } from './common';
@@ -152,7 +153,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				return series;
 			}
 		}
-		throw new Error(`没有找到 id 为 ${seriesId} 的视频系列`);
+		throw new NotFoundError('Not Found', `没有找到 id 为 ${seriesId} 的视频系列`, 'text/plain');
 	}
 
 	/**
@@ -177,7 +178,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				}
 			}
 		}
-		throw new Error(`没有找到 id 为 ${seasonId} 的视频季`);
+		throw new NotFoundError('Not Found', `没有找到 id 为 ${seasonId} 的视频季`, 'text/plain');
 	}
 
 	/**
@@ -208,7 +209,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				}
 			}
 		}
-		throw new Error(`没有找到 id 为 ${episodeId} 的视频集`);
+		throw new NotFoundError('Not Found', `没有找到 id 为 ${episodeId} 的视频集`, 'text/plain');
 	}
 
 	private _id!: Promise<ISeries['id']>;

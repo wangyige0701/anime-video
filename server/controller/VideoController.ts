@@ -1,4 +1,4 @@
-import { Controller, HttpMethod, Inject, Types, ResponseHeader, Singleton, Cors } from 'koa-use-decorator-router';
+import { Controller, HttpMethod, Inject, ResponseHeader, Singleton, Cors } from 'koa-use-decorator-router';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { ServerRoot } from '~routes/server';
@@ -29,14 +29,18 @@ export class VideoController {
 	@HttpMethod.Get('/:path/:id.ts')
 	@ResponseHeader('Content-Type', 'video/mp2t')
 	@ResponseHeader('Cache-Control', 'public, max-age=3600')
-	async ts(@Inject('path', checkDirectory) path: string, @Inject('id', Types.Int) id: number) {
-		return await HlsManage.getHlsManage(path).ts(id);
+	async ts(@Inject('path', checkDirectory) path: string, @Inject('id', nonNegativeInteger) id: number) {
+		const segment = await HlsManage.getHlsManage(path).ts(id);
+		if (!segment) {
+			throw new NotFoundError('Not Found', `分片不存在: ${id}`, 'text/plain');
+		}
+		return segment;
 	}
 
 	@HttpMethod.Get(`/:path/:stream/${M3u8Config.SUBTITLE_M3U8_NAME}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
-	subtitle(@Inject('path', checkDirectory) path: string, @Inject('stream', Types.Int) stream: number) {
+	subtitle(@Inject('path', checkDirectory) path: string, @Inject('stream', nonNegativeInteger) stream: number) {
 		return HlsManage.getHlsManage(path).subtitle_m3u8(stream);
 	}
 
@@ -45,15 +49,33 @@ export class VideoController {
 	@ResponseHeader('Cache-Control', 'public, max-age=3600')
 	vtt(
 		@Inject('path', checkDirectory) path: string,
-		@Inject('stream', Types.Int) stream: number,
-		@Inject('id', Types.Int) id: number,
+		@Inject('stream', nonNegativeInteger) stream: number,
+		@Inject('id', nonNegativeInteger) id: number,
 	) {
 		return HlsManage.getHlsManage(path).subtitle(stream, id);
 	}
 }
 
+function nonNegativeInteger(value: string) {
+	// 禁止 parseInt 的宽松行为，例如 "1abc" 被错误当作 1，或负数进入 HLS 层。
+	if (!/^(0|[1-9]\d*)$/.test(value)) {
+		throw new NotFoundError('Not Found', `无效的数字参数: ${value}`, 'text/plain');
+	}
+	const number = Number(value);
+	if (!Number.isSafeInteger(number)) {
+		throw new NotFoundError('Not Found', `无效的数字参数: ${value}`, 'text/plain');
+	}
+	return number;
+}
+
 async function checkDirectory(pathName: string) {
-	const filePath = path.resolve(decodeURIComponent(pathName));
+	let decodedPath: string;
+	try {
+		decodedPath = decodeURIComponent(pathName);
+	} catch {
+		throw new NotFoundError('Not Found', '文件路径编码无效', 'text/plain');
+	}
+	const filePath = path.resolve(decodedPath);
 	const extension = path.extname(filePath).toLowerCase();
 	if (!(await Series.isAllowedDirectory(filePath))) {
 		throw new NotFoundError('Not Found', `文件目录 ${filePath} 不被允许`, 'text/plain');

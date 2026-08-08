@@ -33,6 +33,8 @@ export class SeriesController {
 
 	@HttpMethod.Post('/series/refresh/:seriesId')
 	public async refreshSeriesById(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		// 先确认目标存在，避免不存在的 ID 被刷新接口静默视为成功。
+		await Series.getSeriesById(seriesId);
 		await Series.updateSeries(seriesId);
 		return ctx.Success();
 	}

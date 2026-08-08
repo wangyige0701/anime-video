@@ -44,13 +44,8 @@ function getRoute(ctx: Pick<Context, 'path'>) {
 	return ctx.path;
 }
 
-function getRequestLogLevel(ctx: Pick<Context, 'path' | 'status'>): LogLevel {
-	if (ctx.status >= 500) {
-		return 'error';
-	}
-	if (ctx.status >= 400) {
-		return 'warn';
-	}
+function getAccessLogLevel(ctx: Pick<Context, 'path'>): LogLevel {
+	// 媒体分片和图片请求频率高，只在调试级别保留访问摘要。
 	if (ctx.path.startsWith(`${ServerRoot.VIDEO}/`) || ctx.path.startsWith(`${ServerRoot.IMAGE}/`)) {
 		return 'debug';
 	}
@@ -71,9 +66,11 @@ export function requestLog(): Middleware {
 			await next();
 		} finally {
 			const durationMs = Math.round(performance.now() - startedAt);
-			const level = getRequestLogLevel(ctx);
+			// 异常详情和 5xx 堆栈由 error 中间件单独记录，避免访问日志重复报错。
+			const level = getAccessLogLevel(ctx);
 			log[level](
 				{
+					event: 'http.request.completed',
 					method: ctx.method,
 					route: getRoute(ctx),
 					status: ctx.status,

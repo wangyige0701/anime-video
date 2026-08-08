@@ -212,7 +212,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		if (await isDirectory(this.directory)) {
 			return reject(new Error(`集文件 ${this.directory} 不是一个文件`));
 		}
-		if (!Episode.isAllowedDirectory(this.directory)) {
+		if (!(await Episode.isAllowedDirectory(this.directory))) {
 			return reject(new Error(`集文件 ${this.directory} 不被允许访问`));
 		}
 

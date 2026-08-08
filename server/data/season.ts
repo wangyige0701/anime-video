@@ -283,7 +283,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		if (!(await isDirectory(this.directory))) {
 			return reject(new Error(`季目录 ${this.directory} 不是一个文件夹`));
 		}
-		if (!Season.isAllowedDirectory(this.directory)) {
+		if (!(await Season.isAllowedDirectory(this.directory))) {
 			return reject(new Error(`季目录 ${this.directory} 不被允许访问`));
 		}
 

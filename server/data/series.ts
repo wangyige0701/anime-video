@@ -101,7 +101,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				continue;
 			}
 			const seriesPath = series.getDirectory();
-			if (!this.isAllowedDirectory(seriesPath)) {
+			if (!(await this.isAllowedDirectory(seriesPath))) {
 				await this.deleteCache(key);
 			}
 		}
@@ -595,7 +595,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
 	 */
 	private async initialize(resolve: PromiseResolve<SeriesStore>, reject: PromiseReject) {
-		if (!Series.isAllowedDirectory(this.dataFile)) {
+		if (!(await Series.isAllowedDirectory(this.dataFile))) {
 			return reject(new Error(`系列数据文件 ${this.dataFile} 不被允许访问`));
 		}
 		if (!(await isFileExist(this.directory))) {
@@ -604,7 +604,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		if (!(await isDirectory(this.directory))) {
 			return reject(new Error(`系列目录 ${this.directory} 不是一个文件夹`));
 		}
-		if (!Series.isAllowedDirectory(this.directory)) {
+		if (!(await Series.isAllowedDirectory(this.directory))) {
 			return reject(new Error(`系列目录 ${this.directory} 不被允许访问`));
 		}
 

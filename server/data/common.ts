@@ -1,4 +1,5 @@
 import path from 'node:path';
+import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { DATA_FILE } from '~config/server';
 import { Data } from './data';
@@ -66,16 +67,43 @@ export abstract class Common {
 	}
 
 	/**
+	 * 解析真实路径；不存在的叶子节点会基于最近的可解析祖先重建路径。
+	 */
+	private static async resolveRealPath(directory: string) {
+		const resolvedDirectory = path.resolve(directory);
+		let currentDirectory = resolvedDirectory;
+		const missingSegments: string[] = [];
+		while (true) {
+			try {
+				return path.join(await fs.realpath(currentDirectory), ...missingSegments);
+			} catch {
+				const parentDirectory = path.dirname(currentDirectory);
+				if (parentDirectory === currentDirectory) {
+					return resolvedDirectory;
+				}
+				missingSegments.unshift(path.basename(currentDirectory));
+				currentDirectory = parentDirectory;
+			}
+		}
+	}
+
+	/**
 	 * 检查目录是否被允许，所有视频、图片资源文件目录必须在允许的目录中
 	 *
 	 * @param directory 视频系列目录绝对路径
 	 */
 	public static async isAllowedDirectory(directory: string) {
 		const directories = await this.getDirectories();
-		const handleDirectory = path.resolve(directory);
-		return !!directories.find((item) => {
-			return handleDirectory.startsWith(item);
-		});
+		// 已存在的资源使用真实路径；待创建文件则从真实祖先恢复路径，避免符号链接或 Junction 绕过限制。
+		const handleDirectory = await Common.resolveRealPath(directory);
+		for (const item of directories) {
+			const rootDirectory = await Common.resolveRealPath(item);
+			const relativePath = path.relative(rootDirectory, handleDirectory);
+			if (relativePath === '' || (!relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath))) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**

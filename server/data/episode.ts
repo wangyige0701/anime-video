@@ -2,6 +2,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Episode as IEpisode, ServerToPromise } from '~types/videos';
+import { allowedVideoExtensions } from '~config/server';
 import type { Season } from './season';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Common } from './common';
@@ -22,28 +23,34 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 
 	public static async getAllEpisodes(season: Season) {
 		const result = [] as Array<{ episode: Episode; sort: number }>;
-		for (const file of await fs.readdir(season.getDirectory())) {
-			const filePath = path.join(season.getDirectory(), file);
-			if (await isDirectory(filePath)) {
+		for (const entry of await fs.readdir(season.getDirectory(), { withFileTypes: true })) {
+			const extension = path.extname(entry.name).toLowerCase();
+			// 只有普通文件且扩展名在服务端白名单中时，才会作为可播放剧集登记。
+			if (!entry.isFile() || !allowedVideoExtensions.includes(extension)) {
 				continue;
 			}
-			const episode = new Episode(file, season);
+			const episode = new Episode(entry.name, season);
 			await episode.getPromise();
 			result.push({ episode, sort: await episode.sort });
-
-			result.sort((a, b) => a.sort - b.sort);
 		}
+		result.sort((a, b) => a.sort - b.sort);
 
 		// 移除不存在的视频实例
-		const ids = await Promise.all(result.map((item) => item.episode.id));
+		const ids = new Set(await Promise.all(result.map((item) => item.episode.id)));
 		const episodes = (await season.getConfig()).episodes || [];
 		for (let i = episodes.length - 1; i >= 0; i--) {
 			const episode = episodes[i];
-			if (!ids.find((id) => id === episode.id)) {
+			if (!ids.has(episode.id)) {
 				episodes.splice(i, 1);
 			}
 		}
 		await season.getSeries().getDataInstance().save();
+		// 删除文件后同步回收对应的内存实例，避免旧 ID 命中已失效缓存。
+		for (const [id, cached] of this.cache) {
+			if (cached.getSeason() === season && !ids.has(id)) {
+				await this.deleteCache(id);
+			}
+		}
 
 		return result.map((item) => item.episode) as Episode[];
 	}
@@ -79,6 +86,11 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 
 		const { resolve, reject, promise } = createPromise<IEpisode>();
 		this.promise = promise;
+		const fail: PromiseReject = (error) => {
+			// 失败实例不保留在缓存中，后续修复文件后可正常重新初始化。
+			Episode.cache.delete(id);
+			reject(error);
+		};
 
 		this.registerId();
 		this.registerSort();
@@ -86,7 +98,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		this.registerExtension();
 		this.registerTitle();
 
-		this.initialize(resolve, reject);
+		this.initialize(resolve, fail).catch(fail);
 	}
 
 	/**
@@ -164,7 +176,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	// region 更新集数据
 	public async updateSort(sort: number) {
 		await this.promise;
-		await this.season.updateEpisodeSort(await this.sort, Math.max(1, sort));
+		await this.season.updateEpisodeSort(() => this.sort, Math.max(1, sort));
 		this.registerSort();
 	}
 

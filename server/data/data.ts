@@ -1,26 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createPromise, isArray, isObject, PromiseReject, PromiseResolve } from '@wang-yige/utils';
+import { isArray, isObject } from '@wang-yige/utils';
 import { isFileExist } from '~server/src/utils/fs';
 import { isEqual } from '~server/src/utils/is';
 
-/**
- * 配置文件数据获取
- *
- * - 根据传入的配置文件目录自动拼接配置文件路径，并读取
- * - 将读取的数据写入内存，并接管
- * - 需要对获取的数据进行代理，可以拦截数据更新行为，重新写入新的配置文件
- */
+/** 负责 JSON 配置文件的读取、代理修改和防抖持久化。 */
 export class Data<T extends object> {
 	private static delayTime = Number(process.env.DATA_FILE_SAVE_DELAY || 500);
 	private static cache: Map<string, Data<any>> = new Map();
 	private static proxyMap: WeakMap<object, object> = new WeakMap();
 
-	/**
-	 * 获取配置文件实例
-	 * @param configPath 配置文件路径
-	 * @param defaultContent 默认内容
-	 */
 	public static instance<T extends object>(configPath: string, defaultContent: T = [] as T) {
 		return new Data<T>(configPath, defaultContent);
 	}
@@ -33,14 +22,14 @@ export class Data<T extends object> {
 		configPath: string,
 		private defaultContent: T,
 	) {
-		const _path = path.resolve(configPath);
-		if (Data.cache.has(_path)) {
-			return Data.cache.get(_path)! as Data<T>;
+		const resolvedPath = path.resolve(configPath);
+		if (Data.cache.has(resolvedPath)) {
+			return Data.cache.get(resolvedPath)! as Data<T>;
 		}
-		Data.cache.set(_path, this);
+		Data.cache.set(resolvedPath, this);
 
-		this.configPath = _path;
-		this.tmpPath = path.join(path.dirname(this.configPath), path.basename(this.configPath) + '.tmp');
+		this.configPath = resolvedPath;
+		this.tmpPath = path.join(path.dirname(this.configPath), `${path.basename(this.configPath)}.tmp`);
 		this.data = this.doRead();
 	}
 
@@ -48,140 +37,156 @@ export class Data<T extends object> {
 		if (Data.proxyMap.has(data)) {
 			return Data.proxyMap.get(data)! as P;
 		}
-		const proxy = new Proxy<P & object>(data, {
+
+		const proxy = new Proxy<P>(data, {
 			get: (target, prop, receiver) => {
 				const value = Reflect.get(target, prop, receiver);
-				if (!isObject(value) && !isArray(value)) {
-					return value;
-				}
-				return this.proxy(value);
+				return isObject(value) || isArray(value) ? this.proxy(value) : value;
 			},
 			set: (target, prop, value, receiver) => {
 				const oldValue = Reflect.get(target, prop, receiver);
-				// 针对对象会进行递归比较，尽可能减少更新次数
 				if (isEqual(oldValue, value)) {
 					return true;
 				}
-				// 数据更新，需要保存
 				const result = Reflect.set(target, prop, value, receiver);
 				if (result) {
-					if (isObject(value) || isArray(value)) {
-						this.proxy(value);
-					}
-					this.save(false);
+					this.markDirty();
+				}
+				return result;
+			},
+			deleteProperty: (target, prop) => {
+				if (!Reflect.has(target, prop)) {
+					return true;
+				}
+				const result = Reflect.deleteProperty(target, prop);
+				if (result) {
+					this.markDirty();
 				}
 				return result;
 			},
 		});
 
 		Data.proxyMap.set(data, proxy);
-
 		return proxy;
 	}
 
 	private async doRead() {
 		if (await isFileExist(this.tmpPath)) {
-			// 检查临时文件是否存在，如果存在则说明上次保存时发生了错误，应该使用临时文件恢复数据
-			await fs.rename(this.tmpPath, this.configPath);
+			if (await isFileExist(this.configPath)) {
+				// 正式文件存在时，临时文件仅代表未完成或过期的写入。
+				await fs.unlink(this.tmpPath);
+			} else {
+				try {
+					// 只有可解析的临时文件才能恢复为正式文件。
+					JSON.parse(await fs.readFile(this.tmpPath, 'utf-8'));
+					await fs.rename(this.tmpPath, this.configPath);
+				} catch {
+					// 孤立且损坏的临时文件不是可靠数据，移除后按默认配置重新创建。
+					await fs.unlink(this.tmpPath);
+				}
+			}
 		}
 		if (!(await isFileExist(this.configPath))) {
-			// 数据文件不存在，使用默认内容填充
 			await fs.writeFile(this.configPath, JSON.stringify(this.defaultContent), 'utf-8');
 		}
-		const content = await fs.readFile(this.configPath, 'utf-8');
-		return this.proxy<T>(JSON.parse(content) as T);
+		return this.proxy<T>(JSON.parse(await fs.readFile(this.configPath, 'utf-8')) as T);
 	}
 
-	/**
-	 * 读取配置文件内容
-	 */
 	public read() {
 		return this.data;
 	}
 
 	private saveTimeout?: NodeJS.Timeout;
-	// 工作
 	private isSaveWorking = false;
-	private saveWorkQueue: Array<[PromiseResolve<void>, PromiseReject]> = [];
-	// 等待
-	private isSaveWaiting = false;
-	private saveWaitQueue: Array<[PromiseResolve<void>, PromiseReject]> = [];
-	private saveWaitingResolve?: PromiseResolve<void>;
+	private isDirty = false;
+	private revision = 0;
+	private savedRevision = 0;
+	private saveWaiters: Array<{
+		revision: number;
+		resolve: () => void;
+		reject: (error: unknown) => void;
+	}> = [];
 
-	private async doSave() {
-		if (this.isSaveWorking) {
-			this.isSaveWaiting = true;
-			return;
-		}
-		this.isSaveWorking = true;
-
-		try {
-			await fs.writeFile(this.tmpPath, JSON.stringify(await this.data), 'utf-8');
-			await fs.rename(this.tmpPath, this.configPath);
-			this.saveWorkQueue.forEach(([resolve]) => resolve());
-		} catch (error) {
-			this.saveWorkQueue.forEach(([_, reject]) => reject(error));
-		}
-
-		const waitQueue = this.saveWaitQueue.splice(0);
-		this.saveWorkQueue.splice(0, this.saveWorkQueue.length, ...waitQueue);
-
-		this.isSaveWorking = false;
-		if (this.isSaveWaiting) {
-			this.isSaveWaiting = false;
-			Promise.resolve().then(() => {
-				this.flushSave();
-			});
-		}
+	private markDirty() {
+		this.isDirty = true;
+		this.revision++;
+		this.scheduleSave();
 	}
 
-	private flushSave(resolve?: PromiseResolve<void>, reject?: PromiseReject) {
-		if (!this.saveWaitingResolve) {
-			const { resolve: saveResolve, promise } = createPromise<void>();
-			promise.then(() => {
-				return this.doSave();
-			});
-			this.saveWaitingResolve = saveResolve;
+	private scheduleSave() {
+		if (this.saveTimeout) {
+			clearTimeout(this.saveTimeout);
 		}
-
-		if (resolve && reject) {
-			if (this.isSaveWaiting) {
-				this.saveWaitQueue.push([resolve, reject]);
-			} else {
-				this.saveWorkQueue.push([resolve, reject]);
-			}
-		}
-
-		this.saveTimeout && clearTimeout(this.saveTimeout);
 		this.saveTimeout = setTimeout(() => {
-			const saveResolve = this.saveWaitingResolve;
-			this.saveWaitingResolve = void 0;
-			this.saveTimeout = void 0;
-			if (saveResolve) {
-				saveResolve();
-			}
+			this.saveTimeout = undefined;
+			void this.doSave();
 		}, Data.delayTime);
 	}
 
+	private settleSaveWaiters(revision: number, error?: unknown) {
+		const pendingWaiters: typeof this.saveWaiters = [];
+		for (const waiter of this.saveWaiters) {
+			if (waiter.revision > revision) {
+				pendingWaiters.push(waiter);
+			} else if (error) {
+				waiter.reject(error);
+			} else {
+				waiter.resolve();
+			}
+		}
+		this.saveWaiters = pendingWaiters;
+	}
+
+	private async doSave() {
+		if (this.isSaveWorking || this.savedRevision >= this.revision) {
+			return;
+		}
+
+		this.isSaveWorking = true;
+		const revision = this.revision;
+		let didSave = false;
+		try {
+			await fs.writeFile(this.tmpPath, JSON.stringify(await this.data), 'utf-8');
+			await fs.rename(this.tmpPath, this.configPath);
+			this.savedRevision = revision;
+			this.isDirty = this.savedRevision < this.revision;
+			didSave = true;
+			this.settleSaveWaiters(revision);
+		} catch (error) {
+			// 仅拒绝本次快照已经覆盖的版本；写入期间的新修改仍可在后续任务中保存。
+			this.settleSaveWaiters(revision, error);
+		} finally {
+			this.isSaveWorking = false;
+		}
+
+		// 成功写入或写入期间出现了新版本时，继续处理尚未落盘的数据。
+		if ((didSave || this.revision > revision) && this.savedRevision < this.revision && !this.saveTimeout) {
+			this.scheduleSave();
+		}
+	}
+
 	/**
-	 * 保存配置文件内容
-	 *
-	 * - save() -> 返回 promise，resolve 和 reject 通过 flushSave 保存起来
-	 * - flushSave() -> 一个工作流同时只有一个 promise，通过 timeout 和 全局提出的 resolve 方法控制延迟触发和防抖
-	 * - flushSave 的唯一 promise 回调后，触发 doSave
-	 * - doSave() -> 通过一个状态判断是否正在保存中，如果在保存则等待，否则立即保存
-	 * - 保存操作完成后，触发 resolve 或 reject，并且将等待队列中的数据替换到工作队列，如果有等待状态则在下一个微队列中触发 flushSave
-	 *
-	 * @param needPromise 是否需要返回 promise，默认返回 promise
+	 * 请求将当前内存版本写入磁盘。
+	 * - `save()` 返回的 Promise 会在调用时对应版本完成持久化后 resolve。
+	 * - `save(false)` 用于无等待的强制保存。
 	 */
 	public save(needPromise = true) {
-		if (needPromise) {
-			const { resolve, reject, promise } = createPromise<void>();
-			this.flushSave(resolve, reject);
-
-			return promise;
-		} else {
-			this.flushSave();
+		if (!needPromise) {
+			this.markDirty();
+			return;
 		}
+
+		if (!this.isDirty && !this.isSaveWorking && !this.saveTimeout) {
+			return Promise.resolve();
+		}
+		const revision = this.revision;
+		const promise = new Promise<void>((resolve, reject) => {
+			this.saveWaiters.push({ revision, resolve, reject });
+		});
+		// 写入失败后的重试由下一次显式 save 驱动，避免后台无限重试；此处保证队列会重新启动。
+		if (!this.isSaveWorking && !this.saveTimeout) {
+			this.scheduleSave();
+		}
+		return promise;
 	}
 }

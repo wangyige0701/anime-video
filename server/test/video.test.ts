@@ -27,6 +27,51 @@ describe('Video Data Config', () => {
 		await Series.setDirectories(dir);
 		const directories = await Series.getDirectories();
 		expect(directories).toEqual([dir]);
+		expect(await Series.isAllowedDirectory(`${dir}-outside`)).toBe(false);
+	});
+
+	it('Should preserve the valid data file when a stale temporary file exists', async () => {
+		const tempPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data-recovery.test.video.json');
+		const tempFilePath = `${tempPath}.tmp`;
+		try {
+			await fs.writeFile(tempPath, JSON.stringify({ value: 'current' }));
+			await fs.writeFile(tempFilePath, JSON.stringify({ value: 'stale' }));
+			const data = new Data(tempPath, { value: 'default' });
+			expect(await data.read()).toEqual({ value: 'current' });
+			await expect(fs.access(tempFilePath)).rejects.toThrow();
+		} finally {
+			await Promise.all([fs.rm(tempPath, { force: true }), fs.rm(tempFilePath, { force: true })]);
+		}
+	});
+
+	it('Should discard an invalid orphan temporary file and restore defaults', async () => {
+		const tempPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data-invalid-tmp.test.video.json');
+		const tempFilePath = `${tempPath}.tmp`;
+		try {
+			await fs.writeFile(tempFilePath, '{invalid json');
+			const data = new Data(tempPath, { value: 'default' });
+			expect(await data.read()).toEqual({ value: 'default' });
+			expect(await fs.readFile(tempPath, 'utf-8')).toBe(JSON.stringify({ value: 'default' }));
+			await expect(fs.access(tempFilePath)).rejects.toThrow();
+		} finally {
+			await Promise.all([fs.rm(tempPath, { force: true }), fs.rm(tempFilePath, { force: true })]);
+		}
+	});
+
+	it('Should persist concurrent changes', async () => {
+		const tempPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'data-concurrent.test.video.json');
+		try {
+			const data = new Data(tempPath, { value: 0 });
+			const content = await data.read();
+			content.value = 1;
+			const firstSave = data.save();
+			content.value = 2;
+			const secondSave = data.save();
+			await Promise.all([firstSave, secondSave]);
+			expect(JSON.parse(await fs.readFile(tempPath, 'utf-8'))).toEqual({ value: 2 });
+		} finally {
+			await Promise.all([fs.rm(tempPath, { force: true }), fs.rm(`${tempPath}.tmp`, { force: true })]);
+		}
 	});
 
 	it('Should operate data file correctly', async () => {
@@ -207,6 +252,10 @@ describe('Video Data Config', () => {
 			expect(await season.sort).toBe(2);
 			expect(await season2.sort).toBe(1);
 			expect(await season.title).toBe('第一季');
+			// 同一系列的排序更新会串行执行，并使用前一个任务完成后的最新位置。
+			await Promise.all([season1.updateSort(1), season2.updateSort(2)]);
+			expect(await season1.sort).toBe(1);
+			expect(await season2.sort).toBe(2);
 			// 测试文件内容更新
 			await season.updateTitle('测试第一季');
 			await series.getDataInstance().save();
@@ -224,6 +273,10 @@ describe('Video Data Config', () => {
 			expect(await episode.sort).toBe(2);
 			expect(await episode2.sort).toBe(1);
 			expect(await episode.title).toBe('1');
+			// 同一季中的剧集排序遵循相同的并发一致性约束。
+			await Promise.all([episode1.updateSort(1), episode2.updateSort(2)]);
+			expect(await episode1.sort).toBe(1);
+			expect(await episode2.sort).toBe(2);
 			// 测试文件内容更新
 			await episode.updateTitle('测试1');
 			await series.getDataInstance().save();
@@ -231,12 +284,35 @@ describe('Video Data Config', () => {
 			const expectEpisodeId = await episode.id;
 			const seasonData = dataEpisode[0].seasons.find((item: any) => item.id === expectSeasonId);
 			expect(seasonData?.episodes.find((item: any) => item.id === expectEpisodeId)?.title).toBe('测试1');
+
+			// 非视频文件不能被错误地登记为剧集，新增的视频文件则必须能被扫描到。
+			const temporaryVideoPath = path.join(dir, '视频1', '第一季', 'temporary.webm');
+			const nonVideoPath = path.join(dir, '视频1', '第一季', 'metadata.txt');
+			await Promise.all([fs.writeFile(temporaryVideoPath, ''), fs.writeFile(nonVideoPath, '')]);
+			await Series.updateSeries(await series.id);
+			const episodesWithTemporaryVideo = await Episode.getAllEpisodes(season);
+			const temporaryEpisode = episodesWithTemporaryVideo.find(
+				(item) => item.getEpisodeName() === path.basename(temporaryVideoPath),
+			);
+			expect(temporaryEpisode).toBeDefined();
+			expect(
+				episodesWithTemporaryVideo.some((item) => item.getEpisodeName() === path.basename(nonVideoPath)),
+			).toBe(false);
+
+			// 刷新会对账静态缓存；已删除的视频不能再通过旧 ID 被取回。
+			const temporaryEpisodeId = await temporaryEpisode!.id;
+			await fs.unlink(temporaryVideoPath);
+			await Series.updateSeries(await series.id);
+			await expect(Series.getEpisodeById(temporaryEpisodeId)).rejects.toThrow();
+			await fs.unlink(nonVideoPath);
 		} catch (error) {
 			throw error;
 		} finally {
 			try {
 				await fs.unlink(testImagePath1);
 				await fs.unlink(testImagePath2);
+				await fs.rm(path.join(dir, '视频1', '第一季', 'temporary.webm'), { force: true });
+				await fs.rm(path.join(dir, '视频1', '第一季', 'metadata.txt'), { force: true });
 			} catch (error) {}
 		}
 	});

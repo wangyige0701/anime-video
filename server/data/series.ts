@@ -19,6 +19,8 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * 视频系列缓存，key 为视频系列 id，value 为视频系列实例
 	 */
 	protected static cache: Map<string, Series> = new Map();
+	// 首次扫描完成后，普通读取复用索引；文件系统变化由刷新接口主动对账。
+	private static isIndexed = false;
 
 	public static async clearCache() {
 		for (const [_key, series] of this.cache) {
@@ -29,6 +31,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			}
 		}
 		this.cache.clear();
+		this.isIndexed = false;
 	}
 
 	public static async deleteCache(id: string) {
@@ -46,26 +49,31 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 	/**
 	 * 获取所有视频系列实例
+	 *
+	 * @param forceRefresh 是否重新扫描磁盘并对账缓存
 	 */
-	public static async getAllSeries() {
+	public static async getAllSeries(forceRefresh = false) {
+		if (this.isIndexed && !forceRefresh) {
+			return [...this.cache.values()];
+		}
 		const directories = await this.getDirectories();
 		const result: Series[] = [];
 		for (const directory of directories) {
-			if (!(await isFileExist(directory))) {
+			if (!(await isFileExist(directory)) || !(await isDirectory(directory))) {
 				continue;
 			}
 
 			const temp = [] as Series[];
 
-			// 遍历配置目录下的文件夹，依次去解析系列数据
-			for (const folder of await fs.readdir(directory)) {
-				const folderPath = path.join(directory, folder);
-				// 非文件夹不进入实例化
-				if (!(await isDirectory(folderPath))) {
+			// Dirent 可直接提供大多数目录项的类型，避免为每一个普通文件额外 stat 一次。
+			for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+				const entryPath = path.join(directory, entry.name);
+				// 符号链接仍回退到 stat，以保持此前可扫描链接目录的兼容行为。
+				if (!entry.isDirectory() && !(entry.isSymbolicLink() && (await isDirectory(entryPath)))) {
 					continue;
 				}
 
-				const series = new Series(directory, folder);
+				const series = new Series(directory, entry.name);
 				await series.getPromise();
 				temp.push(series);
 			}
@@ -74,18 +82,25 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			// 如果有新增的已经在 resolveSeriesConfig 中添加过了，这里只需要移除不存在的系列数据
 			const data = Data.instance<ISeries[]>(path.join(directory, DATA_FILE), []);
 			const currentSeries = await data.read();
-			const ids = await Promise.all(temp.map((item) => item.id));
+			const ids = new Set(await Promise.all(temp.map((item) => item.id)));
 			for (let i = currentSeries.length - 1; i >= 0; i--) {
 				const series = currentSeries[i];
-				if (!ids.find((id) => id === series.id)) {
+				if (!ids.has(series.id)) {
 					currentSeries.splice(i, 1);
 				}
 			}
 			await data.save();
+			// 磁盘中已删除的目录不能继续由静态缓存返回。
+			for (const [id, cached] of this.cache) {
+				if (path.dirname(cached.getDirectory()) === path.resolve(directory) && !ids.has(id)) {
+					await this.deleteCache(id);
+				}
+			}
 
 			result.push(...temp);
 		}
 
+		this.isIndexed = true;
 		return result;
 	}
 
@@ -101,11 +116,19 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				continue;
 			}
 			const seriesPath = series.getDirectory();
-			if (!(await this.isAllowedDirectory(seriesPath))) {
+			if (!(await this.isAllowedDirectory(seriesPath)) || !(await isDirectory(seriesPath))) {
 				await this.deleteCache(key);
 			}
 		}
-		await this.getAllSeries();
+		const allSeries = await this.getAllSeries(true);
+		for (const series of allSeries) {
+			if (seriesId && (await series.id) !== seriesId) {
+				continue;
+			}
+			for (const season of await Season.getAllSeasons(series)) {
+				await Episode.getAllEpisodes(season);
+			}
+		}
 	}
 
 	/**
@@ -115,8 +138,13 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 */
 	public static async getSeriesById(seriesId: string) {
 		if (this.hasCache(seriesId)) {
-			// 缓存中存在，直接返回
-			return this.getCache<Series>(seriesId)!;
+			const series = this.getCache<Series>(seriesId)!;
+			const seriesPath = series.getDirectory();
+			// 缓存只保存内存对象，文件系统被外部删除后必须在读取时再次确认有效性。
+			if ((await this.isAllowedDirectory(seriesPath)) && (await isDirectory(seriesPath))) {
+				return series;
+			}
+			await this.deleteCache(seriesId);
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
@@ -134,7 +162,11 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 */
 	public static async getSeasonById(seasonId: string) {
 		if (Season.hasCache(seasonId)) {
-			return Season.getCache<Season>(seasonId)!;
+			const season = Season.getCache<Season>(seasonId)!;
+			if ((await this.isAllowedDirectory(season.getDirectory())) && (await isDirectory(season.getDirectory()))) {
+				return season;
+			}
+			await Season.deleteCache(seasonId);
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
@@ -155,7 +187,14 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 */
 	public static async getEpisodeById(episodeId: string) {
 		if (Episode.hasCache(episodeId)) {
-			return Episode.getCache<Episode>(episodeId)!;
+			const episode = Episode.getCache<Episode>(episodeId)!;
+			if (
+				(await this.isAllowedDirectory(episode.getDirectory())) &&
+				(await isFileExist(episode.getDirectory()))
+			) {
+				return episode;
+			}
+			await Episode.deleteCache(episodeId);
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
@@ -188,6 +227,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	private dataFile!: string;
 	private hashId!: string;
 	private promise!: Promise<SeriesStore>;
+	private seasonSortQueue: Promise<void> = Promise.resolve();
 
 	/**
 	 * @param rootDirectory 视频系列根目录绝对路径
@@ -211,6 +251,11 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 		const { resolve, reject, promise } = createPromise<SeriesStore>();
 		this.promise = promise;
+		const fail: PromiseReject = (error) => {
+			// 初始化失败的 Promise 不能留在缓存中，否则后续访问会一直复用失败结果。
+			Series.cache.delete(id);
+			reject(error);
+		};
 
 		// 需要在构造函数中立刻注册
 		this.registerId();
@@ -224,7 +269,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerStatus();
 		this.registerSeasons();
 
-		this.initialize(resolve, reject);
+		this.initialize(resolve, fail).catch(fail);
 	}
 
 	/**
@@ -509,7 +554,14 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerStatus();
 	}
 
-	public async updateSeasonSort(oldSort: number, newSort: number) {
+	public async updateSeasonSort(getOldSort: () => Promise<number>, newSort: number) {
+		// 旧排序值必须在队列内读取，否则并发请求会使用过期位置覆盖前一项的调整结果。
+		const task = this.seasonSortQueue.then(async () => this.doUpdateSeasonSort(await getOldSort(), newSort));
+		this.seasonSortQueue = task.catch(() => {});
+		return await task;
+	}
+
+	private async doUpdateSeasonSort(oldSort: number, newSort: number) {
 		if (oldSort === newSort) {
 			return;
 		}
@@ -623,16 +675,17 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		const name = path.basename(this.directory);
 		const images = [] as SeriesImagesStoreStruct;
 
-		for (const file of await fs.readdir(this.directory)) {
-			const filePath = path.join(this.directory, file);
-			if (await isDirectory(filePath)) {
+		// 图片目录扫描同样复用 Dirent，目录和普通文件无需重复查询文件状态。
+		for (const entry of await fs.readdir(this.directory, { withFileTypes: true })) {
+			const filePath = path.join(this.directory, entry.name);
+			if (entry.isDirectory() || (entry.isSymbolicLink() && (await isDirectory(filePath)))) {
 				continue;
 			}
 			const extension = path.extname(filePath);
 			if (!allowedImageExtensions.includes(extension)) {
 				continue;
 			}
-			images.push({ path: file, sort: images.length + 1 });
+			images.push({ path: entry.name, sort: images.length + 1 });
 		}
 
 		if (!configs.find((config) => config.id === id)) {

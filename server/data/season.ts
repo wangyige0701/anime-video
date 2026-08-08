@@ -39,12 +39,13 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	 */
 	public static async getAllSeasons(series: Series) {
 		const result = [] as Array<{ season: Season; sort: number }>;
-		for (const file of await fs.readdir(series.getDirectory())) {
-			const filePath = path.join(series.getDirectory(), file);
-			if (!(await isDirectory(filePath))) {
+		// 普通目录项由 readdir 直接判别类型，符号链接才需要额外 stat 以兼容旧行为。
+		for (const entry of await fs.readdir(series.getDirectory(), { withFileTypes: true })) {
+			const entryPath = path.join(series.getDirectory(), entry.name);
+			if (!entry.isDirectory() && !(entry.isSymbolicLink() && (await isDirectory(entryPath)))) {
 				continue;
 			}
-			const season = new Season(file, series);
+			const season = new Season(entry.name, series);
 			await season.getPromise();
 			result.push({ season, sort: await season.sort });
 		}
@@ -52,15 +53,21 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		result.sort((a, b) => a.sort - b.sort);
 
 		// 移除不存在的季实例
-		const ids = await Promise.all(result.map((item) => item.season.id));
+		const ids = new Set(await Promise.all(result.map((item) => item.season.id)));
 		const seasons = (await series.getConfig()).seasons; // 配置文件中读取的季数据
 		for (let i = seasons.length - 1; i >= 0; i--) {
 			const season = seasons[i];
-			if (!ids.find((id) => id === season.id)) {
+			if (!ids.has(season.id)) {
 				seasons.splice(i, 1);
 			}
 		}
 		await series.getDataInstance().save();
+		// 刷新后回收已删除目录的季及其剧集缓存。
+		for (const [id, cached] of this.cache) {
+			if (cached.getSeries() === series && !ids.has(id)) {
+				await this.deleteCache(id);
+			}
+		}
 
 		return result.map((item) => item.season) as Season[];
 	}
@@ -75,6 +82,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	private directory!: string;
 	private hashId!: string;
 	private promise!: Promise<ISeason>;
+	private episodeSortQueue: Promise<void> = Promise.resolve();
 
 	/**
 	 * @param seasonDirectory 季目录名
@@ -101,6 +109,11 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 
 		const { resolve, reject, promise } = createPromise<ISeason>();
 		this.promise = promise;
+		const fail: PromiseReject = (error) => {
+			// 避免构造失败的季占据同一 ID 的缓存位置。
+			Season.cache.delete(id);
+			reject(error);
+		};
 
 		this.registerId();
 		this.registerSort();
@@ -108,7 +121,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.registerTitle();
 		this.registerEpisodes();
 
-		this.initialize(resolve, reject);
+		this.initialize(resolve, fail).catch(fail);
 	}
 
 	/**
@@ -201,7 +214,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	 */
 	public async updateSort(sort: number) {
 		await this.promise;
-		await this.series.updateSeasonSort(await this.sort, Math.max(1, sort));
+		await this.series.updateSeasonSort(() => this.sort, Math.max(1, sort));
 	}
 
 	/**
@@ -218,7 +231,14 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.registerTitle();
 	}
 
-	public async updateEpisodeSort(oldSort: number, newSort: number) {
+	public async updateEpisodeSort(getOldSort: () => Promise<number>, newSort: number) {
+		// 在真正执行时读取旧位置，保证并发调整按队列中的最新状态计算。
+		const task = this.episodeSortQueue.then(async () => this.doUpdateEpisodeSort(await getOldSort(), newSort));
+		this.episodeSortQueue = task.catch(() => {});
+		return await task;
+	}
+
+	private async doUpdateEpisodeSort(oldSort: number, newSort: number) {
 		if (oldSort === newSort) {
 			return;
 		}

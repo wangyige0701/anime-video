@@ -4,7 +4,7 @@
 	"main": "app.ts",
 	"type": "module",
 	"scripts": {
-		"dev": "npx tsx --watch app.ts",
+		"dev": "npx tsx watch --tsconfig tsconfig.json app.ts",
 		"web-dev": "cross-env NODE_ENV=development npx tsx web.ts",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},

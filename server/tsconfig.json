@@ -1,0 +1,9 @@
+{
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"baseUrl": "..",
+		"types": ["node"]
+	},
+	"include": ["./**/*.ts", "../config/**/*.ts", "../common/**/*.ts", "../routes/**/*.ts", "../types/**/*.d.ts"],
+	"exclude": ["./test", "../node_modules", "../web", "../dev", "../test"]
+}

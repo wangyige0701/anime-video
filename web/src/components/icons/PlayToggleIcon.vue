@@ -43,12 +43,27 @@ const play = computed({
 	},
 });
 
+watch(
+	() => props.play,
+	(value) => {
+		if (value) {
+			toPlay();
+		} else {
+			toPause();
+		}
+	},
+);
+
 function toPlay() {
-	play.value = true;
+	if (!play.value) {
+		play.value = true;
+	}
 }
 
 function toPause() {
-	play.value = false;
+	if (play.value) {
+		play.value = false;
+	}
 }
 
 function toggle() {

@@ -47,6 +47,7 @@ export class HlsManage {
 	private runCount = 5;
 	/** Hls 实例清除延迟时间 */
 	private destroyDelay = 60 * 1000 * 5;
+	private destroyTsDelay = 30 * 1000 * 5;
 
 	constructor(inputPath: string) {
 		const hashPath = crypto.createHash('sha256').update(path.normalize(inputPath)).digest('hex');
@@ -192,7 +193,7 @@ export class HlsManage {
 				return;
 			}
 			this.log('debug', `设置 ${i} 分片缓存定时器`);
-			this.waitToClear.set(i, setTimeout(this.clearTsCache.bind(this, i), 10 * 1000));
+			this.waitToClear.set(i, setTimeout(this.clearTsCache.bind(this, i), this.destroyTsDelay));
 		});
 	}
 

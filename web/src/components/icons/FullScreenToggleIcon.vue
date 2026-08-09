@@ -1,7 +1,7 @@
 <template>
 	<svg
 		class="full-screen-icon"
-		:class="{ 'is-full-screen-exit': !fullScreen }"
+		:class="{ 'is-full-screen': fullScreen }"
 		viewBox="0 0 1024 1024"
 		xmlns="http://www.w3.org/2000/svg"
 	>
@@ -90,7 +90,7 @@ defineExpose({
 	transition: d 360ms cubic-bezier(0.22, 0.8, 0.32, 1);
 }
 
-.full-screen-icon.is-full-screen-exit .full-screen-icon__corner {
+.full-screen-icon.is-full-screen .full-screen-icon__corner {
 	d: path('M 400 186 L 400 312 C 400 361 361 400 312 400 L 186 400');
 }
 </style>

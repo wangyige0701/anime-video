@@ -33,14 +33,14 @@ const emit = defineEmits<{
 
 let resetTimer: ReturnType<typeof setTimeout> | undefined;
 let animationFrame: number | undefined;
-const activeValue = ref(props.active);
+const activeRef = ref(props.active);
 const activeModel = useVModel(props, 'active', emit);
 const active = computed({
 	get() {
-		return activeValue.value;
+		return activeRef.value;
 	},
 	set(value) {
-		activeValue.value = value;
+		activeRef.value = value;
 		activeModel.value = value;
 	},
 });
@@ -48,11 +48,11 @@ const active = computed({
 watch(
 	() => props.active,
 	(newValue) => {
-		if (newValue && !activeValue.value) {
+		if (newValue && !activeRef.value) {
 			trigger();
 			return;
 		}
-		active.value = activeValue.value;
+		active.value = activeRef.value;
 	},
 );
 

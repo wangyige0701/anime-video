@@ -33,8 +33,8 @@ const emit = defineEmits<{
 
 let resetTimer: ReturnType<typeof setTimeout> | undefined;
 let animationFrame: number | undefined;
-const activeRef = ref(props.active);
 const activeModel = useVModel(props, 'active', emit);
+const activeRef = ref(props.active);
 const active = computed({
 	get() {
 		return activeRef.value;
@@ -113,7 +113,7 @@ defineExpose({
 
 @keyframes screen-shot-gather {
 	50% {
-		transform: translate(-4.1%, 4.1%);
+		transform: translate(-4%, 4%);
 	}
 }
 </style>

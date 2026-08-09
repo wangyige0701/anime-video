@@ -24,7 +24,7 @@ export class HlsManage {
 	}
 
 	/** 缓存单个 Hls 实例中已生成的分片 */
-	private cache!: Array<Buffer>;
+	private cache!: Array<Promise<Buffer> | undefined>;
 	/** 并行任务队列 */
 	private task = new ParallelTask(5);
 	/** 缓存单个 Hls 实例中已生成的分片的清除定时器 */
@@ -38,7 +38,7 @@ export class HlsManage {
 	private inputPath!: string;
 	private hlsLogger!: ReturnType<typeof createLogger>;
 	/** Hls 实例清除的定时器 */
-	private gcTimeout!: NodeJS.Timeout;
+	private gcTimeout: NodeJS.Timeout | null = null;
 	/** 当前正在生成的分片索引 */
 	private currentIndex = 0;
 	/** 清除缓存的分片索引最大范围 */
@@ -117,7 +117,7 @@ export class HlsManage {
 				this.preloadTs(i);
 				break;
 			}
-			return this.cache[index]!;
+			return await this.cache[index];
 		}
 
 		const ts = this.getHls().ts(index);
@@ -125,8 +125,8 @@ export class HlsManage {
 
 		this.preloadTs(index + 1);
 
+		this.setTsCache(index, ts);
 		const buffer = await ts;
-		this.setTsCache(index, buffer);
 
 		return buffer;
 	}
@@ -152,9 +152,10 @@ export class HlsManage {
 				if (!this.hls) {
 					return;
 				}
-				const buffer = await this.getHls().ts(index);
+				const ts = this.getHls().ts(index);
+				this.setTsCache(index, ts);
+				await ts;
 				this.log('debug', `生成 ${index} 分片`);
-				this.setTsCache(index, buffer);
 			}, i);
 		}
 	}
@@ -164,8 +165,8 @@ export class HlsManage {
 	 * @param index 分片索引
 	 * @param buffer 分片数据
 	 */
-	private setTsCache(index: number, buffer: Buffer) {
-		this.cache[index] = buffer;
+	private setTsCache(index: number, ts: Promise<Buffer>) {
+		this.cache[index] = ts;
 	}
 
 	/**
@@ -206,7 +207,7 @@ export class HlsManage {
 			return;
 		}
 		this.log('debug', `清除 ${index} 分片缓存`);
-		this.cache[index] = undefined as unknown as Buffer;
+		this.cache[index] = undefined;
 	}
 
 	/**
@@ -216,6 +217,7 @@ export class HlsManage {
 		this.gcTimeout = setTimeout(() => {
 			this.log('info', `清除实例缓存`);
 
+			this.gcTimeout = null;
 			if (this.hls) {
 				this.hls.destroy();
 			}

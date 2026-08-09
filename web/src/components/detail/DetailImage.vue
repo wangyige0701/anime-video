@@ -1,7 +1,16 @@
 <template>
 	<div class="image-container">
-		<div class="image-wrap">
-			<div class="image" :style="{ '--count': props.images.length }">
+		<div
+			class="image-wrap"
+			:class="{ 'more-margin': props.images.length <= 1 }"
+			@mouseover.stop="onInside"
+			@mouseleave.stop="offInside"
+		>
+			<div
+				class="image"
+				:class="{ transition: status.transition }"
+				:style="{ '--count': props.images.length > 1 ? props.images.length + 1 : 1 }"
+			>
 				<template v-for="(image, index) in props.images" :key="image">
 					<el-image
 						class="image-view"
@@ -10,17 +19,31 @@
 						:preview-src-list="previewSrcList"
 						:initial-index="index"
 						:preview-teleported="true"
+						:hide-on-click-modal="true"
+					></el-image>
+				</template>
+				<template v-if="props.images.length > 1">
+					<el-image
+						class="image-view"
+						:src="getImageUrl(getSeriesPath(props.images[0]!))"
+						fit="cover"
+						:preview-src-list="previewSrcList"
+						:initial-index="0"
+						:preview-teleported="true"
+						:hide-on-click-modal="true"
 					></el-image>
 				</template>
 			</div>
 		</div>
-		<div class="dots">
+		<div class="dots" v-if="props.images.length > 1">
 			<span
 				v-for="(dot, index) in props.images"
 				:key="index"
 				class="dot"
 				:class="{ active: activeImage === dot }"
 				@click.stop="changeActiveImage(dot)"
+				@mouseover.stop="onInside"
+				@mouseleave.stop="offInside"
 			></span>
 		</div>
 	</div>
@@ -38,6 +61,10 @@ const props = withDefaults(
 		images: () => [],
 	},
 );
+
+let autoChangeIntervalId: number | null = null;
+const status = useVueStatusRef('inside', 'click', 'transition').onTransition();
+const autoChangeInterval = ref<number>(5000);
 const activeImage = ref('');
 const offset = ref(0);
 const previewSrcList = computed(() => {
@@ -57,14 +84,55 @@ const watchImages = watch(
 );
 watchEffect(() => {
 	const index = props.images.indexOf(activeImage.value);
-	if (index !== -1) {
-		offset.value = index;
+	if (index !== -1 && index !== offset.value) {
+		status.onTransition();
+		const oldOffset = offset.value;
+		if (!status.click && oldOffset === props.images.length - 1 && index === 0) {
+			offset.value = props.images.length;
+			setTimeout(() => {
+				status.offTransition();
+				offset.value = 0;
+			}, 300);
+		} else {
+			offset.value = index;
+		}
+		status.offClick();
 	}
+	status.inside;
+	autoChangeInterval.value;
+	autoChangeImage();
 });
 
 function changeActiveImage(image: string) {
+	status.onClick();
 	watchImages.stop();
 	activeImage.value = image;
+}
+
+function onInside() {
+	status.onInside();
+	if (autoChangeIntervalId) {
+		clearTimeout(autoChangeIntervalId);
+	}
+}
+
+function offInside() {
+	status.offInside();
+}
+
+function autoChangeImage() {
+	if (!props.images?.length || props.images.length === 1 || status.inside || !autoChangeInterval.value) {
+		return;
+	}
+	if (autoChangeIntervalId) {
+		clearTimeout(autoChangeIntervalId);
+	}
+	autoChangeIntervalId = setTimeout(() => {
+		autoChangeIntervalId = null;
+		const nextIndex = (offset.value + 1) % props.images.length;
+		activeImage.value = props.images[nextIndex] ?? '';
+		autoChangeImage();
+	}, autoChangeInterval.value);
 }
 </script>
 
@@ -81,6 +149,9 @@ function changeActiveImage(image: string) {
 	@include image.image-wrap;
 	box-shadow: 0 0 5px map.get(token.$theme, 'l-9');
 	background-color: map.get(token.$theme, 'l-3');
+	&.more-margin {
+		margin-bottom: 30px;
+	}
 }
 .image {
 	--count: 1;
@@ -89,8 +160,10 @@ function changeActiveImage(image: string) {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
-	transition: transform 0.3s ease;
 	transform: translateX(calc((-100% / var(--count)) * v-bind('offset')));
+	&.transition {
+		transition: transform 0.3s ease;
+	}
 }
 .image-view {
 	width: 100%;

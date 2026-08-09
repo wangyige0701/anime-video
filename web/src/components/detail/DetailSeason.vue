@@ -96,6 +96,15 @@ const seasonCount = computed(() => props.season.episodes.length);
 	grid-template-columns: repeat(4, 1fr);
 	gap: 10px;
 	padding: 5px 20px;
+	@media (max-width: 1500px) {
+		grid-template-columns: repeat(3, 1fr);
+	}
+	@media (max-width: 1250px) {
+		grid-template-columns: repeat(2, 1fr);
+	}
+	@media (max-width: 950px) {
+		grid-template-columns: repeat(1, 1fr);
+	}
 }
 
 .episode {

@@ -104,7 +104,7 @@ onMounted(async () => {
 	}
 	.title {
 		color: token.$text-color-primary;
-		font-size: 1.4rem;
+		font-size: 1.6rem;
 	}
 }
 

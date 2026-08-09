@@ -1,7 +1,7 @@
 <template>
 	<svg
 		class="play-toggle-icon"
-		:class="{ 'is-playing': play }"
+		:class="{ 'is-pause': !play }"
 		viewBox="0 0 1024 1024"
 		xmlns="http://www.w3.org/2000/svg"
 	>
@@ -73,6 +73,7 @@ function toggle() {
 defineOptions({
 	inheritAttrs: true,
 });
+
 defineExpose({
 	toPlay,
 	toPause,
@@ -97,13 +98,13 @@ defineExpose({
 	);
 }
 
-.play-toggle-icon.is-playing .play-toggle-icon__shape--left {
+.play-toggle-icon.is-pause .play-toggle-icon__shape--left {
 	d: path(
 		'M 255 82 C 335 82 400 147 400 227 C 400 227 400 512 400 512 C 400 512 400 797 400 797 C 400 877 335 942 255 942 C 215 942 179 926 152 900 C 126 873 110 837 110 797 C 110 797 110 227 110 227 C 110 147 175 82 255 82 Z'
 	);
 }
 
-.play-toggle-icon.is-playing .play-toggle-icon__shape--right {
+.play-toggle-icon.is-pause .play-toggle-icon__shape--right {
 	d: path(
 		'M 769 82 C 849 82 914 147 914 227 C 914 227 914 512 914 512 C 914 512 914 797 914 797 C 914 877 849 942 769 942 C 729 942 693 926 666 900 C 640 873 624 837 624 797 C 624 797 624 227 624 227 C 624 147 689 82 769 82 Z'
 	);

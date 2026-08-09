@@ -31,7 +31,7 @@ const props = withDefaults(
 	},
 );
 const emit = defineEmits<{
-	(e: 'fullScreen', fullScreen: boolean): void;
+	(e: 'update:fullScreen', fullScreen: boolean): void;
 }>();
 
 const fullScreenModel = useVModel(props, 'fullScreen', emit);

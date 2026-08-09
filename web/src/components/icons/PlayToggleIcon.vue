@@ -28,7 +28,7 @@ const props = withDefaults(
 	},
 );
 const emit = defineEmits<{
-	(e: 'play', play: boolean): void;
+	(e: 'update:play', play: boolean): void;
 }>();
 
 const playModel = useVModel(props, 'play', emit);

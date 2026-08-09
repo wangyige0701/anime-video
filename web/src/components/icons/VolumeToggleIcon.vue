@@ -17,11 +17,7 @@
 				height="1024"
 			>
 				<rect width="1024" height="1024" fill="white" />
-				<path
-					class="volume-toggle-icon__slash-gap"
-					d="M170 110L894 834"
-					pathLength="1"
-				/>
+				<path class="volume-toggle-icon__slash-gap" d="M170 110L894 834" pathLength="1" />
 			</mask>
 		</defs>
 
@@ -55,11 +51,7 @@
 			</g>
 		</g>
 
-		<path
-			class="volume-toggle-icon__slash"
-			d="M170 110L894 834"
-			pathLength="1"
-		/>
+		<path class="volume-toggle-icon__slash" d="M170 110L894 834" pathLength="1" />
 	</svg>
 </template>
 
@@ -76,7 +68,7 @@ const props = withDefaults(
 	},
 );
 const emit = defineEmits<{
-	(e: 'volume', volume: number): void;
+	(e: 'update:volume', volume: number): void;
 }>();
 
 const lastVolume = ref(props.volume);

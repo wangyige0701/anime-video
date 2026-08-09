@@ -139,95 +139,102 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.volume-toggle-icon__wave,
-.volume-toggle-icon__slash,
-.volume-toggle-icon__slash-gap {
-	fill: none;
-	stroke-linecap: round;
-}
+<style scoped lang="scss">
+.volume-toggle-icon {
+	$root: &;
+	$motion-easing: cubic-bezier(0.22, 0.8, 0.32, 1);
 
-.volume-toggle-icon__wave,
-.volume-toggle-icon__slash {
-	stroke: currentColor;
-}
+	&__wave,
+	&__slash,
+	&__slash-gap {
+		fill: none;
+		stroke-linecap: round;
+	}
 
-.volume-toggle-icon__mask {
-	mask-type: luminance;
-}
+	&__wave,
+	&__slash {
+		stroke: currentColor;
+	}
 
-.volume-toggle-icon__speaker-motion,
-.volume-toggle-icon__waves-motion {
-	transform-box: view-box;
-	transform-origin: center;
-	transition:
-		transform 260ms cubic-bezier(0.22, 0.8, 0.32, 1),
-		opacity 180ms ease;
-}
+	&__mask {
+		mask-type: luminance;
+	}
 
-.volume-toggle-icon.is-muted .volume-toggle-icon__speaker-motion,
-.volume-toggle-icon.is-muted .volume-toggle-icon__waves-motion {
-	opacity: 0.78;
-	transform: scale(0.96);
-}
+	&__speaker-motion,
+	&__waves-motion {
+		transform-box: view-box;
+		transform-origin: center;
+		transition:
+			transform 260ms $motion-easing,
+			opacity 180ms ease;
+	}
 
-.volume-toggle-icon__wave {
-	--show-delay: 0ms;
-	--hide-delay: 0ms;
-	stroke-width: 68;
-	opacity: 0;
-	transform: translateX(-24%) scale(0.68);
-	transform-box: fill-box;
-	transform-origin: left center;
-	transition:
-		opacity 150ms ease var(--hide-delay),
-		transform 260ms cubic-bezier(0.22, 0.8, 0.32, 1) var(--hide-delay);
-}
+	&__wave {
+		--show-delay: 0ms;
+		--hide-delay: 0ms;
+		stroke-width: 68;
+		opacity: 0;
+		transform: translateX(-24%) scale(0.68);
+		transform-box: fill-box;
+		transform-origin: left center;
+		transition:
+			opacity 150ms ease var(--hide-delay),
+			transform 260ms $motion-easing var(--hide-delay);
 
-.volume-toggle-icon__wave--inner {
-	--hide-delay: 80ms;
-}
+		&--inner {
+			--hide-delay: 80ms;
+		}
 
-.volume-toggle-icon__wave--middle {
-	--show-delay: 50ms;
-	--hide-delay: 40ms;
-}
+		&--middle {
+			--show-delay: 50ms;
+			--hide-delay: 40ms;
+		}
 
-.volume-toggle-icon__wave--outer {
-	--show-delay: 100ms;
-}
+		&--outer {
+			--show-delay: 100ms;
+		}
 
-.volume-toggle-icon__wave.is-visible {
-	opacity: 1;
-	transform: scale(1);
-	transition-delay: var(--show-delay);
-}
+		&.is-visible {
+			opacity: 1;
+			transform: scale(1);
+			transition-delay: var(--show-delay);
+		}
+	}
 
-.volume-toggle-icon__slash,
-.volume-toggle-icon__slash-gap {
-	stroke-dasharray: 1;
-	stroke-dashoffset: 1;
-	opacity: 0;
-	transition:
-		stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.32, 1),
-		opacity 80ms linear 180ms;
-}
+	&__slash,
+	&__slash-gap {
+		stroke-dasharray: 1;
+		stroke-dashoffset: 1;
+		opacity: 0;
+		transition:
+			stroke-dashoffset 260ms $motion-easing,
+			opacity 80ms linear 180ms;
+	}
 
-.volume-toggle-icon__slash {
-	stroke-width: 76;
-}
+	&__slash {
+		stroke-width: 76;
+	}
 
-.volume-toggle-icon__slash-gap {
-	stroke: black;
-	stroke-width: 136;
-}
+	&__slash-gap {
+		stroke: black;
+		stroke-width: 136;
+	}
 
-.volume-toggle-icon.is-muted .volume-toggle-icon__slash,
-.volume-toggle-icon.is-muted .volume-toggle-icon__slash-gap {
-	stroke-dashoffset: 0;
-	opacity: 1;
-	transition:
-		stroke-dashoffset 260ms cubic-bezier(0.22, 0.8, 0.32, 1),
-		opacity 80ms linear;
+	&.is-muted {
+		#{$root}__speaker-motion,
+		#{$root}__waves-motion {
+			opacity: 0.78;
+			transform: scale(0.96);
+		}
+
+		#{$root}__slash,
+		#{$root}__slash-gap {
+			stroke-dashoffset: 0;
+			opacity: 1;
+			transition:
+				stroke-dashoffset 260ms $motion-easing,
+				opacity 80ms linear;
+		}
+	}
 }
 </style>

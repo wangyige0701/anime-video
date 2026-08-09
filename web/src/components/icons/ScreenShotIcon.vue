@@ -82,23 +82,26 @@ defineExpose({
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .screen-shot-icon {
+	$root: &;
 	overflow: visible;
-}
 
-.screen-shot-icon__rotator,
-.screen-shot-icon__section {
-	transform-box: view-box;
-	transform-origin: 512px 512px;
-}
+	&__rotator,
+	&__section {
+		transform-box: view-box;
+		transform-origin: 512px 512px;
+	}
 
-.screen-shot-icon.is-active .screen-shot-icon__rotator {
-	animation: screen-shot-spin 700ms cubic-bezier(0.22, 0.8, 0.32, 1);
-}
+	&.is-active {
+		#{$root}__rotator {
+			animation: screen-shot-spin 700ms cubic-bezier(0.22, 0.8, 0.32, 1);
+		}
 
-.screen-shot-icon.is-active .screen-shot-icon__section {
-	animation: screen-shot-gather 700ms cubic-bezier(0.22, 0.8, 0.32, 1);
+		#{$root}__section {
+			animation: screen-shot-gather 700ms cubic-bezier(0.22, 0.8, 0.32, 1);
+		}
+	}
 }
 
 @keyframes screen-shot-spin {

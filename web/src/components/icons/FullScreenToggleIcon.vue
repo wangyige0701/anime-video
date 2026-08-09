@@ -84,13 +84,17 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.full-screen-icon__corner {
-	d: path('M 340 126 L 214 126 C 165 126 126 165 126 214 L 126 340');
-	transition: d 360ms cubic-bezier(0.22, 0.8, 0.32, 1);
-}
+<style scoped lang="scss">
+.full-screen-icon {
+	$root: &;
 
-.full-screen-icon.is-full-screen .full-screen-icon__corner {
-	d: path('M 400 186 L 400 312 C 400 361 361 400 312 400 L 186 400');
+	&__corner {
+		d: path('M 340 126 L 214 126 C 165 126 126 165 126 214 L 126 340');
+		transition: d 360ms cubic-bezier(0.22, 0.8, 0.32, 1);
+	}
+
+	&.is-full-screen #{$root}__corner {
+		d: path('M 400 186 L 400 312 C 400 361 361 400 312 400 L 186 400');
+	}
 }
 </style>

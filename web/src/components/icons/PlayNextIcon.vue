@@ -40,19 +40,25 @@ defineExpose({
 });
 </script>
 
-<style scoped>
-.play-next-icon__triangle,
-.play-next-icon__bar {
-	transform-box: fill-box;
-	transform-origin: center;
-}
+<style scoped lang="scss">
+.play-next-icon {
+	$root: &;
 
-.play-next-icon.is-active .play-next-icon__triangle {
-	animation: play-next-triangle var(--play-next-duration) cubic-bezier(0.22, 0.8, 0.32, 1);
-}
+	&__triangle,
+	&__bar {
+		transform-box: fill-box;
+		transform-origin: center;
+	}
 
-.play-next-icon.is-active .play-next-icon__bar {
-	animation: play-next-bar var(--play-next-duration) cubic-bezier(0.22, 0.8, 0.32, 1);
+	&.is-active {
+		#{$root}__triangle {
+			animation: play-next-triangle var(--play-next-duration) cubic-bezier(0.22, 0.8, 0.32, 1);
+		}
+
+		#{$root}__bar {
+			animation: play-next-bar var(--play-next-duration) cubic-bezier(0.22, 0.8, 0.32, 1);
+		}
+	}
 }
 
 @keyframes play-next-triangle {

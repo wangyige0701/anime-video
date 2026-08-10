@@ -48,10 +48,7 @@ $theme: ();
 				0 24px 80px rgba(#000, 0.45),
 				0 0 0 1px rgba(color.mix(#fff, $color, 20%), 0.22),
 				0 0 36px rgba($color, 0.18);
-			#{var.varName('video', 'controller', 'bg')}: linear-gradient(
-				transparent,
-				rgba(color.mix(#000, $color, 88%), 0.82)
-			);
+			#{var.varName('video', 'controller', 'dark')}: rgba(color.mix(#000, $color, 88%), 0.82);
 		}
 	}
 }
@@ -71,4 +68,5 @@ $theme: ();
 	$theme: map.set($theme, 'video-mask-bg', var(--video-mask-bg));
 	$theme: map.set($theme, 'video-bg', var(--video-bg));
 	$theme: map.set($theme, 'video-shadow', var(--video-shadow));
+	$theme: map.set($theme, 'video-controller-dark', var(--video-controller-dark));
 }

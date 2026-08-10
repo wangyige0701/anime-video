@@ -2,7 +2,7 @@
 	<Transition name="box" :duration="transitionDuration" @after-enter="onAfterEnter" @after-leave="onAfterLeave">
 		<div v-if="status.mounted" v-show="status.show" class="video-box">
 			<div ref="container" class="video-container" :style="{ height: containerHeight + 'px' }">
-				<VideoCore />
+				<VideoCore @close="hide()" />
 			</div>
 		</div>
 	</Transition>

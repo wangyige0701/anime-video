@@ -1,5 +1,5 @@
 <template>
-	<div ref="cotnainer" class="video-progress_container"></div>
+	<div class="video-controller-container"></div>
 </template>
 
 <script setup lang="ts">

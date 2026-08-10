@@ -1,11 +1,12 @@
 <template>
-	<div class="video-core" @click="clickContainer">
+	<div class="video-core">
 		<div class="video-player">
-			<VideoPlayer ref="player"></VideoPlayer>
+			<VideoPlayer></VideoPlayer>
 		</div>
 		<div class="video-progress">
 			<VideoProgress></VideoProgress>
 		</div>
+		<div v-if="!playerStore.isPlaying" class="video-mask" @click.stop="playerStore.play()"></div>
 	</div>
 </template>
 
@@ -14,23 +15,26 @@ import { usePlayerStore } from '@/stores/player';
 import VideoPlayer from './VideoPlayer.vue';
 import VideoProgress from './VideoProgress.vue';
 
-const player = useTemplateRef('player');
-
-function clickContainer() {
-	if (player.value && player.value instanceof HTMLVideoElement) {
-		if (player.value.isPlay) {
-			player.value.pause();
-		} else {
-			player.value.play();
-		}
-	}
-}
+const playerStore = usePlayerStore();
 </script>
 
 <style scoped lang="scss">
-.video-core,
-.video-player {
+.video-core {
 	width: 100%;
 	height: 100%;
+}
+
+.video-core {
+	position: relative;
+}
+
+.video-player,
+.video-mask {
+	position: absolute;
+	inset: 0;
+}
+
+.video-mask {
+	cursor: pointer;
 }
 </style>

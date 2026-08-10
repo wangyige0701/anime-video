@@ -48,6 +48,10 @@ $theme: ();
 				0 24px 80px rgba(#000, 0.45),
 				0 0 0 1px rgba(color.mix(#fff, $color, 20%), 0.22),
 				0 0 36px rgba($color, 0.18);
+			#{var.varName('video', 'controller', 'bg')}: linear-gradient(
+				transparent,
+				rgba(color.mix(#000, $color, 88%), 0.82)
+			);
 		}
 	}
 }

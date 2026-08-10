@@ -6,6 +6,7 @@
 import Hls from 'hls.js';
 import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
+import { useEventListener } from '@vueuse/core';
 
 let hls: Hls | null = null;
 const playerStore = usePlayerStore();
@@ -44,12 +45,25 @@ watch(
 	},
 );
 
+useEventListener(window, 'keydown', (e) => {
+	if (e.key === 'Space') {
+		e.preventDefault();
+		e.stopPropagation();
+		playerStore.togglePlay();
+		playState();
+		return;
+	}
+});
+
 async function playState() {
+	if (!video.value) {
+		return;
+	}
 	await nextTick();
 	if (playerStore.isPlaying) {
-		video.value?.play();
+		video.value.paused && video.value.play().catch(() => {});
 	} else {
-		video.value?.pause();
+		!video.value.paused && video.value.pause();
 	}
 }
 
@@ -90,6 +104,13 @@ onMounted(() => {
 	} else {
 		throw new Error('浏览器不支持 HLS');
 	}
+
+	el.addEventListener('play', () => {
+		playerStore.play();
+	});
+	el.addEventListener('pause', () => {
+		playerStore.pause();
+	});
 });
 
 onBeforeUnmount(() => {

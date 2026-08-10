@@ -38,6 +38,14 @@ export const usePlayerStore = defineStore('player', () => {
 		isPlaying.value = false;
 	}
 
+	function togglePlay() {
+		if (isPlaying.value) {
+			pause();
+		} else {
+			play();
+		}
+	}
+
 	return {
 		isPlaying,
 		seriesTitle,
@@ -65,6 +73,10 @@ export const usePlayerStore = defineStore('player', () => {
 		 * 暂停视频
 		 */
 		pause,
+		/**
+		 * 切换播放状态
+		 */
+		togglePlay,
 		/**
 		 * 设置当前播放时间
 		 */

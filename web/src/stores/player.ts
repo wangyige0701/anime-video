@@ -46,6 +46,15 @@ export const usePlayerStore = defineStore('player', () => {
 		}
 	}
 
+	function reset() {
+		isPlaying.value = false;
+		seriesTitle.value = '';
+		seasonTitle.value = '';
+		episodeTitle.value = '';
+		videoPath.value = '';
+		currentTime.value = 0;
+	}
+
 	return {
 		isPlaying,
 		seriesTitle,
@@ -81,5 +90,9 @@ export const usePlayerStore = defineStore('player', () => {
 		 * 设置当前播放时间
 		 */
 		setCurrentTime,
+		/**
+		 * 重置播放信息
+		 */
+		reset,
 	};
 });

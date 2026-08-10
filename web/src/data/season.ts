@@ -2,6 +2,7 @@ import type { Season as ISeason } from '~types/videos';
 import { updateSeasonSort, updateSeasonTitle } from '@/api/season';
 import { Episode } from './episode';
 import { Common } from './common';
+import type { ShallowReactive } from 'vue';
 
 export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	protected static cache: Map<string, Season> = new Map();
@@ -10,7 +11,7 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	private _sort: Ref<ISeason['sort']> = ref(0);
 	private _path: Ref<ISeason['path']> = ref('');
 	private _title: Ref<ISeason['title']> = ref('');
-	private _episodes: Ref<{ value: Episode[] }> = ref({ value: [] });
+	private _episodes: ShallowReactive<{ value: Episode[] }> = shallowReactive({ value: [] });
 
 	private useStatus = useVueStatusRef('title', 'sort');
 
@@ -30,7 +31,7 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	}
 
 	public setEpisodes(episodes: Episode[]) {
-		this._episodes.value.value = episodes;
+		this._episodes.value = episodes;
 	}
 
 	// region 属性访问器
@@ -51,7 +52,7 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	}
 
 	public get episodes() {
-		return unref(this._episodes).value;
+		return this._episodes.value;
 	}
 	// endregion
 

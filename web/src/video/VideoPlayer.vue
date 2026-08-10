@@ -1,28 +1,25 @@
 <template>
-	<video ref="video" class="video-target" loop="false" autoplay="false" playsinline controls></video>
+	<video ref="video" class="video-target" playsinline controls></video>
 </template>
 
 <script setup lang="ts">
 import Hls from 'hls.js';
 import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
-import { useEventListener } from '@vueuse/core';
+import { useDebounceFn, useEventListener } from '@vueuse/core';
+import { createPromise } from '@wang-yige/utils';
 
 let hls: Hls | null = null;
+let isInitialized = false;
+const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
 
+const setCurrentTimeDebounce = useDebounceFn(setCurrentTime, 500);
+
 watchEffect(() => {
 	const currentTime = playerStore.currentTime;
-	video.value?.addEventListener?.(
-		'loadedmetadata',
-		() => {
-			if (video.value) {
-				video.value.currentTime = currentTime;
-			}
-		},
-		{ once: true },
-	);
+	setCurrentTimeDebounce(currentTime);
 });
 
 watchEffect(() => {
@@ -30,12 +27,16 @@ watchEffect(() => {
 	if (!path) {
 		return;
 	}
-	const src = getMasterM3u8Url(path);
-	if (playerStore.isSupportedHls) {
-		hls?.loadSource(src);
-	} else if (playerStore.isSupportedNative) {
-		video.value && (video.value.src = src);
-	}
+	initialized
+		.then(() => {
+			const src = getMasterM3u8Url(path);
+			if (playerStore.isSupportedHls) {
+				hls?.loadSource(src);
+			} else if (playerStore.isSupportedNative) {
+				video.value && (video.value.src = src);
+			}
+		})
+		.catch(() => {});
 });
 
 watch(
@@ -46,6 +47,9 @@ watch(
 );
 
 useEventListener(window, 'keydown', (e) => {
+	if (!isInitialized) {
+		return;
+	}
 	if (e.key === 'Space') {
 		e.preventDefault();
 		e.stopPropagation();
@@ -55,13 +59,33 @@ useEventListener(window, 'keydown', (e) => {
 	}
 });
 
+function setCurrentTime(currentTime: number) {
+	initialized
+		.then(() => {
+			video.value?.addEventListener?.(
+				'loadedmetadata',
+				() => {
+					if (video.value) {
+						video.value.currentTime = currentTime;
+					}
+				},
+				{ once: true },
+			);
+		})
+		.catch(() => {});
+}
+
 async function playState() {
 	if (!video.value) {
 		return;
 	}
+	await initialized;
 	await nextTick();
 	if (playerStore.isPlaying) {
-		video.value.paused && video.value.play().catch(() => {});
+		video.value.paused &&
+			video.value.play().catch(() => {
+				playerStore.pause();
+			});
 	} else {
 		!video.value.paused && video.value.pause();
 	}
@@ -69,7 +93,8 @@ async function playState() {
 
 onMounted(() => {
 	if (!video.value) {
-		throw new Error('播放器不存在');
+		rejectInitialized('播放器不存在');
+		return;
 	}
 	const el = video.value!;
 
@@ -102,19 +127,25 @@ onMounted(() => {
 			playState();
 		});
 	} else {
-		throw new Error('浏览器不支持 HLS');
+		rejectInitialized('浏览器不支持 HLS');
+		return;
 	}
 
 	el.addEventListener('play', () => {
 		playerStore.play();
 	});
+
 	el.addEventListener('pause', () => {
 		playerStore.pause();
 	});
+
+	isInitialized = true;
+	resolveInitialized();
 });
 
 onBeforeUnmount(() => {
 	hls?.destroy();
+	playerStore.reset();
 });
 
 defineExpose({

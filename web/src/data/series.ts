@@ -16,6 +16,7 @@ import { getSeasons } from '@/api/season';
 import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
+import type { ShallowReactive } from 'vue';
 
 const initialize = useVueStatusRef('loading', 'initialized');
 
@@ -142,7 +143,7 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	private _date: Ref<ISeries['date']> = ref([]);
 	private _types: Ref<ISeries['types']> = ref([]);
 	private _status: Ref<ISeries['status']> = ref(0);
-	private _seasons: Ref<{ value: Season[] }> = ref({ value: [] });
+	private _seasons: ShallowReactive<{ value: Season[] }> = shallowReactive({ value: [] });
 
 	private useStatus = useVueStatusRef('title', 'images', 'description', 'date', 'types', 'status');
 
@@ -170,7 +171,7 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	}
 
 	public setSeasons(seasons: Season[]) {
-		this._seasons.value.value = seasons;
+		this._seasons.value = seasons;
 	}
 
 	// region 系列属性值
@@ -211,7 +212,7 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	}
 
 	public get seasons() {
-		return unref(this._seasons).value;
+		return this._seasons.value;
 	}
 	// endregion
 

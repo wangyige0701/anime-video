@@ -1,27 +1,27 @@
 <template>
 	<div class="detail">
 		<div class="top">
-			<DetailImage :images="series.images" />
+			<DetailImage :images="series.value.images" />
 			<div class="info">
-				<div class="title">{{ series.title }}</div>
+				<div class="title">{{ series.value.title }}</div>
 				<div class="types">
-					<span v-for="type in series.types" :key="type">
+					<span v-for="type in series.value.types" :key="type">
 						{{ getSeriesTypeName(type) }}
 					</span>
 				</div>
 				<div class="status">
-					<span>{{ getSeriesStatusName(series.status) }}</span>
+					<span>{{ getSeriesStatusName(series.value.status) }}</span>
 				</div>
-				<DetailDescription :series="series" :disabled="status.waiting" />
+				<DetailDescription :series="series.value" :disabled="status.waiting" />
 			</div>
 		</div>
 
 		<el-collapse accordion class="list" v-model="activeSeasonId">
-			<template v-for="season in series.seasons" :key="season.id">
+			<template v-for="season in series.value.seasons" :key="season.id">
 				<DetailSeason
 					:season="season"
 					:active-episode-id="activeEpisodeId"
-					@play="play($event, season, series)"
+					@play="play($event, season, series.value)"
 				></DetailSeason>
 			</template>
 		</el-collapse>
@@ -40,6 +40,7 @@ import { getSeriesTypeName } from '~config/seriesTypes';
 import { getSeriesStatusName } from '~config/seriesStatus';
 import type { Episode } from '@/data/episode';
 import type { Season } from '@/data/season';
+import VideoBox from '@/components/detail/VideoBox.vue';
 
 definePage({
 	name: 'Detail',
@@ -48,7 +49,7 @@ definePage({
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
 const status = useVueStatusRef('waiting').onWaiting();
 const videoBoxRef = useTemplateRef('videoBoxRef');
-const series = shallowRef<Series>({} as Series);
+const series = shallowReactive<{ value: Series }>({ value: {} as Series });
 const activeSeasonId = ref<string>('');
 const activeEpisodeId = ref<string>('');
 

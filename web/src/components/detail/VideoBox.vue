@@ -1,13 +1,14 @@
 <template>
-	<div class="video-box" :class="{ transition: status.transition, show: status.show, hide: !status.show }">
-		<div ref="container" class="video-container" :style="{ height: containerHeight + 'px' }">
-			<VideoCore />
+	<Transition name="box" :duration="transitionDuration" @after-enter="onAfterEnter" @after-leave="onAfterLeave">
+		<div v-if="status.show" class="video-box">
+			<div ref="container" class="video-container" :style="{ height: containerHeight + 'px' }">
+				<VideoCore />
+			</div>
 		</div>
-	</div>
+	</Transition>
 </template>
 
 <script setup lang="ts">
-import { delay } from '@wang-yige/utils';
 import { useEventListener, useResizeObserver } from '@vueuse/core';
 import VideoCore from '@/video/VideoCore.vue';
 import { usePlayerStore } from '@/stores/player';
@@ -31,10 +32,11 @@ const emit = defineEmits<{
 	(e: 'hide'): void;
 }>();
 
-const status = useVueStatusRef('show', 'transition');
+const status = useVueStatusRef('show');
 const playerStore = usePlayerStore();
 const container = useTemplateRef('container');
 const containerHeight = ref(0);
+let resolveTransition: (() => void) | undefined;
 
 useResizeObserver(container, (enteries) => {
 	const target = enteries[0];
@@ -57,11 +59,9 @@ async function show() {
 		return;
 	}
 	emit('beforeShow');
+	const transitionFinished = waitForTransition();
 	status.onShow();
-	status.onTransition();
-	await delay(props.transitionDuration);
-	status.offTransition();
-	emit('show');
+	await transitionFinished;
 }
 
 async function hide() {
@@ -69,11 +69,27 @@ async function hide() {
 		return;
 	}
 	emit('beforeHide');
+	const transitionFinished = waitForTransition();
 	status.offShow();
-	status.onTransition();
-	await delay(props.transitionDuration * 0.66);
-	status.offTransition();
+	await transitionFinished;
+}
+
+function waitForTransition() {
+	return new Promise<void>((resolve) => {
+		resolveTransition = resolve;
+	});
+}
+
+function onAfterEnter() {
+	emit('show');
+	resolveTransition?.();
+	resolveTransition = undefined;
+}
+
+function onAfterLeave() {
 	emit('hide');
+	resolveTransition?.();
+	resolveTransition = undefined;
 }
 
 async function openAndPlay(data: VideoPlayData) {
@@ -118,40 +134,6 @@ defineExpose({
 	z-index: 100;
 	background-color: map.get(token.$theme, 'video-mask-bg');
 	backdrop-filter: blur(1px);
-	&,
-	.video-container {
-		animation-duration: var(--transition-duration);
-		animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-		animation-fill-mode: forwards;
-		animation-play-state: paused;
-	}
-	&.transition {
-		&,
-		.video-container {
-			animation-play-state: running;
-		}
-	}
-	&.show {
-		display: flex;
-		&.transition {
-			.video-container {
-				animation-name: container-show;
-			}
-			animation-name: box-show;
-		}
-	}
-	&.hide {
-		&:not(.transition) {
-			display: none;
-			z-index: -999;
-		}
-		&.transition {
-			.video-container {
-				animation-name: container-hide;
-			}
-			animation-name: box-hide;
-		}
-	}
 }
 
 .video-container {
@@ -163,36 +145,18 @@ defineExpose({
 	overflow: hidden;
 }
 
-@keyframes box-show {
-	from {
-		opacity: 0;
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
+.box-enter-active,
+.box-leave-active {
+	transition: opacity var(--transition-duration) cubic-bezier(0.2, 0.8, 0.2, 1);
+	.video-container {
+		transition: transform var(--transition-duration) cubic-bezier(0.2, 0.8, 0.2, 1);
 	}
 }
-@keyframes box-hide {
-	from {
-		opacity: 1;
-	}
-	to {
-		opacity: 0;
-	}
-}
-@keyframes container-show {
-	from {
-		transform: scale(0.96) translateY(5%);
-	}
-	to {
-		transform: scale(1) translateY(0);
-	}
-}
-@keyframes container-hide {
-	from {
-		transform: scale(1) translateY(0);
-	}
-	to {
+
+.box-enter-from,
+.box-leave-to {
+	opacity: 0;
+	.video-container {
 		transform: scale(0.96) translateY(5%);
 	}
 }

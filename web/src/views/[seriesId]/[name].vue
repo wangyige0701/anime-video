@@ -58,8 +58,11 @@ function play(episode: Episode, season: Season, series: Series) {
 		activeEpisodeId.value = episode.id;
 		videoBoxRef.value.openAndPlay({
 			seriesTitle: series.title || '',
+			seriesId: series.id || '',
 			seasonTitle: season.title || '',
-			episodeTitle: episode.title || '',
+			seasonId: season.id || '',
+			episodeTitle: season.title || '',
+			episodeId: episode.id || '',
 			videoPath: episode.path || '',
 		});
 	}

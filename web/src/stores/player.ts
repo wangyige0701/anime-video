@@ -1,5 +1,10 @@
-import type { VideoPlayData } from '@/@types/video';
+import type { VideoInfoEpisode, VideoInfoSeason, VideoInfoSeries, VideoInfoStore, VideoPlayData } from '@/@types/video';
 import Hls from 'hls.js';
+
+const DEFAULT_VOLUME = 1;
+const VIDEO_INFO_STORAGE_KEY = 'videoInfo';
+const VIDEO_INFO_RESERVED_KEYS = new Set(['seriesId', 'seasonId', 'episodeId', 'seasons', 'episodes', 't']);
+const VIDEO_INFO_CACHE = { value: null } as { value: VideoInfoStore | null };
 
 export const usePlayerStore = defineStore('player', () => {
 	const isSupportedHls = Hls.isSupported();
@@ -8,6 +13,9 @@ export const usePlayerStore = defineStore('player', () => {
 	video.remove();
 	(video as unknown) = null;
 
+	let seriesId = '';
+	let seasonId = '';
+	let episodeId = '';
 	const isPlaying = ref(false);
 	const seriesTitle = ref('');
 	const seasonTitle = ref('');
@@ -15,7 +23,11 @@ export const usePlayerStore = defineStore('player', () => {
 	const videoPath = ref('');
 	const currentTime = ref(0);
 
+	const volume = ref(Number(localStorage.getItem('volume') ?? DEFAULT_VOLUME.toString()) || DEFAULT_VOLUME);
 	function setVideo(data: VideoPlayData) {
+		seriesId = data.seriesId;
+		seasonId = data.seasonId;
+		episodeId = data.episodeId;
 		seriesTitle.value = data.seriesTitle;
 		seasonTitle.value = data.seasonTitle;
 		episodeTitle.value = data.episodeTitle;
@@ -28,6 +40,9 @@ export const usePlayerStore = defineStore('player', () => {
 
 	function setCurrentTime(time: number) {
 		currentTime.value = time;
+		if (seriesId && seasonId && episodeId) {
+			setVideoInfoStored({ seriesId, seasonId, episodeId }, 'currentTime', time);
+		}
 	}
 
 	function play() {
@@ -44,6 +59,11 @@ export const usePlayerStore = defineStore('player', () => {
 		} else {
 			play();
 		}
+	}
+
+	function setVolume(vol: number) {
+		volume.value = vol;
+		localStorage.setItem('volume', vol.toString());
 	}
 
 	function reset() {
@@ -70,6 +90,7 @@ export const usePlayerStore = defineStore('player', () => {
 		 * Safari 原生支持 HLS
 		 */
 		isSupportedNative,
+		volume,
 		/**
 		 * 设置视频信息
 		 */
@@ -94,5 +115,100 @@ export const usePlayerStore = defineStore('player', () => {
 		 * 重置播放信息
 		 */
 		reset,
+		/**
+		 * 设置音量
+		 */
+		setVolume,
 	};
 });
+
+function getVideoInfoStored() {
+	if (VIDEO_INFO_CACHE.value) {
+		return VIDEO_INFO_CACHE.value;
+	}
+	try {
+		const stored = JSON.parse(localStorage.getItem(VIDEO_INFO_STORAGE_KEY) ?? '[]') as unknown;
+		const videoInfoStored = Array.isArray(stored) ? (stored as VideoInfoStore) : [];
+		VIDEO_INFO_CACHE.value = videoInfoStored;
+		return videoInfoStored;
+	} catch {
+		VIDEO_INFO_CACHE.value = [];
+		return [];
+	}
+}
+
+function setVideoInfoStored(
+	ids: { seriesId: string; seasonId?: string; episodeId?: string },
+	key: string,
+	value: unknown,
+	isDelete: boolean = false,
+) {
+	if (!ids.seriesId || !key || VIDEO_INFO_RESERVED_KEYS.has(key) || (ids.episodeId && !ids.seasonId)) {
+		return false;
+	}
+
+	const videoInfo = getVideoInfoStored();
+	const now = Date.now();
+	let series = videoInfo.find((item) => item.seriesId === ids.seriesId);
+	if (!series) {
+		if (isDelete) {
+			return false;
+		}
+		series = { seriesId: ids.seriesId, t: now, seasons: [] };
+		videoInfo.push(series);
+	}
+
+	const updatedNodes: Array<VideoInfoSeries | VideoInfoSeason | VideoInfoEpisode> = [series];
+	let target: VideoInfoSeries | VideoInfoSeason | VideoInfoEpisode = series;
+	if (ids.seasonId) {
+		let season = series.seasons.find((item) => item.seasonId === ids.seasonId);
+		if (!season) {
+			if (isDelete) {
+				return false;
+			}
+			season = { seasonId: ids.seasonId, t: now, episodes: [] };
+			series.seasons.push(season);
+		}
+		updatedNodes.push(season);
+		target = season;
+	}
+
+	if (ids.episodeId) {
+		const season = target as VideoInfoSeason;
+		let episode = season.episodes.find((item) => item.episodeId === ids.episodeId);
+		if (!episode) {
+			if (isDelete) {
+				return false;
+			}
+			episode = { episodeId: ids.episodeId, t: now };
+			season.episodes.push(episode);
+		}
+		updatedNodes.push(episode);
+		target = episode;
+	}
+
+	if (isDelete) {
+		if (!Object.hasOwn(target, key)) {
+			return false;
+		}
+		delete target[key];
+	} else {
+		target[key] = value;
+	}
+	updatedNodes.forEach((node) => {
+		node.t = now;
+	});
+
+	const debouncedSetter = setVideoInfoStored as typeof setVideoInfoStored & {
+		persistTimer?: ReturnType<typeof setTimeout>;
+	};
+	if (debouncedSetter.persistTimer) {
+		clearTimeout(debouncedSetter.persistTimer);
+	}
+	debouncedSetter.persistTimer = setTimeout(() => {
+		try {
+			localStorage.setItem(VIDEO_INFO_STORAGE_KEY, JSON.stringify(videoInfo));
+		} catch {}
+	}, 500);
+	return true;
+}

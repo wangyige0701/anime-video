@@ -221,6 +221,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	playerStore.pause();
 	hls?.destroy();
 	playerStore.reset();
 });

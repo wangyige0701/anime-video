@@ -1,6 +1,6 @@
 <template>
 	<Transition name="box" :duration="transitionDuration" @after-enter="onAfterEnter" @after-leave="onAfterLeave">
-		<div v-if="status.show" class="video-box">
+		<div v-if="status.mounted" v-show="status.show" class="video-box">
 			<div ref="container" class="video-container" :style="{ height: containerHeight + 'px' }">
 				<VideoCore />
 			</div>
@@ -32,7 +32,7 @@ const emit = defineEmits<{
 	(e: 'hide'): void;
 }>();
 
-const status = useVueStatusRef('show');
+const status = useVueStatusRef('show', 'mounted').onMounted();
 const playerStore = usePlayerStore();
 const container = useTemplateRef('container');
 const containerHeight = ref(0);
@@ -48,7 +48,7 @@ useResizeObserver(container, (enteries) => {
 });
 
 useEventListener('keydown', (event) => {
-	if (event.key === 'Escape') {
+	if (event.code === 'Escape') {
 		event.preventDefault();
 		hide();
 	}
@@ -61,6 +61,7 @@ async function show() {
 	emit('beforeShow');
 	const transitionFinished = waitForTransition();
 	status.onShow();
+	status.onMounted();
 	await transitionFinished;
 }
 
@@ -90,6 +91,7 @@ function onAfterLeave() {
 	emit('hide');
 	resolveTransition?.();
 	resolveTransition = undefined;
+	status.offMounted();
 }
 
 async function openAndPlay(data: VideoPlayData) {

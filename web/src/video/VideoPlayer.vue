@@ -6,43 +6,80 @@
 import Hls from 'hls.js';
 import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
-import { useDebounceFn, useEventListener } from '@vueuse/core';
+import { useEventListener } from '@vueuse/core';
 import { createPromise } from '@wang-yige/utils';
 
 let hls: Hls | null = null;
 let isInitialized = false;
+let isMetadataLoaded = false;
+let isSyncingCurrentTime = false;
+let pendingCurrentTime: number | undefined;
+let sourceVersion = 0;
+let playRequestVersion = 0;
 const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
 
-const setCurrentTimeDebounce = useDebounceFn(setCurrentTime, 500);
+watch(
+	() => playerStore.videoPath,
+	async (path) => {
+		const currentSourceVersion = ++sourceVersion;
+		isMetadataLoaded = false;
+		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
 
-watchEffect(() => {
-	const currentTime = playerStore.currentTime;
-	setCurrentTimeDebounce(currentTime);
-});
-
-watchEffect(() => {
-	const path = playerStore.videoPath;
-	if (!path) {
-		return;
-	}
-	initialized
-		.then(() => {
-			const src = getMasterM3u8Url(path);
-			if (playerStore.isSupportedHls) {
-				hls?.loadSource(src);
-			} else if (playerStore.isSupportedNative) {
-				video.value && (video.value.src = src);
+		if (video.value) {
+			video.value.pause();
+		}
+		if (!path) {
+			pendingCurrentTime = undefined;
+			hls?.stopLoad();
+			if (video.value) {
+				video.value.removeAttribute('src');
+				video.value.load();
 			}
-		})
-		.catch(() => {});
-});
+			playerStore.pause();
+			return;
+		}
+
+		try {
+			await initialized;
+		} catch {
+			playerStore.pause();
+			return;
+		}
+		if (currentSourceVersion !== sourceVersion) {
+			return;
+		}
+
+		const src = getMasterM3u8Url(path);
+		if (!src) {
+			playerStore.pause();
+			return;
+		}
+		if (playerStore.isSupportedHls) {
+			hls?.loadSource(src);
+		} else if (playerStore.isSupportedNative && video.value) {
+			video.value.src = src;
+			video.value.load();
+		}
+	},
+	{ immediate: true, flush: 'sync' },
+);
+
+watch(
+	() => playerStore.currentTime,
+	(currentTime) => {
+		if (!isSyncingCurrentTime) {
+			setCurrentTime(currentTime);
+		}
+	},
+	{ flush: 'sync' },
+);
 
 watch(
 	() => playerStore.isPlaying,
 	() => {
-		playState();
+		void playState();
 	},
 );
 
@@ -50,44 +87,78 @@ useEventListener(window, 'keydown', (e) => {
 	if (!isInitialized) {
 		return;
 	}
-	if (e.key === 'Space') {
+	if (e.code === 'Space' && !isEditingElement(e.target)) {
 		e.preventDefault();
 		e.stopPropagation();
 		playerStore.togglePlay();
-		playState();
-		return;
 	}
 });
 
 function setCurrentTime(currentTime: number) {
-	initialized
-		.then(() => {
-			video.value?.addEventListener?.(
-				'loadedmetadata',
-				() => {
-					if (video.value) {
-						video.value.currentTime = currentTime;
-					}
-				},
-				{ once: true },
-			);
-		})
-		.catch(() => {});
+	const time = normalizeCurrentTime(currentTime);
+	if (!isMetadataLoaded || !video.value) {
+		pendingCurrentTime = time;
+		return;
+	}
+	video.value.currentTime = time;
+}
+
+/**
+ * 元数据加载完成后的时间处理
+ */
+function applyPendingCurrentTime() {
+	if (pendingCurrentTime === undefined || !video.value) {
+		return;
+	}
+	const duration = video.value.duration;
+	const maxTime = Number.isFinite(duration) ? duration : pendingCurrentTime;
+	video.value.currentTime = Math.min(pendingCurrentTime, maxTime);
+	pendingCurrentTime = undefined;
+}
+
+function normalizeCurrentTime(time: number) {
+	return Number.isFinite(time) ? Math.max(time, 0) : 0;
+}
+
+function isEditingElement(target: EventTarget | null) {
+	return target instanceof Element && Boolean(target.closest('input, textarea, select, button, [contenteditable]'));
 }
 
 async function playState() {
-	if (!video.value) {
+	const requestVersion = ++playRequestVersion;
+	if (!video.value || !playerStore.videoPath) {
+		playerStore.pause();
 		return;
 	}
-	await initialized;
+	try {
+		await initialized;
+	} catch {
+		if (requestVersion === playRequestVersion) {
+			playerStore.pause();
+		}
+		return;
+	}
 	await nextTick();
+	if (requestVersion !== playRequestVersion || !video.value || !playerStore.videoPath) {
+		return;
+	}
 	if (playerStore.isPlaying) {
-		video.value.paused &&
-			video.value.play().catch(() => {
+		if (!isMetadataLoaded || !video.value.paused) {
+			return;
+		}
+		try {
+			await video.value.play();
+		} catch {
+			if (requestVersion === playRequestVersion) {
 				playerStore.pause();
-			});
+			}
+			return;
+		}
+		if (requestVersion !== playRequestVersion && !playerStore.isPlaying) {
+			video.value.pause();
+		}
 	} else {
-		!video.value.paused && video.value.pause();
+		video.value.pause();
 	}
 }
 
@@ -100,8 +171,28 @@ onMounted(() => {
 
 	el.addEventListener('timeupdate', () => {
 		if (el.currentTime !== playerStore.currentTime) {
+			// 避免更新 watcher 的回调
+			isSyncingCurrentTime = true;
 			playerStore.setCurrentTime(el.currentTime || 0);
+			isSyncingCurrentTime = false;
 		}
+	});
+	el.addEventListener('loadedmetadata', () => {
+		isMetadataLoaded = true;
+		applyPendingCurrentTime();
+		void playState();
+	});
+	el.addEventListener('error', () => {
+		playerStore.pause();
+	});
+	el.addEventListener('ended', () => {
+		playerStore.pause();
+	});
+	el.addEventListener('play', () => {
+		playerStore.play();
+	});
+	el.addEventListener('pause', () => {
+		playerStore.pause();
 	});
 
 	if (playerStore.isSupportedHls) {
@@ -115,29 +206,15 @@ onMounted(() => {
 
 		hls.attachMedia(el);
 
-		hls.on(Hls.Events.MANIFEST_PARSED, () => {
-			playState();
+		hls.on(Hls.Events.ERROR, (_event, data) => {
+			if (data.fatal) {
+				playerStore.pause();
+			}
 		});
-
-		hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, function (event, data) {
-			console.log(data.subtitleTracks);
-		});
-	} else if (playerStore.isSupportedNative) {
-		el.addEventListener('loadedmetadata', () => {
-			playState();
-		});
-	} else {
+	} else if (!playerStore.isSupportedNative) {
 		rejectInitialized('浏览器不支持 HLS');
 		return;
 	}
-
-	el.addEventListener('play', () => {
-		playerStore.play();
-	});
-
-	el.addEventListener('pause', () => {
-		playerStore.pause();
-	});
 
 	isInitialized = true;
 	resolveInitialized();
@@ -150,7 +227,7 @@ onBeforeUnmount(() => {
 
 defineExpose({
 	get isPlay() {
-		return !video.value?.paused;
+		return video.value ? !video.value.paused : false;
 	},
 });
 </script>

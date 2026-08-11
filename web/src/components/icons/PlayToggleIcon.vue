@@ -1,7 +1,7 @@
 <template>
 	<svg
 		class="play-toggle-icon"
-		:class="{ 'is-pause': !play }"
+		:class="{ 'is-play': !play }"
 		viewBox="0 0 1024 1024"
 		xmlns="http://www.w3.org/2000/svg"
 	>
@@ -29,8 +29,12 @@ const props = withDefaults(
 );
 const emit = defineEmits<{
 	(e: 'update:play', play: boolean): void;
+	(e: 'completed'): void;
+	(e: 'playCompleted'): void;
+	(e: 'pauseCompleted'): void;
 }>();
 
+const duration = 360;
 const playModel = useVModel(props, 'play', emit);
 const playRef = ref(props.play);
 const play = computed({
@@ -38,6 +42,16 @@ const play = computed({
 		return playRef.value;
 	},
 	set(value) {
+		if (value !== playRef.value) {
+			setTimeout(() => {
+				emit('completed');
+				if (value) {
+					emit('pauseCompleted');
+				} else {
+					emit('playCompleted');
+				}
+			}, duration);
+		}
 		playRef.value = value;
 		playModel.value = value;
 	},
@@ -86,7 +100,7 @@ defineExpose({
 	$root: &;
 
 	&__shape {
-		transition: d 360ms cubic-bezier(0.22, 0.8, 0.32, 1);
+		transition: d calc(v-bind('duration') * 1ms) cubic-bezier(0.22, 0.8, 0.32, 1);
 
 		&--left {
 			d: path(
@@ -101,7 +115,7 @@ defineExpose({
 		}
 	}
 
-	&.is-pause {
+	&.is-play {
 		#{$root}__shape--left {
 			d: path(
 				'M 255 82 C 335 82 400 147 400 227 C 400 227 400 512 400 512 C 400 512 400 797 400 797 C 400 877 335 942 255 942 C 215 942 179 926 152 900 C 126 873 110 837 110 797 C 110 797 110 227 110 227 C 110 147 175 82 255 82 Z'

@@ -1,19 +1,33 @@
 <template>
 	<div class="video-core">
-		<div class="video-title">
-			<VideoTitle />
-		</div>
 		<div class="video-player">
 			<VideoPlayer />
 		</div>
-		<div class="video-controller">
-			<VideoController />
-		</div>
-		<div v-if="!playerStore.isPlaying" class="video-mask" @click.stop="playerStore.play()"></div>
-		<div class="close">
-			<el-icon size="2rem" @click.stop="$emit('close')">
-				<CloseBold />
-			</el-icon>
+		<div class="video-mask" @click.stop="togglePlayback">
+			<div class="video-title">
+				<VideoTitle />
+			</div>
+			<div class="video-controller">
+				<VideoController />
+			</div>
+			<div class="close" @click.stop="$emit('close')">
+				<el-icon size="2rem">
+					<CloseBold />
+				</el-icon>
+			</div>
+			<div
+				class="video-play-icon"
+				:class="{ 'is-hidden': playerStore.isPlaying && !isPlaybackTransitioning }"
+				@click.stop="togglePlayback"
+			>
+				<el-icon size="6rem">
+					<PlayToggleIcon
+						:play="playIconPlay"
+						@play-completed="onPlayCompleted"
+						@pause-completed="onPauseCompleted"
+					/>
+				</el-icon>
+			</div>
 		</div>
 	</div>
 </template>
@@ -24,12 +38,60 @@ import VideoPlayer from './VideoPlayer.vue';
 import VideoController from './VideoController.vue';
 import VideoTitle from './VideoTitle.vue';
 import { CloseBold } from '@element-plus/icons-vue';
+import PlayToggleIcon from '@/components/icons/PlayToggleIcon.vue';
 
 const emit = defineEmits<{
 	(e: 'close'): void;
 }>();
 
 const playerStore = usePlayerStore();
+const PLAY_ICON_COMPLETION_DELAY = 160;
+const playIconPlay = ref(!playerStore.isPlaying);
+const isPlaybackTransitioning = ref(false);
+let playCompletionTimer: ReturnType<typeof setTimeout> | undefined;
+
+watch(
+	() => playerStore.isPlaying,
+	(playing) => {
+		const nextPlayIconState = !playing;
+		if (isPlaybackTransitioning.value || playIconPlay.value === nextPlayIconState) {
+			return;
+		}
+		isPlaybackTransitioning.value = true;
+		playIconPlay.value = nextPlayIconState;
+	},
+);
+
+function togglePlayback() {
+	if (isPlaybackTransitioning.value) {
+		return;
+	}
+	if (playerStore.isPlaying) {
+		isPlaybackTransitioning.value = true;
+		playIconPlay.value = true;
+		playerStore.pause();
+		return;
+	}
+	isPlaybackTransitioning.value = true;
+	playIconPlay.value = false;
+}
+
+function onPlayCompleted() {
+	playCompletionTimer = setTimeout(() => {
+		isPlaybackTransitioning.value = false;
+		playerStore.play();
+	}, PLAY_ICON_COMPLETION_DELAY);
+}
+
+function onPauseCompleted() {
+	isPlaybackTransitioning.value = false;
+}
+
+onBeforeUnmount(() => {
+	if (playCompletionTimer) {
+		clearTimeout(playCompletionTimer);
+	}
+});
 </script>
 
 <style scoped lang="scss">
@@ -40,18 +102,22 @@ const playerStore = usePlayerStore();
 	width: 100%;
 	height: 100%;
 	position: relative;
-	&:hover {
-		.video-title,
-		.close {
-			opacity: 1;
-		}
-	}
 }
 
 .video-player,
 .video-mask {
 	position: absolute;
 	inset: 0;
+}
+.video-mask {
+	cursor: pointer;
+	z-index: 10;
+	&:hover {
+		.video-title,
+		.close {
+			opacity: 1;
+		}
+	}
 }
 
 .video-title {
@@ -62,11 +128,6 @@ const playerStore = usePlayerStore();
 	opacity: 0;
 	transition: opacity 0.3s ease;
 	z-index: 2;
-}
-
-.video-mask {
-	cursor: pointer;
-	z-index: 10;
 }
 
 .close {
@@ -82,6 +143,35 @@ const playerStore = usePlayerStore();
 	z-index: 20;
 	&:hover {
 		transform: scale(1.1);
+	}
+}
+
+.video-play-icon {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	color: map.get(token.$theme, 'l-9');
+	transform: translate(-50%, -50%);
+	transition:
+		color 0.24s ease,
+		transform 0.24s ease;
+	z-index: 20;
+	&:hover {
+		transform: translate(-50%, -50%) scale(1.06);
+	}
+	&.is-hidden {
+		opacity: 0;
+		pointer-events: none;
+		visibility: hidden;
+	}
+}
+
+.video-play-icon :deep(.play-toggle-icon) {
+	fill: currentColor;
+	&:not(.is-play) {
+		.play-toggle-icon {
+			transition-delay: calc(v-bind('PLAY_ICON_COMPLETION_DELAY') * 1ms);
+		}
 	}
 }
 </style>

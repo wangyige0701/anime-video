@@ -114,20 +114,28 @@ onBeforeUnmount(() => {
 	z-index: 10;
 	&:hover {
 		.video-title,
+		.video-controller,
 		.close {
 			opacity: 1;
 		}
 	}
 }
 
-.video-title {
+.video-title,
+.video-controller {
 	width: 100%;
 	position: absolute;
-	top: 0;
-	left: 0;
 	opacity: 0;
 	transition: opacity 0.3s ease;
 	z-index: 2;
+}
+.video-title {
+	top: 0;
+	left: 0;
+}
+.video-controller {
+	bottom: 0;
+	left: 0;
 }
 
 .close {

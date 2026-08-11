@@ -22,7 +22,7 @@
 			>
 				<el-icon size="6rem">
 					<PlayToggleIcon
-						:play="playIconPlay"
+						:play="!playerStore.isPlaying"
 						@play-completed="onPlayCompleted"
 						@pause-completed="onPauseCompleted"
 					/>
@@ -45,20 +45,15 @@ const emit = defineEmits<{
 }>();
 
 const playerStore = usePlayerStore();
-const PLAY_ICON_COMPLETION_DELAY = 160;
-const playIconPlay = ref(!playerStore.isPlaying);
 const isPlaybackTransitioning = ref(false);
-let playCompletionTimer: ReturnType<typeof setTimeout> | undefined;
 
 watch(
 	() => playerStore.isPlaying,
 	(playing) => {
-		const nextPlayIconState = !playing;
-		if (isPlaybackTransitioning.value || playIconPlay.value === nextPlayIconState) {
+		if (isPlaybackTransitioning.value) {
 			return;
 		}
 		isPlaybackTransitioning.value = true;
-		playIconPlay.value = nextPlayIconState;
 	},
 );
 
@@ -66,32 +61,17 @@ function togglePlayback() {
 	if (isPlaybackTransitioning.value) {
 		return;
 	}
-	if (playerStore.isPlaying) {
-		isPlaybackTransitioning.value = true;
-		playIconPlay.value = true;
-		playerStore.pause();
-		return;
-	}
-	isPlaybackTransitioning.value = true;
-	playIconPlay.value = false;
+	isPlaybackTransitioning.value = playerStore.isPlaying;
+	playerStore.togglePlay();
 }
 
 function onPlayCompleted() {
-	playCompletionTimer = setTimeout(() => {
-		isPlaybackTransitioning.value = false;
-		playerStore.play();
-	}, PLAY_ICON_COMPLETION_DELAY);
+	isPlaybackTransitioning.value = false;
 }
 
 function onPauseCompleted() {
 	isPlaybackTransitioning.value = false;
 }
-
-onBeforeUnmount(() => {
-	if (playCompletionTimer) {
-		clearTimeout(playCompletionTimer);
-	}
-});
 </script>
 
 <style scoped lang="scss">
@@ -162,7 +142,8 @@ onBeforeUnmount(() => {
 	transform: translate(-50%, -50%);
 	transition:
 		color 0.24s ease,
-		transform 0.24s ease;
+		transform 0.24s ease,
+		opacity 0.24s ease;
 	z-index: 20;
 	&:hover {
 		transform: translate(-50%, -50%) scale(1.06);
@@ -170,7 +151,6 @@ onBeforeUnmount(() => {
 	&.is-hidden {
 		opacity: 0;
 		pointer-events: none;
-		visibility: hidden;
 	}
 }
 
@@ -178,7 +158,7 @@ onBeforeUnmount(() => {
 	fill: currentColor;
 	&:not(.is-play) {
 		.play-toggle-icon__shape {
-			transition-delay: calc(v-bind('PLAY_ICON_COMPLETION_DELAY') * 1ms);
+			transition-delay: 160ms;
 		}
 	}
 }

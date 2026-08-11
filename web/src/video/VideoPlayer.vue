@@ -1,5 +1,5 @@
 <template>
-	<video ref="video" class="video-target" playsinline controls></video>
+	<video ref="video" class="video-target" playsinline preload="metadata"></video>
 </template>
 
 <script setup lang="ts">
@@ -83,6 +83,14 @@ watch(
 	},
 );
 
+watch(
+	() => playerStore.volume,
+	(volume) => {
+		applyVolume(volume);
+	},
+	{ immediate: true, flush: 'sync' },
+);
+
 useEventListener(window, 'keydown', (e) => {
 	if (!isInitialized) {
 		return;
@@ -118,6 +126,13 @@ function applyPendingCurrentTime() {
 
 function normalizeCurrentTime(time: number) {
 	return Number.isFinite(time) ? Math.max(time, 0) : 0;
+}
+
+function applyVolume(volume = playerStore.volume) {
+	if (video.value) {
+		const volumePercent = Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) : 100;
+		video.value.volume = volumePercent / 100;
+	}
 }
 
 function isEditingElement(target: EventTarget | null) {
@@ -167,7 +182,8 @@ onMounted(() => {
 		rejectInitialized('播放器不存在');
 		return;
 	}
-	const el = video.value!;
+	const el = video.value;
+	applyVolume();
 
 	el.addEventListener('timeupdate', () => {
 		if (el.currentTime !== playerStore.currentTime) {

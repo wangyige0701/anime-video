@@ -30,6 +30,7 @@ const playerStore = usePlayerStore();
 	color: #fff;
 	padding: 1rem;
 	padding-bottom: 2rem;
+	padding-right: 4rem;
 	.title {
 		font-size: 1rem;
 	}

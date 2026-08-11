@@ -1,7 +1,8 @@
 import type { VideoInfoEpisode, VideoInfoSeason, VideoInfoSeries, VideoInfoStore, VideoPlayData } from '@/@types/video';
 import Hls from 'hls.js';
 
-const DEFAULT_VOLUME = 1;
+const DEFAULT_VOLUME = 100;
+const VOLUME_STORAGE_KEY = 'volume';
 const VIDEO_INFO_STORAGE_KEY = 'videoInfo';
 const VIDEO_INFO_RESERVED_KEYS = new Set(['seriesId', 'seasonId', 'episodeId', 'seasons', 'episodes', 't']);
 const VIDEO_INFO_CACHE = { value: null } as { value: VideoInfoStore | null };
@@ -22,8 +23,8 @@ export const usePlayerStore = defineStore('player', () => {
 	const episodeTitle = ref('');
 	const videoPath = ref('');
 	const currentTime = ref(0);
+	const volume = ref(readStoredVolume());
 
-	const volume = ref(Number(localStorage.getItem('volume') ?? DEFAULT_VOLUME.toString()) || DEFAULT_VOLUME);
 	function setVideo(data: VideoPlayData) {
 		seriesId = data.seriesId;
 		seasonId = data.seasonId;
@@ -62,8 +63,9 @@ export const usePlayerStore = defineStore('player', () => {
 	}
 
 	function setVolume(vol: number) {
-		volume.value = vol;
-		localStorage.setItem('volume', vol.toString());
+		const volumePercent = normalizeVolumePercent(vol);
+		volume.value = volumePercent;
+		localStorage.setItem(VOLUME_STORAGE_KEY, volumePercent.toString());
 	}
 
 	function reset() {
@@ -121,6 +123,19 @@ export const usePlayerStore = defineStore('player', () => {
 		setVolume,
 	};
 });
+
+function normalizeVolumePercent(volume: number) {
+	return Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) : DEFAULT_VOLUME;
+}
+
+function readStoredVolume() {
+	try {
+		const storedValue = localStorage.getItem(VOLUME_STORAGE_KEY);
+		return storedValue === null ? DEFAULT_VOLUME : normalizeVolumePercent(Number(storedValue));
+	} catch {
+		return DEFAULT_VOLUME;
+	}
+}
 
 function getVideoInfoStored() {
 	if (VIDEO_INFO_CACHE.value) {

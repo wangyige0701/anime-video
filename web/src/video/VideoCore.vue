@@ -169,7 +169,7 @@ onBeforeUnmount(() => {
 .video-play-icon :deep(.play-toggle-icon) {
 	fill: currentColor;
 	&:not(.is-play) {
-		.play-toggle-icon {
+		.play-toggle-icon__shape {
 			transition-delay: calc(v-bind('PLAY_ICON_COMPLETION_DELAY') * 1ms);
 		}
 	}

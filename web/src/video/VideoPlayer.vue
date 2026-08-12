@@ -195,6 +195,7 @@ onMounted(() => {
 	});
 	el.addEventListener('loadedmetadata', () => {
 		isMetadataLoaded = true;
+		playerStore.setDuration(el.duration);
 		applyPendingCurrentTime();
 		void playState();
 	});

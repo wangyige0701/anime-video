@@ -23,6 +23,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const episodeTitle = ref('');
 	const videoPath = ref('');
 	const currentTime = ref(0);
+	const duration = ref(0);
 	const volume = ref(readStoredVolume());
 
 	function setVideo(data: VideoPlayData) {
@@ -68,6 +69,10 @@ export const usePlayerStore = defineStore('player', () => {
 		localStorage.setItem(VOLUME_STORAGE_KEY, volumePercent.toString());
 	}
 
+	function setDuration(dur: number) {
+		duration.value = dur;
+	}
+
 	function reset() {
 		isPlaying.value = false;
 		seriesTitle.value = '';
@@ -93,6 +98,7 @@ export const usePlayerStore = defineStore('player', () => {
 		 */
 		isSupportedNative,
 		volume,
+		duration,
 		/**
 		 * 设置视频信息
 		 */
@@ -121,6 +127,10 @@ export const usePlayerStore = defineStore('player', () => {
 		 * 设置音量
 		 */
 		setVolume,
+		/**
+		 * 设置视频时长
+		 */
+		setDuration,
 	};
 });
 

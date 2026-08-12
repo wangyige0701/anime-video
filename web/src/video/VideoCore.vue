@@ -8,7 +8,7 @@
 				<VideoTitle />
 			</div>
 			<div class="video-controller">
-				<VideoController />
+				<VideoController @prev="" @next="" />
 			</div>
 			<div class="close" @click.stop="$emit('close')">
 				<el-icon size="2rem">

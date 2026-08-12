@@ -3,7 +3,7 @@
 		<div class="video-player">
 			<VideoPlayer />
 		</div>
-		<div class="video-mask" @click.stop="togglePlayback">
+		<div class="video-mask" @click.stop="playerStore.togglePlay()">
 			<div class="video-title">
 				<VideoTitle />
 			</div>
@@ -17,15 +17,11 @@
 			</div>
 			<div
 				class="video-play-icon"
-				:class="{ 'is-hidden': playerStore.isPlaying && !isPlaybackTransitioning }"
-				@click.stop="togglePlayback"
+				:class="{ 'is-hidden': playerStore.isPlaying }"
+				@click.stop="playerStore.togglePlay()"
 			>
 				<el-icon size="6rem">
-					<PlayToggleIcon
-						:play="!playerStore.isPlaying"
-						@play-completed="onPlayCompleted"
-						@pause-completed="onPauseCompleted"
-					/>
+					<PlayToggleIcon :play="!playerStore.isPlaying" />
 				</el-icon>
 			</div>
 		</div>
@@ -45,33 +41,6 @@ const emit = defineEmits<{
 }>();
 
 const playerStore = usePlayerStore();
-const isPlaybackTransitioning = ref(false);
-
-watch(
-	() => playerStore.isPlaying,
-	(playing) => {
-		if (isPlaybackTransitioning.value) {
-			return;
-		}
-		isPlaybackTransitioning.value = true;
-	},
-);
-
-function togglePlayback() {
-	if (isPlaybackTransitioning.value) {
-		return;
-	}
-	isPlaybackTransitioning.value = playerStore.isPlaying;
-	playerStore.togglePlay();
-}
-
-function onPlayCompleted() {
-	isPlaybackTransitioning.value = false;
-}
-
-function onPauseCompleted() {
-	isPlaybackTransitioning.value = false;
-}
 </script>
 
 <style scoped lang="scss">
@@ -151,15 +120,6 @@ function onPauseCompleted() {
 	&.is-hidden {
 		opacity: 0;
 		pointer-events: none;
-	}
-}
-
-.video-play-icon :deep(.play-toggle-icon) {
-	fill: currentColor;
-	&:not(.is-play) {
-		.play-toggle-icon__shape {
-			transition-delay: 160ms;
-		}
 	}
 }
 </style>

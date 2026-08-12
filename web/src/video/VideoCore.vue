@@ -104,6 +104,7 @@ const playerStore = usePlayerStore();
 }
 
 .video-play-icon {
+	pointer-events: none;
 	position: absolute;
 	top: 50%;
 	left: 50%;
@@ -119,7 +120,6 @@ const playerStore = usePlayerStore();
 	}
 	&.is-hidden {
 		opacity: 0;
-		pointer-events: none;
 	}
 }
 </style>

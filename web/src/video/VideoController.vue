@@ -1,8 +1,14 @@
 <template>
 	<div class="video-controller-container">
-		<el-space>
-			<el-icon :size="ICON_SIZE">
+		<el-space :size="20">
+			<el-icon class="icon" :size="ICON_SIZE" @click.stop="playerStore.togglePlay()">
 				<PlayToggleIcon :play="!playerStore.isPlaying" />
+			</el-icon>
+			<el-icon class="icon" :size="ICON_SIZE" @click.stop="prev">
+				<PlayNextIcon ref="prevIcon" direction="prev" />
+			</el-icon>
+			<el-icon class="icon" :size="ICON_SIZE" @click.stop="next">
+				<PlayNextIcon ref="nextIcon" direction="next" />
 			</el-icon>
 		</el-space>
 		<el-space></el-space>
@@ -12,8 +18,18 @@
 <script setup lang="ts">
 import { usePlayerStore } from '@/stores/player';
 
+const ICON_SIZE = '1.5rem';
 const playerStore = usePlayerStore();
-const ICON_SIZE = '2rem';
+const prevIcon = useTemplateRef('prevIcon');
+const nextIcon = useTemplateRef('nextIcon');
+
+function prev() {
+	prevIcon.value?.trigger();
+}
+
+function next() {
+	nextIcon.value?.trigger();
+}
 </script>
 
 <style scoped lang="scss">
@@ -21,13 +37,21 @@ const ICON_SIZE = '2rem';
 @use '@/scss/token.scss' as token;
 
 .video-controller-container {
+	--progress-height: 4px;
 	width: 100%;
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
-	background: linear-gradient(transparent, map.get(token.$theme, 'video-controller-dark'));
+	background-color: map.get(token.$theme, 'video-controller-dark');
 	padding: 1rem;
-	padding-top: 2rem;
+	padding-top: calc(1rem + var(--progress-height));
 	color: map.get(token.$theme, 'l-9');
+	.icon {
+		cursor: pointer;
+		transition: transform 0.3s ease;
+		&:hover {
+			transform: scale(1.1);
+		}
+	}
 }
 </style>

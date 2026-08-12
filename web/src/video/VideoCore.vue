@@ -114,12 +114,14 @@ const playerStore = usePlayerStore();
 		color 0.24s ease,
 		transform 0.24s ease,
 		opacity 0.24s ease;
+
 	z-index: 20;
 	&:hover {
 		transform: translate(-50%, -50%) scale(1.06);
 	}
 	&.is-hidden {
 		opacity: 0;
+		transition-delay: 160ms;
 	}
 }
 </style>

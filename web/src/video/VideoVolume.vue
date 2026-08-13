@@ -53,6 +53,7 @@ const volumeIcon = useTemplateRef('volumeIcon');
 	}
 
 	cursor: pointer;
+	width: var(--size);
 	display: inline-flex;
 	position: relative;
 	@include transition(width);

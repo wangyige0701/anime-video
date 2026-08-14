@@ -199,6 +199,10 @@ function stopDragging(event?: PointerEvent) {
 		position: relative;
 		&:hover {
 			transform: scaleY(var(--progress-sale));
+			.line {
+				border-radius: calc(var(--progress-height) * var(--progress-sale) / 2) /
+					calc(var(--progress-height) / 2);
+			}
 			.bar,
 			.bar-wrap.dragging .bar {
 				@include bar-active;
@@ -209,7 +213,8 @@ function stopDragging(event?: PointerEvent) {
 			height: 100%;
 			background-color: map.get(token.$theme, 'video-timeline-bg');
 			position: relative;
-			border-radius: calc(var(--progress-height) * var(--progress-sale) / 2) / calc(var(--progress-height) / 2);
+			border-radius: calc(var(--progress-height) / 2);
+			transition: border-radius 0.3s ease;
 			overflow: hidden;
 		}
 		.loaded {

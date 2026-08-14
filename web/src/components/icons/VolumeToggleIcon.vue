@@ -21,34 +21,28 @@
 			</mask>
 		</defs>
 
-		<g :mask="`url(#${maskId})`">
-			<g class="volume-toggle-icon__speaker-motion">
-				<g transform="translate(340 512) scale(0.86) translate(-340 -512)">
-					<path
-						class="volume-toggle-icon__speaker"
-						d="M468.992 169.536c29.312-22.528 64.128-40.768 101.312-25.088 36.864 15.616 48.64 53.12 53.76 90.048 5.248 37.824 5.248 89.92 5.248 154.688v245.568c0 64.768 0 116.864-5.184 154.752-5.12 36.864-16.96 74.368-53.76 89.984-37.248 15.744-72.064-2.56-101.376-25.088-30.016-23.04-68.032-61.888-112.832-107.584-23.04-23.552-38.336-34.944-53.76-41.28-15.616-6.4-34.496-9.152-67.456-9.152-28.544 0-54.08 0-73.408-2.048-20.224-2.112-39.04-6.656-56-18.24-32.192-22.016-44.544-54.208-49.28-83.84C52.864 570.24 53.248 545.984 53.568 526.464v-28.928c-0.32-19.52-0.64-43.776 2.816-65.92 4.672-29.568 17.024-61.76 49.28-83.776 16.896-11.52 35.712-16.128 55.936-18.24 19.328-1.984 44.8-1.984 73.344-1.984 33.024 0 51.904-2.752 67.456-9.152 15.488-6.4 30.72-17.792 53.76-41.28 44.8-45.696 82.88-84.608 112.896-107.648z"
-						fill="currentColor"
-					/>
-				</g>
-			</g>
+		<g :mask="`url(#${maskId})`" class="volume-toggle-icon__artwork">
+			<path
+				class="volume-toggle-icon__speaker"
+				d="M466 96C492 96 512 117 512 146V878C512 907 492 928 466 928C447 928 430 919 414 905L252 726C235 711 220 704 194 704H154C122 704 96 678 96 646V378C96 346 122 320 154 320H194C220 320 235 313 252 298L414 119C430 105 447 96 466 96Z"
+				fill="currentColor"
+			/>
 
-			<g class="volume-toggle-icon__waves-motion">
-				<path
-					class="volume-toggle-icon__wave volume-toggle-icon__wave--inner"
-					:class="{ 'is-visible': displayVolume > 0 }"
-					d="M650 442C700 478 700 546 650 582"
-				/>
-				<path
-					class="volume-toggle-icon__wave volume-toggle-icon__wave--middle"
-					:class="{ 'is-visible': displayVolume >= 31 }"
-					d="M750 380C830 440 830 584 750 644"
-				/>
-				<path
-					class="volume-toggle-icon__wave volume-toggle-icon__wave--outer"
-					:class="{ 'is-visible': displayVolume >= 71 }"
-					d="M850 318C960 398 960 626 850 706"
-				/>
-			</g>
+			<path
+				class="volume-toggle-icon__wave volume-toggle-icon__wave--inner"
+				:class="{ 'is-visible': displayVolume > 0 }"
+				d="M552 358A170 170 0 0 1 552 666Z"
+			/>
+			<path
+				class="volume-toggle-icon__wave volume-toggle-icon__wave--middle"
+				:class="{ 'is-visible': displayVolume >= 31 }"
+				d="M588 281A255 255 0 0 1 588 743"
+			/>
+			<path
+				class="volume-toggle-icon__wave volume-toggle-icon__wave--outer"
+				:class="{ 'is-visible': displayVolume >= 71 }"
+				d="M638 175A372.136 372.136 0 0 1 638 849"
+			/>
 		</g>
 
 		<path class="volume-toggle-icon__slash" d="M170 110L894 834" pathLength="1" />
@@ -144,35 +138,36 @@ defineExpose({
 	$root: &;
 	$motion-easing: cubic-bezier(0.22, 0.8, 0.32, 1);
 
-	&__wave,
+	&__wave--middle,
+	&__wave--outer,
 	&__slash,
 	&__slash-gap {
 		fill: none;
 		stroke-linecap: round;
 	}
 
-	&__wave,
+	&__wave--middle,
+	&__wave--outer,
 	&__slash {
 		stroke: currentColor;
+	}
+
+	&__wave--inner {
+		fill: currentColor;
 	}
 
 	&__mask {
 		mask-type: luminance;
 	}
 
-	&__speaker-motion,
-	&__waves-motion {
-		transform-box: view-box;
-		transform-origin: center;
-		transition:
-			transform 260ms $motion-easing,
-			opacity 180ms ease;
+	&__artwork {
+		transition: opacity 180ms ease;
 	}
 
 	&__wave {
 		--show-delay: 0ms;
 		--hide-delay: 0ms;
-		stroke-width: 68;
+		stroke-width: 64;
 		opacity: 0;
 		transform: translateX(-24%) scale(0.68);
 		transform-box: fill-box;
@@ -221,10 +216,8 @@ defineExpose({
 	}
 
 	&.is-muted {
-		#{$root}__speaker-motion,
-		#{$root}__waves-motion {
+		#{$root}__artwork {
 			opacity: 0.78;
-			transform: scale(0.96);
 		}
 
 		#{$root}__slash,

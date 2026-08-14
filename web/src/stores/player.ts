@@ -127,6 +127,7 @@ export const usePlayerStore = defineStore('player', () => {
 		videoPath.value = '';
 		currentTime.value = 0;
 		duration.value = 0;
+		loaded.value = 0;
 		isLoading.value = true;
 		clearControllerActiveTimeout(false);
 	}

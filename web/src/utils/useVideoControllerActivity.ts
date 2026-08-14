@@ -16,10 +16,18 @@ interface VideoControllerActivityOptions {
 
 export function useVideoControllerActivity(options: VideoControllerActivityOptions) {
 	const playerStore = usePlayerStore();
+	let draggingTarget: 'volume' | 'timeline' | null = null;
+
+	function holdWhileDragging() {
+		if (!draggingTarget) {
+			return false;
+		}
+		options.hold();
+		return true;
+	}
 
 	function activateTemporarily() {
-		if (playerStore.isVolumeDragging) {
-			options.hold();
+		if (holdWhileDragging()) {
 			return;
 		}
 		options.activate();
@@ -38,16 +46,14 @@ export function useVideoControllerActivity(options: VideoControllerActivityOptio
 	}
 
 	function handleContainerLeave() {
-		if (playerStore.isVolumeDragging) {
-			options.hold();
+		if (holdWhileDragging()) {
 			return;
 		}
 		options.deactivate(true);
 	}
 
 	function handlePersistentTargetLeave(event: MouseEvent) {
-		if (playerStore.isVolumeDragging) {
-			options.hold();
+		if (holdWhileDragging()) {
 			return;
 		}
 		if (containsNode(toValue(options.container), event.relatedTarget)) {
@@ -58,18 +64,25 @@ export function useVideoControllerActivity(options: VideoControllerActivityOptio
 	}
 
 	function handlePointerDown(event: PointerEvent) {
-		if (!(event.target instanceof Element) || !event.target.closest('[data-volume-slider]')) {
+		if (!(event.target instanceof Element)) {
 			return;
 		}
-		playerStore.setIsVolumeDragging(true);
+		const slider = event.target.closest('[data-volume-slider], [data-timeline-slider]');
+		if (!slider) {
+			return;
+		}
+		draggingTarget = slider.hasAttribute('data-volume-slider') ? 'volume' : 'timeline';
+		if (draggingTarget === 'volume') {
+			playerStore.setIsVolumeDragging(true);
+		}
 		options.hold();
 	}
 
 	function handlePointerUp(event: PointerEvent) {
-		if (!playerStore.isVolumeDragging) {
+		if (!draggingTarget) {
 			return;
 		}
-		playerStore.setIsVolumeDragging(false);
+		clearDraggingTarget();
 		if (!containsPoint(toValue(options.container), event.clientX, event.clientY)) {
 			options.deactivate(true);
 			return;
@@ -82,11 +95,18 @@ export function useVideoControllerActivity(options: VideoControllerActivityOptio
 	}
 
 	function cancelDrag() {
-		if (!playerStore.isVolumeDragging) {
+		if (!draggingTarget) {
 			return;
 		}
-		playerStore.setIsVolumeDragging(false);
+		clearDraggingTarget();
 		options.deactivate(true);
+	}
+
+	function clearDraggingTarget() {
+		if (draggingTarget === 'volume') {
+			playerStore.setIsVolumeDragging(false);
+		}
+		draggingTarget = null;
 	}
 
 	function isInsidePersistentTarget(target: EventTarget | null) {
@@ -118,6 +138,7 @@ export function useVideoControllerActivity(options: VideoControllerActivityOptio
 	useEventListener(window, 'blur', cancelDrag);
 
 	onScopeDispose(() => {
+		clearDraggingTarget();
 		options.deactivate(true);
 	});
 }

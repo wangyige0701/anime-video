@@ -34,6 +34,7 @@ watch(
 		const currentSourceVersion = ++sourceVersion;
 		isMetadataLoaded = false;
 		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
+		playerStore.setLoaded(0);
 		playerStore.setLoading(Boolean(path));
 
 		if (video.value) {
@@ -210,6 +211,9 @@ onMounted(() => {
 		playerStore.setDuration(el.duration);
 		applyPendingCurrentTime();
 		void playState();
+	});
+	el.addEventListener('progress', () => {
+		playerStore.setLoaded(el.buffered.length ? el.buffered.end(el.buffered.length - 1) : 0);
 	});
 	el.addEventListener('loadstart', () => {
 		playerStore.setLoading(Boolean(playerStore.videoPath));

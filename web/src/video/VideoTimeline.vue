@@ -1,13 +1,21 @@
 <template>
 	<div class="video-timeline">
-		<div class="track">
-			<div class="loaded"></div>
-			<div class="runway"></div>
+		<div
+			ref="track"
+			class="track"
+			@mousemove="handleTrackMouseMove"
+			@mouseleave="status.offMouseEnter()"
+			@click.stop="handleTrackClick"
+		>
+			<div class="line">
+				<div class="loaded"></div>
+				<div class="runway"></div>
+			</div>
 			<div class="bar-wrap" :class="{ dragging: status.dragging }">
-				<div class="bar"></div>
+				<div class="bar" data-timeline-slider @pointerdown.stop="startDragging" @click.stop></div>
 			</div>
 			<el-tooltip
-				:content="formatDuration(currentTime)"
+				:content="formatDuration(mouseTime)"
 				:show-arrow="false"
 				placement="top"
 				:offset="20"
@@ -22,14 +30,17 @@
 <script setup lang="ts">
 import { usePlayerStore } from '@/stores/player';
 import { formatDuration } from '@/utils/duration';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useEventListener } from '@vueuse/core';
 
 let isSyncCurrentTime = true;
 const status = useVueStatusRef('mouseEnter', 'dragging');
 const playerStore = usePlayerStore();
+const track = useTemplateRef('track');
 const currentTime = ref(playerStore.currentTime);
-const loadedRatio = computed(() => playerStore.loaded / playerStore.duration);
-const runwayRatio = computed(() => playerStore.currentTime / playerStore.duration);
+const mouseTime = ref(0);
+const mouseRatio = ref('0%');
+const loadedRatio = computed(() => getRatio(playerStore.loaded));
+const runwayRatio = computed(() => getRatio(currentTime.value));
 
 watch(
 	() => playerStore.currentTime,
@@ -41,6 +52,11 @@ watch(
 	{ flush: 'sync' },
 );
 
+useEventListener(window, 'pointermove', updateDragging);
+useEventListener(window, 'pointerup', stopDragging);
+useEventListener(window, 'pointercancel', stopDragging);
+useEventListener(window, 'blur', () => stopDragging());
+
 const setCurrentTimeDebounce = useDebounceFn(async (time: number) => {
 	playerStore.setCurrentTime(time);
 	await nextTick();
@@ -49,10 +65,78 @@ const setCurrentTimeDebounce = useDebounceFn(async (time: number) => {
 }, 500);
 
 function setCurrentTime(time: number) {
-	playerStore.pause();
 	isSyncCurrentTime = false;
 	currentTime.value = time;
+	playerStore.pause();
 	setCurrentTimeDebounce(time);
+}
+
+function getRatio(time: number) {
+	const duration = playerStore.duration;
+	const ratio = duration > 0 && Number.isFinite(duration) ? time / duration : 0;
+	return `${Math.min(Math.max(ratio, 0), 1) * 100}%`;
+}
+
+function getPointerTime(event: MouseEvent | PointerEvent) {
+	if (!track.value) {
+		return null;
+	}
+	const rect = track.value.getBoundingClientRect();
+	if (rect.width <= 0) {
+		return null;
+	}
+	const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+	mouseRatio.value = `${ratio * 100}%`;
+	if (!Number.isFinite(playerStore.duration) || playerStore.duration <= 0) {
+		return null;
+	}
+	const time = ratio * playerStore.duration;
+	mouseTime.value = time;
+	return time;
+}
+
+function handleTrackMouseMove(event: MouseEvent) {
+	status.onMouseEnter();
+	getPointerTime(event);
+}
+
+function handleTrackClick(event: MouseEvent) {
+	if (event.target instanceof Element && event.target.closest('[data-timeline-slider]')) {
+		return;
+	}
+	const time = getPointerTime(event);
+	if (time !== null) {
+		setCurrentTime(time);
+	}
+}
+
+function startDragging(event: PointerEvent) {
+	if (event.button !== 0) {
+		return;
+	}
+	event.preventDefault();
+	status.onDragging();
+	updateDragging(event);
+}
+
+function updateDragging(event: PointerEvent) {
+	if (!status.dragging) {
+		return;
+	}
+	const time = getPointerTime(event);
+	if (time !== null) {
+		setCurrentTime(time);
+	}
+}
+
+function stopDragging(event?: PointerEvent) {
+	if (!status.dragging) {
+		return;
+	}
+	if (event?.type === 'pointerup') {
+		updateDragging(event);
+	}
+	status.offDragging();
 }
 </script>
 
@@ -81,15 +165,26 @@ function setCurrentTime(time: number) {
 		cursor: pointer;
 		width: calc(100% - var(--bar-width) - 2px);
 		height: var(--progress-height);
-		background-color: map.get(token.$theme, 'video-timeline-bg');
 		transition: transform 0.3s ease;
 		transform-origin: bottom center;
 		position: relative;
 		&:hover {
 			transform: scaleY(var(--progress-sale));
-			.bar {
+			.line {
+				border-radius: calc(var(--progress-height) * var(--progress-sale) / 2);
+			}
+			.bar,
+			.bar-wrap.dragging .bar {
 				@include bar-active;
 			}
+		}
+		.line {
+			width: 100%;
+			height: 100%;
+			background-color: map.get(token.$theme, 'video-timeline-bg');
+			position: relative;
+			border-radius: calc(var(--progress-height) / 2);
+			overflow: hidden;
 		}
 		.loaded {
 			width: v-bind('loadedRatio');
@@ -110,6 +205,7 @@ function setCurrentTime(time: number) {
 			&.dragging {
 				.bar {
 					@include bar-active;
+					transform: translate(-50%, -50%);
 				}
 			}
 		}
@@ -124,6 +220,14 @@ function setCurrentTime(time: number) {
 			transition:
 				transform 0.3s ease,
 				opacity 0.3s ease;
+		}
+		.mouse {
+			pointer-events: none;
+			width: 1px;
+			height: 100%;
+			position: absolute;
+			top: 0;
+			left: v-bind('mouseRatio');
 		}
 		.loaded,
 		.runway {

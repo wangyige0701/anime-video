@@ -1,1 +1,0 @@
-function useMessage(msg: string) {}

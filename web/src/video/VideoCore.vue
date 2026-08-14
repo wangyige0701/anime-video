@@ -17,7 +17,7 @@
 			</div>
 			<div
 				class="video-play-icon"
-				:class="{ 'is-hidden': playerStore.isPlaying }"
+				:class="{ 'is-hidden': playerStore.isPlaying || playerStore.isLoading }"
 				@click.stop="playerStore.togglePlay()"
 			>
 				<el-icon size="6rem">

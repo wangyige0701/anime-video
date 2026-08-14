@@ -1,7 +1,7 @@
 <template>
 	<div class="video-player-container">
 		<video ref="video" class="video-target" playsinline preload="metadata"></video>
-		<div class="video-loading">
+		<div v-if="playerStore.isLoading" class="video-loading">
 			<el-icon size="8rem">
 				<PlayerLoading />
 			</el-icon>
@@ -33,6 +33,7 @@ watch(
 		const currentSourceVersion = ++sourceVersion;
 		isMetadataLoaded = false;
 		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
+		playerStore.setLoading(Boolean(path));
 
 		if (video.value) {
 			video.value.pause();
@@ -51,6 +52,7 @@ watch(
 		try {
 			await initialized;
 		} catch {
+			playerStore.setLoading(false);
 			playerStore.pause();
 			return;
 		}
@@ -60,6 +62,7 @@ watch(
 
 		const src = getMasterM3u8Url(path);
 		if (!src) {
+			playerStore.setLoading(false);
 			playerStore.pause();
 			return;
 		}
@@ -186,6 +189,7 @@ async function playState() {
 
 onMounted(() => {
 	if (!video.value) {
+		playerStore.setLoading(false);
 		rejectInitialized('播放器不存在');
 		return;
 	}
@@ -206,14 +210,34 @@ onMounted(() => {
 		applyPendingCurrentTime();
 		void playState();
 	});
+	el.addEventListener('loadstart', () => {
+		playerStore.setLoading(Boolean(playerStore.videoPath));
+	});
+	el.addEventListener('waiting', () => {
+		playerStore.setLoading(true);
+	});
+	el.addEventListener('stalled', () => {
+		playerStore.setLoading(true);
+	});
+	el.addEventListener('loadeddata', () => {
+		playerStore.setLoading(false);
+	});
+	el.addEventListener('canplay', () => {
+		playerStore.setLoading(false);
+	});
 	el.addEventListener('error', () => {
+		playerStore.setLoading(false);
 		playerStore.pause();
 	});
 	el.addEventListener('ended', () => {
+		playerStore.setLoading(false);
 		playerStore.pause();
 	});
 	el.addEventListener('play', () => {
 		playerStore.play();
+	});
+	el.addEventListener('playing', () => {
+		playerStore.setLoading(false);
 	});
 	el.addEventListener('pause', () => {
 		playerStore.pause();
@@ -232,10 +256,12 @@ onMounted(() => {
 
 		hls.on(Hls.Events.ERROR, (_event, data) => {
 			if (data.fatal) {
+				playerStore.setLoading(false);
 				playerStore.pause();
 			}
 		});
 	} else if (!playerStore.isSupportedNative) {
+		playerStore.setLoading(false);
 		rejectInitialized('浏览器不支持 HLS');
 		return;
 	}
@@ -245,6 +271,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	playerStore.setLoading(false);
 	playerStore.pause();
 	hls?.destroy();
 	playerStore.reset();
@@ -275,6 +302,7 @@ defineExpose({
 }
 
 .video-loading {
+	pointer-events: none;
 	position: absolute;
 	top: 50%;
 	left: 50%;

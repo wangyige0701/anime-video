@@ -85,6 +85,8 @@ export const usePlayerStore = defineStore('player', () => {
 		episodeTitle.value = '';
 		videoPath.value = '';
 		currentTime.value = 0;
+		duration.value = 0;
+		isLoading.value = true;
 	}
 
 	return {

@@ -24,9 +24,9 @@
 				:hide-after="0"
 				:visible="status.mouseEnter"
 				:fallback-placements="['top']"
-			>
-				<div class="mouse"></div>
-			</el-tooltip>
+				:virtual-ref="virtualTrigger"
+				virtual-triggering
+			></el-tooltip>
 		</div>
 	</div>
 </template>
@@ -35,8 +35,10 @@
 import { usePlayerStore } from '@/stores/player';
 import { formatDuration } from '@/utils/duration';
 import { useDebounceFn, useEventListener } from '@vueuse/core';
+import type { Measurable } from 'element-plus';
 
 let isSyncCurrentTime = true;
+let tooltipFrame: number | null = null;
 const videoTimelineRef = useTemplateRef('videoTimelineRef');
 const track = useTemplateRef('track');
 const tooltip = useTemplateRef('tooltip');
@@ -44,7 +46,10 @@ const status = useVueStatusRef('mouseEnter', 'dragging');
 const playerStore = usePlayerStore();
 const currentTime = ref(playerStore.currentTime);
 const mouseTime = ref(0);
-const mouseRatio = ref('0%');
+const mousePosition = { x: 0, y: 0 };
+const virtualTrigger: Measurable = {
+	getBoundingClientRect: () => new DOMRect(mousePosition.x, mousePosition.y),
+};
 const loadedRatio = computed(() => getRatio(playerStore.loaded));
 const runwayRatio = computed(() => getRatio(currentTime.value));
 
@@ -62,6 +67,12 @@ useEventListener(window, 'pointermove', updateDragging);
 useEventListener(window, 'pointerup', stopDragging);
 useEventListener(window, 'pointercancel', stopDragging);
 useEventListener(window, 'blur', () => stopDragging());
+
+onBeforeUnmount(() => {
+	if (tooltipFrame !== null) {
+		cancelAnimationFrame(tooltipFrame);
+	}
+});
 
 const setCurrentTimeDebounce = useDebounceFn(async (time: number) => {
 	playerStore.setCurrentTime(time);
@@ -92,14 +103,25 @@ function getPointerTime(event: MouseEvent | PointerEvent) {
 		return null;
 	}
 	const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
-	mouseRatio.value = `${ratio * 100}%`;
-	nextTick(() => tooltip.value?.updatePopper());
+	mousePosition.x = rect.left + ratio * rect.width;
+	mousePosition.y = rect.bottom;
+	updateTooltipPosition();
 	if (!Number.isFinite(playerStore.duration) || playerStore.duration <= 0) {
 		return null;
 	}
 	const time = ratio * playerStore.duration;
 	mouseTime.value = time;
 	return time;
+}
+
+function updateTooltipPosition() {
+	if (tooltipFrame !== null) {
+		return;
+	}
+	tooltipFrame = requestAnimationFrame(() => {
+		tooltipFrame = null;
+		tooltip.value?.updatePopper();
+	});
 }
 
 function handleTrackMouseMove(event: MouseEvent) {
@@ -224,16 +246,6 @@ function stopDragging(event?: PointerEvent) {
 			transition:
 				transform 0.3s ease,
 				opacity 0.3s ease;
-		}
-		.mouse {
-			pointer-events: none;
-			width: 1px;
-			height: 0;
-			position: absolute;
-			bottom: 0;
-			left: v-bind('mouseRatio');
-			background-color: transparent;
-			visibility: hidden;
 		}
 		.loaded,
 		.runway {

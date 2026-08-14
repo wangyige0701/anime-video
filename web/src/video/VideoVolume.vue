@@ -1,5 +1,5 @@
 <template>
-	<div class="video-volume">
+	<div class="video-volume" :class="{ dragging: playStore.isVolumeDragging }">
 		<el-icon class="video-icon" :size="props.size" @click.stop="volumeIcon?.toggleMute()">
 			<VolumeToggleIcon
 				ref="volumeIcon"
@@ -11,6 +11,7 @@
 			<div class="video-volume__slider">
 				<div class="video-volume__gap"></div>
 				<el-slider
+					data-volume-slider
 					:min="0"
 					:max="100"
 					size="small"
@@ -57,7 +58,8 @@ const volumeIcon = useTemplateRef('volumeIcon');
 	display: inline-flex;
 	position: relative;
 	@include transition(width);
-	&:hover {
+	&:hover,
+	&.dragging {
 		width: calc(var(--size) + var(--slider-width) + var(--slider-bar-size) * 1.5);
 		.video-icon {
 			transform: scale(1.1);

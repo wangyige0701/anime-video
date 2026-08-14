@@ -26,6 +26,8 @@ export const usePlayerStore = defineStore('player', () => {
 	const duration = ref(0);
 	const volume = ref(readStoredVolume());
 	const isLoading = ref(true);
+	const isControllerActive = ref(false);
+	const isVolumeDragging = ref(false);
 
 	function setVideo(data: VideoPlayData) {
 		seriesId = data.seriesId;
@@ -78,6 +80,39 @@ export const usePlayerStore = defineStore('player', () => {
 		isLoading.value = loading;
 	}
 
+	let controllerActiveTimeout: number | null = null;
+	function triggerControllerActive() {
+		isControllerActive.value = true;
+		triggerControllerInactive();
+	}
+
+	function triggerControllerInactive(immediate = false) {
+		if (controllerActiveTimeout !== null) {
+			clearTimeout(controllerActiveTimeout);
+			controllerActiveTimeout = null;
+		}
+		if (immediate) {
+			isControllerActive.value = false;
+			return;
+		}
+		controllerActiveTimeout = setTimeout(() => {
+			controllerActiveTimeout = null;
+			isControllerActive.value = false;
+		}, 2000);
+	}
+
+	function clearControllerActiveTimeout(active = true) {
+		if (controllerActiveTimeout !== null) {
+			clearTimeout(controllerActiveTimeout);
+			controllerActiveTimeout = null;
+		}
+		isControllerActive.value = active;
+	}
+
+	function setIsVolumeDragging(dragging: boolean) {
+		isVolumeDragging.value = dragging;
+	}
+
 	function reset() {
 		isPlaying.value = false;
 		seriesTitle.value = '';
@@ -87,6 +122,7 @@ export const usePlayerStore = defineStore('player', () => {
 		currentTime.value = 0;
 		duration.value = 0;
 		isLoading.value = true;
+		clearControllerActiveTimeout(false);
 	}
 
 	return {
@@ -107,6 +143,14 @@ export const usePlayerStore = defineStore('player', () => {
 		volume,
 		duration,
 		isLoading,
+		/**
+		 * 是否激活控制器
+		 */
+		isControllerActive,
+		/**
+		 * 是否正在拖动音量滑块
+		 */
+		isVolumeDragging,
 		/**
 		 * 设置视频信息
 		 */
@@ -143,6 +187,22 @@ export const usePlayerStore = defineStore('player', () => {
 		 * 设置加载状态
 		 */
 		setLoading,
+		/**
+		 * 触发控制器激活
+		 */
+		triggerControllerActive,
+		/**
+		 * 触发控制器不激活
+		 */
+		triggerControllerInactive,
+		/**
+		 * 清除控制器激活定时器
+		 */
+		clearControllerActiveTimeout,
+		/**
+		 * 设置是否正在拖动音量滑块
+		 */
+		setIsVolumeDragging,
 	};
 });
 

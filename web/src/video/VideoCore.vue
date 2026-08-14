@@ -3,14 +3,19 @@
 		<div class="video-player">
 			<VideoPlayer />
 		</div>
-		<div class="video-mask" @click.stop="playerStore.togglePlay()">
+		<div
+			ref="videoMask"
+			class="video-mask"
+			:class="{ 'is-controller-active': playerStore.isControllerActive }"
+			@click.stop="playerStore.togglePlay()"
+		>
 			<div class="video-title">
 				<VideoTitle />
 			</div>
-			<div class="video-controller">
+			<div ref="videoController" class="video-controller">
 				<VideoController @prev="" @next="" />
 			</div>
-			<div class="close" @click.stop="$emit('close')">
+			<div ref="closeButton" class="close" @click.stop="$emit('close')">
 				<el-icon size="2rem">
 					<CloseBold />
 				</el-icon>
@@ -35,12 +40,25 @@ import VideoController from './VideoController.vue';
 import VideoTitle from './VideoTitle.vue';
 import { CloseBold } from '@element-plus/icons-vue';
 import PlayToggleIcon from '@/components/icons/PlayToggleIcon.vue';
+import { useVideoControllerActivity } from '@/utils/useVideoControllerActivity';
 
 const emit = defineEmits<{
 	(e: 'close'): void;
 }>();
 
 const playerStore = usePlayerStore();
+const videoMask = useTemplateRef('videoMask');
+const videoController = useTemplateRef('videoController');
+const closeButton = useTemplateRef('closeButton');
+
+useVideoControllerActivity({
+	container: videoMask,
+	controller: videoController,
+	persistentTargets: [closeButton],
+	activate: playerStore.triggerControllerActive,
+	hold: () => playerStore.clearControllerActiveTimeout(true),
+	deactivate: playerStore.triggerControllerInactive,
+});
 </script>
 
 <style scoped lang="scss">
@@ -61,7 +79,7 @@ const playerStore = usePlayerStore();
 .video-mask {
 	cursor: pointer;
 	z-index: 10;
-	&:hover {
+	&.is-controller-active {
 		.video-title,
 		.video-controller,
 		.close {
@@ -72,6 +90,7 @@ const playerStore = usePlayerStore();
 
 .video-title,
 .video-controller {
+	cursor: default;
 	width: 100%;
 	position: absolute;
 	opacity: 0;

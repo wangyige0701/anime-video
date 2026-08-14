@@ -61,7 +61,7 @@ function play(episode: Episode, season: Season, series: Series) {
 			seriesId: series.id || '',
 			seasonTitle: season.title || '',
 			seasonId: season.id || '',
-			episodeTitle: season.title || '',
+			episodeTitle: episode.title || '',
 			episodeId: episode.id || '',
 			videoPath: episode.path || '',
 		});

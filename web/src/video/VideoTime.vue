@@ -1,8 +1,8 @@
 <template>
 	<div class="video-time">
 		<el-space class="video-time__content" spacer="/" :size="5">
-			<span>{{ formatDuration(playStore.currentTime, playStore.duration) }}</span>
-			<span>{{ formatDuration(playStore.duration) }}</span>
+			<span class="time-text">{{ formatDuration(playStore.currentTime, playStore.duration) }}</span>
+			<span class="time-text">{{ formatDuration(playStore.duration) }}</span>
 		</el-space>
 	</div>
 </template>
@@ -22,6 +22,9 @@ const playStore = usePlayerStore();
 	text-align: center;
 	.video-time__content {
 		vertical-align: middle;
+	}
+	.time-text {
+		font-variant-numeric: tabular-nums;
 	}
 }
 </style>

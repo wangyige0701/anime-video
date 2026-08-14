@@ -58,7 +58,7 @@ const volumeIcon = useTemplateRef('volumeIcon');
 	position: relative;
 	@include transition(width);
 	&:hover {
-		width: calc(var(--size) + var(--slider-width) + var(--slider-bar-size) + var(--slider-bar-size));
+		width: calc(var(--size) + var(--slider-width) + var(--slider-bar-size) * 1.5);
 		.video-icon {
 			transform: scale(1.1);
 		}
@@ -67,9 +67,11 @@ const volumeIcon = useTemplateRef('volumeIcon');
 			transition-delay: 0s;
 		}
 		.video-volume__slider {
-			width: calc(var(--slider-width) + (var(--size) + var(--inner) * 2) + var(--slider-bar-size) * 2);
-			padding-right: calc(var(--slider-bar-size) * 2);
+			width: calc(var(--slider-width) + (var(--size) + var(--inner) * 2) + var(--slider-bar-size) * 1.5);
 			background-color: map.get(token.$theme, 'video-controller-dark');
+		}
+		.el-slider {
+			opacity: 1;
 		}
 	}
 	.video-icon {
@@ -86,7 +88,7 @@ const volumeIcon = useTemplateRef('volumeIcon');
 		border-radius: calc((var(--size) + var(--inner) * 2) / 2);
 		border: 1px solid transparent;
 		@include transition(border-color);
-		transition-delay: 0.3s;
+		transition-delay: 0.15s;
 		z-index: 1;
 	}
 	.video-volume__slider {
@@ -97,8 +99,7 @@ const volumeIcon = useTemplateRef('volumeIcon');
 		align-items: center;
 		border-radius: calc((var(--size) + var(--inner) * 2) / 2);
 		padding-left: calc(var(--size) + var(--inner) * 2);
-		padding-right: 0;
-		@include transition(width, padding-right, background-color);
+		@include transition(width, background-color);
 		overflow: hidden;
 	}
 	.video-volume__gap {
@@ -114,6 +115,8 @@ const volumeIcon = useTemplateRef('volumeIcon');
 		--el-slider-main-bg-color: #{map.get(token.$theme, 'l-3')};
 		width: var(--slider-width);
 		flex-shrink: 0;
+		opacity: 0;
+		@include transition(opacity);
 		:deep(.el-slider__button) {
 			border: none;
 			background-color: map.get(token.$theme, 'l-5');

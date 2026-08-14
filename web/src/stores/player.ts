@@ -24,6 +24,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const videoPath = ref('');
 	const currentTime = ref(0);
 	const duration = ref(0);
+	const loaded = ref(0);
 	const volume = ref(readStoredVolume());
 	const isLoading = ref(true);
 	const isControllerActive = ref(false);
@@ -75,6 +76,10 @@ export const usePlayerStore = defineStore('player', () => {
 
 	function setDuration(dur: number) {
 		duration.value = dur;
+	}
+
+	function setLoaded(time: number) {
+		loaded.value = time;
 	}
 
 	function setLoading(loading: boolean) {
@@ -147,6 +152,7 @@ export const usePlayerStore = defineStore('player', () => {
 		isSupportedNative,
 		volume,
 		duration,
+		loaded,
 		isLoading,
 		/**
 		 * 是否激活控制器
@@ -192,6 +198,10 @@ export const usePlayerStore = defineStore('player', () => {
 		 * 设置视频时长
 		 */
 		setDuration,
+		/**
+		 * 设置已加载时间
+		 */
+		setLoaded,
 		/**
 		 * 设置加载状态
 		 */

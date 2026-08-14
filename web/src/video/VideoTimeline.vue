@@ -24,20 +24,11 @@ import { usePlayerStore } from '@/stores/player';
 import { formatDuration } from '@/utils/duration';
 import { useDebounceFn } from '@vueuse/core';
 
-const props = withDefaults(
-	defineProps<{
-		loaded?: number;
-	}>(),
-	{
-		loaded: 0,
-	},
-);
-
 let isSyncCurrentTime = true;
 const playerStore = usePlayerStore();
 const isMouseEnter = ref(false);
 const currentTime = ref(playerStore.currentTime);
-const loadedRatio = computed(() => props.loaded / playerStore.duration);
+const loadedRatio = computed(() => playerStore.loaded / playerStore.duration);
 const runwayRatio = computed(() => playerStore.currentTime / playerStore.duration);
 
 watch(

@@ -15,13 +15,15 @@
 				<div class="bar" data-timeline-slider @pointerdown.stop="startDragging" @click.stop></div>
 			</div>
 			<el-tooltip
+				ref="tooltip"
 				:content="formatDuration(mouseTime)"
 				:show-arrow="false"
 				:append-to="videoTimelineRef || void 0"
 				placement="top"
-				:offset="15"
+				:offset="20"
 				:hide-after="0"
-				:disabled="!status.mouseEnter"
+				:visible="status.mouseEnter"
+				:fallback-placements="['top']"
 			>
 				<div class="mouse"></div>
 			</el-tooltip>
@@ -37,6 +39,7 @@ import { useDebounceFn, useEventListener } from '@vueuse/core';
 let isSyncCurrentTime = true;
 const videoTimelineRef = useTemplateRef('videoTimelineRef');
 const track = useTemplateRef('track');
+const tooltip = useTemplateRef('tooltip');
 const status = useVueStatusRef('mouseEnter', 'dragging');
 const playerStore = usePlayerStore();
 const currentTime = ref(playerStore.currentTime);
@@ -90,6 +93,7 @@ function getPointerTime(event: MouseEvent | PointerEvent) {
 	}
 	const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
 	mouseRatio.value = `${ratio * 100}%`;
+	nextTick(() => tooltip.value?.updatePopper());
 	if (!Number.isFinite(playerStore.duration) || playerStore.duration <= 0) {
 		return null;
 	}
@@ -173,9 +177,6 @@ function stopDragging(event?: PointerEvent) {
 		position: relative;
 		&:hover {
 			transform: scaleY(var(--progress-sale));
-			.line {
-				border-radius: calc(var(--progress-height) * var(--progress-sale) / 2);
-			}
 			.bar,
 			.bar-wrap.dragging .bar {
 				@include bar-active;
@@ -186,7 +187,7 @@ function stopDragging(event?: PointerEvent) {
 			height: 100%;
 			background-color: map.get(token.$theme, 'video-timeline-bg');
 			position: relative;
-			border-radius: calc(var(--progress-height) / 2);
+			border-radius: calc(var(--progress-height) * var(--progress-sale) / 2) / calc(var(--progress-height) / 2);
 			overflow: hidden;
 		}
 		.loaded {
@@ -227,11 +228,12 @@ function stopDragging(event?: PointerEvent) {
 		.mouse {
 			pointer-events: none;
 			width: 1px;
-			height: 100%;
+			height: 0;
 			position: absolute;
-			top: 0;
+			bottom: 0;
 			left: v-bind('mouseRatio');
 			background-color: transparent;
+			visibility: hidden;
 		}
 		.loaded,
 		.runway {

@@ -14,7 +14,11 @@
 			<VideoTime />
 			<VideoVolume :size="ICON_SIZE" />
 		</el-space>
-		<el-space></el-space>
+		<el-space :size="20">
+			<el-icon class="icon" :size="ICON_SIZE" @click.stop="toggleFullScreen">
+				<FullScreenToggleIcon :full-screen="playerStore.isFullScreen" />
+			</el-icon>
+		</el-space>
 	</div>
 </template>
 
@@ -23,16 +27,23 @@ import { usePlayerStore } from '@/stores/player';
 import VideoTimeline from './VideoTimeline.vue';
 import VideoTime from './VideoTime.vue';
 import VideoVolume from './VideoVolume.vue';
+import { useEventListener } from '@vueuse/core';
 
 const emit = defineEmits<{
 	(e: 'prev'): void;
 	(e: 'next'): void;
+	(e: 'fullscreen'): void;
+	(e: 'exitFullscreen'): void;
 }>();
 
 const ICON_SIZE = '1.5rem';
 const playerStore = usePlayerStore();
 const prevIcon = useTemplateRef('prevIcon');
 const nextIcon = useTemplateRef('nextIcon');
+
+useEventListener(document, 'fullscreenchange', () => {
+	playerStore.setIsFullScreen(document.fullscreenElement !== null);
+});
 
 function prev() {
 	prevIcon.value?.trigger();
@@ -42,6 +53,14 @@ function prev() {
 function next() {
 	nextIcon.value?.trigger();
 	emit('next');
+}
+
+function toggleFullScreen() {
+	if (document.fullscreenElement) {
+		emit('exitFullscreen');
+	} else {
+		emit('fullscreen');
+	}
 }
 </script>
 
@@ -55,6 +74,7 @@ function next() {
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
+	justify-content: space-between;
 	background-color: map.get(token.$theme, 'video-controller-dark');
 	padding: 1rem;
 	padding-top: calc(1rem + var(--progress-height));

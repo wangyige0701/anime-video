@@ -1,7 +1,7 @@
 <template>
-	<div class="video-core">
+	<div class="video-core" ref="videoCoreRef">
 		<div class="video-player">
-			<VideoPlayer />
+			<VideoPlayer ref="videoPlayerRef" />
 		</div>
 		<div
 			ref="videoMask"
@@ -13,7 +13,12 @@
 				<VideoTitle />
 			</div>
 			<div ref="videoController" class="video-controller">
-				<VideoController @prev="" @next="" />
+				<VideoController
+					@prev=""
+					@next=""
+					@fullscreen="videoCoreRef?.requestFullscreen()"
+					@exit-fullscreen="exitFullscreen"
+				/>
 			</div>
 			<div ref="closeButton" class="close" @click.stop="$emit('close')">
 				<el-icon size="2rem">
@@ -47,7 +52,9 @@ const emit = defineEmits<{
 }>();
 
 const playerStore = usePlayerStore();
+const videoCoreRef = useTemplateRef('videoCoreRef');
 const videoMask = useTemplateRef('videoMask');
+const videoPlayerRef = useTemplateRef('videoPlayerRef');
 const videoController = useTemplateRef('videoController');
 const closeButton = useTemplateRef('closeButton');
 
@@ -59,6 +66,10 @@ useVideoControllerActivity({
 	hold: () => playerStore.clearControllerActiveTimeout(true),
 	deactivate: playerStore.triggerControllerInactive,
 });
+
+function exitFullscreen() {
+	document.exitFullscreen();
+}
 </script>
 
 <style scoped lang="scss">

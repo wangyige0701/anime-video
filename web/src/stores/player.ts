@@ -28,6 +28,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const isLoading = ref(true);
 	const isControllerActive = ref(false);
 	const isVolumeDragging = ref(false);
+	const isFullScreen = ref(false);
 
 	function setVideo(data: VideoPlayData) {
 		seriesId = data.seriesId;
@@ -125,6 +126,10 @@ export const usePlayerStore = defineStore('player', () => {
 		clearControllerActiveTimeout(false);
 	}
 
+	function setIsFullScreen(fullScreen: boolean) {
+		isFullScreen.value = fullScreen;
+	}
+
 	return {
 		isPlaying,
 		seriesTitle,
@@ -151,6 +156,10 @@ export const usePlayerStore = defineStore('player', () => {
 		 * 是否正在拖动音量滑块
 		 */
 		isVolumeDragging,
+		/**
+		 * 是否全屏
+		 */
+		isFullScreen,
 		/**
 		 * 设置视频信息
 		 */
@@ -203,6 +212,10 @@ export const usePlayerStore = defineStore('player', () => {
 		 * 设置是否正在拖动音量滑块
 		 */
 		setIsVolumeDragging,
+		/**
+		 * 设置是否全屏
+		 */
+		setIsFullScreen,
 	};
 });
 

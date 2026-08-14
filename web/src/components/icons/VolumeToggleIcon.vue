@@ -40,12 +40,12 @@
 				/>
 				<path
 					class="volume-toggle-icon__wave volume-toggle-icon__wave--middle"
-					:class="{ 'is-visible': displayVolume >= 50 }"
+					:class="{ 'is-visible': displayVolume >= 31 }"
 					d="M750 380C830 440 830 584 750 644"
 				/>
 				<path
 					class="volume-toggle-icon__wave volume-toggle-icon__wave--outer"
-					:class="{ 'is-visible': displayVolume >= 100 }"
+					:class="{ 'is-visible': displayVolume >= 71 }"
 					d="M850 318C960 398 960 626 850 706"
 				/>
 			</g>

@@ -1,5 +1,12 @@
 <template>
-	<video ref="video" class="video-target" playsinline preload="metadata"></video>
+	<div class="video-player-container">
+		<video ref="video" class="video-target" playsinline preload="metadata"></video>
+		<div class="video-loading">
+			<el-icon size="8rem">
+				<PlayerLoading />
+			</el-icon>
+		</div>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -251,10 +258,27 @@ defineExpose({
 </script>
 
 <style scoped lang="scss">
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+.video-player-container {
+	width: 100%;
+	height: 100%;
+	position: relative;
+}
+
 .video-target {
 	width: 100%;
 	height: 100%;
 	object-fit: cover;
 	object-position: center;
+}
+
+.video-loading {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	color: map.get(token.$theme, 'l-9');
 }
 </style>

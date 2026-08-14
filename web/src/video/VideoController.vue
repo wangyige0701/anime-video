@@ -109,7 +109,9 @@ function shot() {
 .video-controller-container {
 	--progress-height: 4px;
 	width: 100%;
+	padding-top: 1rem;
 	color: map.get(token.$theme, 'l-9');
+	background: linear-gradient(transparent, map.get(token.$theme, 'video-controller-dark'));
 	.icon {
 		cursor: pointer;
 		transition: transform 0.3s ease;
@@ -126,7 +128,6 @@ function shot() {
 	flex-wrap: nowrap;
 	justify-content: space-between;
 	padding: 1rem;
-	background-color: map.get(token.$theme, 'video-controller-dark');
 }
 
 .tooltip-container {

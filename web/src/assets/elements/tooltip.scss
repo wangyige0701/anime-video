@@ -3,10 +3,10 @@
 
 body {
 	.el-tooltip.el-popper {
-		--el-popper-bg-color-dark: #{map.get(token.$theme, 'd-5')};
+		--el-popper-bg-color-dark: #{map.get(token.$theme, 'd-9')};
 		&.is-dark {
 			color: map.get(token.$theme, 'l-8');
-			border-color: var(--el-popper-bg-color-dark);
+			border-color: map.get(token.$theme, 'd-8');
 		}
 	}
 }

@@ -48,7 +48,7 @@ $theme: ();
 				0 24px 80px rgba(#000, 0.45),
 				0 0 0 1px rgba(color.mix(#fff, $color, 20%), 0.22),
 				0 0 36px rgba($color, 0.18);
-			#{var.varName('video', 'controller', 'dark')}: rgba(color.mix(#000, $color, 80%), 0.65);
+			#{var.varName('video', 'controller', 'dark')}: rgba(color.mix(#000, $color, 84%), 0.7);
 			#{var.varName('video', 'timeline', 'bg')}: rgba(color.mix(#fff, $color, 82%), 0.18);
 			#{var.varName('video', 'timeline', 'loaded', 'bg')}: rgba(color.mix(#fff, $color, 65%), 0.46);
 			#{var.varName('video', 'timeline', 'runway', 'bg')}: color.mix(#fff, $color, 8%);

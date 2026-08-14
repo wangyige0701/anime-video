@@ -1,5 +1,5 @@
 <template>
-	<div class="video-timeline">
+	<div ref="videoTimelineRef" class="video-timeline">
 		<div
 			ref="track"
 			class="track"
@@ -17,8 +17,10 @@
 			<el-tooltip
 				:content="formatDuration(mouseTime)"
 				:show-arrow="false"
+				:append-to="videoTimelineRef || void 0"
 				placement="top"
-				:offset="20"
+				:offset="15"
+				:hide-after="0"
 				:disabled="!status.mouseEnter"
 			>
 				<div class="mouse"></div>
@@ -33,9 +35,10 @@ import { formatDuration } from '@/utils/duration';
 import { useDebounceFn, useEventListener } from '@vueuse/core';
 
 let isSyncCurrentTime = true;
+const videoTimelineRef = useTemplateRef('videoTimelineRef');
+const track = useTemplateRef('track');
 const status = useVueStatusRef('mouseEnter', 'dragging');
 const playerStore = usePlayerStore();
-const track = useTemplateRef('track');
 const currentTime = ref(playerStore.currentTime);
 const mouseTime = ref(0);
 const mouseRatio = ref('0%');
@@ -228,6 +231,7 @@ function stopDragging(event?: PointerEvent) {
 			position: absolute;
 			top: 0;
 			left: v-bind('mouseRatio');
+			background-color: transparent;
 		}
 		.loaded,
 		.runway {

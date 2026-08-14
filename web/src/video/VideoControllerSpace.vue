@@ -2,6 +2,7 @@
 	<el-space :size="20">
 		<template v-for="vnode in render">
 			<el-tooltip
+				ref="tooltips"
 				:content="vnode.props?.['data-tooltip'] || ''"
 				:disabled="vnode.props?.['data-disabled'] ?? !vnode.props?.['data-tooltip']"
 				:placement="vnode.props?.['data-placement'] ?? 'top'"
@@ -10,6 +11,7 @@
 				:offset="25"
 				:show-arrow="false"
 				:fallback-placements="['top']"
+				:popper-options="popperOptions"
 			>
 				<div class="tip-wrap">
 					<component :is="vnode" />
@@ -25,6 +27,8 @@ const props = defineProps<{
 }>();
 
 const slots = useSlots();
+const tooltips = useTemplateRef('tooltips');
+const popperOptions = { strategy: 'fixed' as const };
 
 const render = computed(() => {
 	if (!slots.default) {
@@ -32,6 +36,12 @@ const render = computed(() => {
 	}
 	return slots.default();
 });
+
+function updatePoppers() {
+	tooltips.value?.forEach((tooltip) => tooltip?.updatePopper());
+}
+
+defineExpose({ updatePoppers });
 </script>
 
 <style scoped lang="scss">

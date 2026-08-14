@@ -3,7 +3,7 @@
 		<VideoTimeline />
 
 		<div class="video-menus">
-			<VideoControllerSpace :tooltip-container="tooltipContainer">
+			<VideoControllerSpace ref="leftControllerSpace" :tooltip-container="tooltipContainer">
 				<el-icon data-tooltip="上一个" class="icon" :size="ICON_SIZE" @click.stop="prev">
 					<PlayNextIcon ref="prevIcon" direction="prev" />
 				</el-icon>
@@ -26,7 +26,7 @@
 				/>
 			</VideoControllerSpace>
 
-			<VideoControllerSpace :tooltip-container="tooltipContainer">
+			<VideoControllerSpace ref="rightControllerSpace" :tooltip-container="tooltipContainer">
 				<el-icon data-tooltip="截图" class="icon" :size="ICON_SIZE" @click.stop="shot">
 					<ScreenShotIcon ref="shotIcon" />
 				</el-icon>
@@ -67,9 +67,15 @@ const prevIcon = useTemplateRef('prevIcon');
 const nextIcon = useTemplateRef('nextIcon');
 const shotIcon = useTemplateRef('shotIcon');
 const tooltipContainer = useTemplateRef('tooltipContainer');
+const leftControllerSpace = useTemplateRef('leftControllerSpace');
+const rightControllerSpace = useTemplateRef('rightControllerSpace');
 
 useEventListener(document, 'fullscreenchange', () => {
 	playerStore.setIsFullScreen(document.fullscreenElement !== null);
+	requestAnimationFrame(() => {
+		leftControllerSpace.value?.updatePoppers();
+		rightControllerSpace.value?.updatePoppers();
+	});
 });
 
 function prev() {

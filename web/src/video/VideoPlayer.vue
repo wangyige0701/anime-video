@@ -15,6 +15,7 @@ import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
 import { useEventListener } from '@vueuse/core';
 import { createPromise } from '@wang-yige/utils';
+import { takeVideoShotToClipboard } from '@/utils/videoShot';
 
 let hls: Hls | null = null;
 let isInitialized = false;
@@ -280,6 +281,9 @@ onBeforeUnmount(() => {
 defineExpose({
 	get isPlay() {
 		return video.value ? !video.value.paused : false;
+	},
+	shot() {
+		return takeVideoShotToClipboard(video.value);
 	},
 });
 </script>

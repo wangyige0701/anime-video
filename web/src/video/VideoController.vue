@@ -15,6 +15,9 @@
 			<VideoVolume :size="ICON_SIZE" />
 		</el-space>
 		<el-space :size="20">
+			<el-icon class="icon" :size="ICON_SIZE" @click.stop="shot">
+				<ScreenShotIcon ref="shotIcon" />
+			</el-icon>
 			<el-icon class="icon" :size="ICON_SIZE" @click.stop="toggleFullScreen">
 				<FullScreenToggleIcon :full-screen="playerStore.isFullScreen" />
 			</el-icon>
@@ -34,12 +37,14 @@ const emit = defineEmits<{
 	(e: 'next'): void;
 	(e: 'fullscreen'): void;
 	(e: 'exitFullscreen'): void;
+	(e: 'shot'): void;
 }>();
 
 const ICON_SIZE = '1.5rem';
 const playerStore = usePlayerStore();
 const prevIcon = useTemplateRef('prevIcon');
 const nextIcon = useTemplateRef('nextIcon');
+const shotIcon = useTemplateRef('shotIcon');
 
 useEventListener(document, 'fullscreenchange', () => {
 	playerStore.setIsFullScreen(document.fullscreenElement !== null);
@@ -61,6 +66,11 @@ function toggleFullScreen() {
 	} else {
 		emit('fullscreen');
 	}
+}
+
+function shot() {
+	shotIcon.value?.trigger();
+	emit('shot');
 }
 </script>
 

@@ -18,6 +18,7 @@
 					@next=""
 					@fullscreen="videoCoreRef?.requestFullscreen()"
 					@exit-fullscreen="exitFullscreen"
+					@shot="videoPlayerRef?.shot()"
 				/>
 			</div>
 			<div ref="closeButton" class="close" @click.stop="$emit('close')">

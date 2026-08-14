@@ -111,17 +111,23 @@ const volumeIcon = useTemplateRef('volumeIcon');
 	}
 	.el-slider {
 		--el-slider-button-size: var(--slider-bar-size);
+		--el-slider-button-wrapper-size: var(--slider-bar-size);
 		--el-slider-height: 4px;
-		--el-slider-button-wrapper-size: calc(var(--size) + var(--inner) * 2);
 		--el-slider-runway-bg-color: #{map.get(token.$theme, 'l-9')};
 		--el-slider-main-bg-color: #{map.get(token.$theme, 'l-3')};
 		width: var(--slider-width);
+		height: 100%;
 		flex-shrink: 0;
 		opacity: 0;
 		@include transition(opacity);
+		:deep(.el-slider__button-wrapper) {
+			top: calc(var(--el-slider-height) / 2);
+			transform: translate(-50%, -50%);
+		}
 		:deep(.el-slider__button) {
 			border: none;
 			background-color: map.get(token.$theme, 'l-5');
+			vertical-align: top;
 		}
 	}
 }

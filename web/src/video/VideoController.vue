@@ -1,36 +1,57 @@
 <template>
 	<div class="video-controller-container" @click.stop>
 		<VideoTimeline />
-		<el-space :size="20">
-			<el-icon class="icon" :size="ICON_SIZE" @click.stop="prev">
-				<PlayNextIcon ref="prevIcon" direction="prev" />
-			</el-icon>
-			<el-icon class="icon" :size="ICON_SIZE" @click.stop="playerStore.togglePlay()">
-				<PlayToggleIcon :play="!playerStore.isPlaying" />
-			</el-icon>
-			<el-icon class="icon" :size="ICON_SIZE" @click.stop="next">
-				<PlayNextIcon ref="nextIcon" direction="next" />
-			</el-icon>
-			<VideoTime />
-			<VideoVolume :size="ICON_SIZE" />
-		</el-space>
-		<el-space :size="20">
-			<el-icon class="icon" :size="ICON_SIZE" @click.stop="shot">
-				<ScreenShotIcon ref="shotIcon" />
-			</el-icon>
-			<el-icon class="icon" :size="ICON_SIZE" @click.stop="toggleFullScreen">
-				<FullScreenToggleIcon :full-screen="playerStore.isFullScreen" />
-			</el-icon>
-		</el-space>
+
+		<div class="video-menus">
+			<VideoControllerSpace :tooltip-container="tooltipContainer">
+				<el-icon data-tooltip="上一个" class="icon" :size="ICON_SIZE" @click.stop="prev">
+					<PlayNextIcon ref="prevIcon" direction="prev" />
+				</el-icon>
+				<el-icon
+					:data-tooltip="!playerStore.isPlaying ? '播放' : '暂停'"
+					class="icon"
+					:size="ICON_SIZE"
+					@click.stop="playerStore.togglePlay()"
+				>
+					<PlayToggleIcon :play="!playerStore.isPlaying" />
+				</el-icon>
+				<el-icon data-tooltip="下一个" class="icon" :size="ICON_SIZE" @click.stop="next">
+					<PlayNextIcon ref="nextIcon" direction="next" />
+				</el-icon>
+				<VideoTime />
+				<VideoVolume
+					:data-tooltip="`音量（${playerStore.volume}）`"
+					data-placement="top-start"
+					:size="ICON_SIZE"
+				/>
+			</VideoControllerSpace>
+
+			<VideoControllerSpace :tooltip-container="tooltipContainer">
+				<el-icon data-tooltip="截图" class="icon" :size="ICON_SIZE" @click.stop="shot">
+					<ScreenShotIcon ref="shotIcon" />
+				</el-icon>
+				<el-icon
+					:data-tooltip="playerStore.isFullScreen ? '退出全屏' : '全屏'"
+					class="icon"
+					:size="ICON_SIZE"
+					@click.stop="toggleFullScreen"
+				>
+					<FullScreenToggleIcon :full-screen="playerStore.isFullScreen" />
+				</el-icon>
+			</VideoControllerSpace>
+		</div>
+
+		<div ref="tooltipContainer" class="tooltip-container"></div>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { usePlayerStore } from '@/stores/player';
+import { useEventListener } from '@vueuse/core';
 import VideoTimeline from './VideoTimeline.vue';
 import VideoTime from './VideoTime.vue';
 import VideoVolume from './VideoVolume.vue';
-import { useEventListener } from '@vueuse/core';
+import VideoControllerSpace from './VideoControllerSpace.vue';
 
 const emit = defineEmits<{
 	(e: 'prev'): void;
@@ -45,6 +66,7 @@ const playerStore = usePlayerStore();
 const prevIcon = useTemplateRef('prevIcon');
 const nextIcon = useTemplateRef('nextIcon');
 const shotIcon = useTemplateRef('shotIcon');
+const tooltipContainer = useTemplateRef('tooltipContainer');
 
 useEventListener(document, 'fullscreenchange', () => {
 	playerStore.setIsFullScreen(document.fullscreenElement !== null);
@@ -81,13 +103,6 @@ function shot() {
 .video-controller-container {
 	--progress-height: 4px;
 	width: 100%;
-	display: flex;
-	flex-direction: row;
-	flex-wrap: nowrap;
-	justify-content: space-between;
-	background-color: map.get(token.$theme, 'video-controller-dark');
-	padding: 1rem;
-	padding-top: calc(1rem + var(--progress-height));
 	color: map.get(token.$theme, 'l-9');
 	.icon {
 		cursor: pointer;
@@ -96,5 +111,23 @@ function shot() {
 			transform: scale(1.1);
 		}
 	}
+}
+
+.video-menus {
+	width: 100%;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	justify-content: space-between;
+	padding: 1rem;
+	background-color: map.get(token.$theme, 'video-controller-dark');
+}
+
+.tooltip-container {
+	width: 100%;
+	height: 0;
+	white-space: nowrap;
+	isolation: isolate;
+	z-index: 100;
 }
 </style>

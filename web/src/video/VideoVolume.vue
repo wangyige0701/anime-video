@@ -1,10 +1,10 @@
 <template>
-	<div class="video-volume" :class="{ dragging: playStore.isVolumeDragging }">
+	<div class="video-volume" :class="{ dragging: playerStore.isVolumeDragging }">
 		<el-icon class="video-icon" :size="props.size" @click.stop="volumeIcon?.toggleMute()">
 			<VolumeToggleIcon
 				ref="volumeIcon"
-				:volume="playStore.volume"
-				@update:volume="playStore.setVolume($event)"
+				:volume="playerStore.volume"
+				@update:volume="playerStore.setVolume($event)"
 			/>
 		</el-icon>
 		<div class="video-volume__bg">
@@ -16,8 +16,8 @@
 					:max="100"
 					size="small"
 					:show-tooltip="false"
-					:model-value="playStore.volume"
-					@update:model-value="playStore.setVolume($event as number)"
+					:model-value="playerStore.volume"
+					@update:model-value="playerStore.setVolume($event as number)"
 				></el-slider>
 			</div>
 		</div>
@@ -31,7 +31,7 @@ const props = defineProps<{
 	size: number | string;
 }>();
 
-const playStore = usePlayerStore();
+const playerStore = usePlayerStore();
 const volumeIcon = useTemplateRef('volumeIcon');
 </script>
 

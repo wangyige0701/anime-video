@@ -1,8 +1,8 @@
 <template>
 	<div class="video-time">
 		<el-space class="video-time__content" spacer="/" :size="5">
-			<span class="time-text">{{ formatDuration(playStore.currentTime, playStore.duration) }}</span>
-			<span class="time-text">{{ formatDuration(playStore.duration) }}</span>
+			<span class="time-text">{{ formatDuration(playerStore.currentTime, playerStore.duration) }}</span>
+			<span class="time-text">{{ formatDuration(playerStore.duration) }}</span>
 		</el-space>
 	</div>
 </template>
@@ -11,7 +11,7 @@
 import { usePlayerStore } from '@/stores/player';
 import { formatDuration } from '@/utils/duration';
 
-const playStore = usePlayerStore();
+const playerStore = usePlayerStore();
 </script>
 
 <style scoped lang="scss">

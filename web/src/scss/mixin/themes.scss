@@ -49,6 +49,10 @@ $theme: ();
 				0 0 0 1px rgba(color.mix(#fff, $color, 20%), 0.22),
 				0 0 36px rgba($color, 0.18);
 			#{var.varName('video', 'controller', 'dark')}: rgba(color.mix(#000, $color, 80%), 0.65);
+			#{var.varName('video', 'timeline', 'bg')}: rgba(color.mix(#fff, $color, 82%), 0.18);
+			#{var.varName('video', 'timeline', 'loaded', 'bg')}: rgba(color.mix(#fff, $color, 65%), 0.46);
+			#{var.varName('video', 'timeline', 'active', 'bg')}: color.mix(#fff, $color, 8%);
+			#{var.varName('video', 'timeline', 'bar', 'color')}: color.mix(#fff, $color, 90%);
 		}
 	}
 }
@@ -69,4 +73,8 @@ $theme: ();
 	$theme: map.set($theme, 'video-bg', var(--video-bg));
 	$theme: map.set($theme, 'video-shadow', var(--video-shadow));
 	$theme: map.set($theme, 'video-controller-dark', var(--video-controller-dark));
+	$theme: map.set($theme, 'video-timeline-bg', var(--video-timeline-bg));
+	$theme: map.set($theme, 'video-timeline-loaded-bg', var(--video-timeline-loaded-bg));
+	$theme: map.set($theme, 'video-timeline-active-bg', var(--video-timeline-active-bg));
+	$theme: map.set($theme, 'video-timeline-bar-color', var(--video-timeline-bar-color));
 }

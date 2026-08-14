@@ -24,6 +24,7 @@
 				:hide-after="0"
 				:visible="status.mouseEnter"
 				:fallback-placements="['top']"
+				:popper-options="tooltipPopperOptions"
 				:virtual-ref="virtualTrigger"
 				virtual-triggering
 			></el-tooltip>
@@ -49,6 +50,10 @@ const mouseTime = ref(0);
 const mousePosition = { x: 0, y: 0 };
 const virtualTrigger: Measurable = {
 	getBoundingClientRect: () => new DOMRect(mousePosition.x, mousePosition.y),
+};
+const tooltipPopperOptions = {
+	strategy: 'fixed' as const,
+	modifiers: [{ name: 'preventOverflow', options: { mainAxis: false } }],
 };
 const loadedRatio = computed(() => getRatio(playerStore.loaded));
 const runwayRatio = computed(() => getRatio(currentTime.value));

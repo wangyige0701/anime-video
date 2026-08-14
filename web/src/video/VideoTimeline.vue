@@ -3,7 +3,7 @@
 		<div class="track">
 			<div class="loaded"></div>
 			<div class="runway"></div>
-			<div class="bar-wrap">
+			<div class="bar-wrap" :class="{ dragging: status.dragging }">
 				<div class="bar"></div>
 			</div>
 			<el-tooltip
@@ -11,7 +11,7 @@
 				:show-arrow="false"
 				placement="top"
 				:offset="20"
-				:disabled="!isMouseEnter"
+				:disabled="!status.mouseEnter"
 			>
 				<div class="mouse"></div>
 			</el-tooltip>
@@ -25,8 +25,8 @@ import { formatDuration } from '@/utils/duration';
 import { useDebounceFn } from '@vueuse/core';
 
 let isSyncCurrentTime = true;
+const status = useVueStatusRef('mouseEnter', 'dragging');
 const playerStore = usePlayerStore();
-const isMouseEnter = ref(false);
 const currentTime = ref(playerStore.currentTime);
 const loadedRatio = computed(() => playerStore.loaded / playerStore.duration);
 const runwayRatio = computed(() => playerStore.currentTime / playerStore.duration);
@@ -64,6 +64,12 @@ function setCurrentTime(time: number) {
 	--bar-height: 12px;
 	--bar-width: 24px;
 	--progress-sale: 2;
+
+	@mixin bar-active {
+		transform: translate(-50%, -50%) scale(1, calc(1 / var(--progress-sale)));
+		opacity: 1;
+	}
+
 	width: 100%;
 	height: calc(var(--progress-height) * var(--progress-sale));
 	display: flex;
@@ -82,8 +88,7 @@ function setCurrentTime(time: number) {
 		&:hover {
 			transform: scaleY(var(--progress-sale));
 			.bar {
-				transform: translate(-50%, -50%) scale(1, calc(1 / var(--progress-sale)));
-				opacity: 1;
+				@include bar-active;
 			}
 		}
 		.loaded {
@@ -102,6 +107,11 @@ function setCurrentTime(time: number) {
 			position: absolute;
 			top: 50%;
 			left: v-bind('runwayRatio');
+			&.dragging {
+				.bar {
+					@include bar-active;
+				}
+			}
 		}
 		.bar {
 			width: 100%;

@@ -1,12 +1,14 @@
 <template>
 	<div class="video-volume" :class="{ dragging: playerStore.isVolumeDragging }">
-		<el-icon class="video-icon" :size="props.size" @click.stop="volumeIcon?.toggleMute()">
-			<VolumeToggleIcon
-				ref="volumeIcon"
-				:volume="playerStore.volume"
-				@update:volume="playerStore.setVolume($event)"
-			/>
-		</el-icon>
+		<el-button text @click.stop="volumeIcon?.toggleMute()">
+			<el-icon class="video-icon">
+				<VolumeToggleIcon
+					ref="volumeIcon"
+					:volume="playerStore.volume"
+					@update:volume="playerStore.setVolume($event)"
+				/>
+			</el-icon>
+		</el-button>
 		<div class="video-volume__bg">
 			<div class="video-volume__slider">
 				<div class="video-volume__gap"></div>

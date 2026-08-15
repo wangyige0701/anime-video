@@ -8,23 +8,30 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
-				<el-icon data-tooltip="上一个" class="icon" :size="ICON_SIZE" @click.stop="prev">
-					<PlayNextIcon ref="prevIcon" direction="prev" />
-				</el-icon>
-				<el-icon
+				<el-button data-tooltip="上一个" text @click.stop="prev">
+					<el-icon>
+						<PlayNextIcon ref="prevIcon" direction="prev" />
+					</el-icon>
+				</el-button>
+				<el-button
 					:data-tooltip="!playerStore.isPlaying ? '播放' : '暂停'"
-					class="icon"
-					:size="ICON_SIZE"
+					text
 					@click.stop="playerStore.togglePlay()"
 				>
-					<PlayToggleIcon :play="!playerStore.isPlaying" />
-				</el-icon>
-				<el-icon data-tooltip="下一个" class="icon" :size="ICON_SIZE" @click.stop="next">
-					<PlayNextIcon ref="nextIcon" direction="next" />
-				</el-icon>
-				<el-icon data-tooltip="回到开头" class="icon" :size="ICON_SIZE" @click.stop="backToStart">
-					<PlayStartIcon ref="startIcon" />
-				</el-icon>
+					<el-icon>
+						<PlayToggleIcon :play="!playerStore.isPlaying" />
+					</el-icon>
+				</el-button>
+				<el-button data-tooltip="下一个" text @click.stop="next">
+					<el-icon>
+						<PlayNextIcon ref="nextIcon" direction="next" />
+					</el-icon>
+				</el-button>
+				<el-button data-tooltip="回到开头" text :disabled="!playerStore.currentTime" @click.stop="backToStart">
+					<el-icon>
+						<PlayStartIcon ref="startIcon" />
+					</el-icon>
+				</el-button>
 				<VideoTime />
 				<VideoVolume
 					:data-tooltip="`音量（${playerStore.volume}）`"
@@ -38,25 +45,29 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
-				<el-icon
+				<el-button
 					:data-tooltip="`倍速（${playerStore.playbackRate}x）`"
-					class="icon"
-					:size="ICON_SIZE"
+					text
 					@click.stop="playbackRateClickHandler"
 				>
-					<PlaybackRateIcon ref="playbackRateIcon" :rate="playerStore.playbackRate" />
-				</el-icon>
-				<el-icon data-tooltip="截图" class="icon" :size="ICON_SIZE" @click.stop="shot">
-					<ScreenShotIcon ref="shotIcon" />
-				</el-icon>
-				<el-icon
+					<el-icon>
+						<PlaybackRateIcon ref="playbackRateIcon" :rate="playerStore.playbackRate" />
+					</el-icon>
+				</el-button>
+				<el-button data-tooltip="截图" text @click.stop="shot">
+					<el-icon>
+						<ScreenShotIcon ref="shotIcon" />
+					</el-icon>
+				</el-button>
+				<el-button
 					:data-tooltip="playerStore.isFullScreen ? '退出全屏' : '全屏'"
-					class="icon"
-					:size="ICON_SIZE"
+					text
 					@click.stop="$emit('toggleFullscreen')"
 				>
-					<FullScreenToggleIcon :full-screen="playerStore.isFullScreen" />
-				</el-icon>
+					<el-icon>
+						<FullScreenToggleIcon :full-screen="playerStore.isFullScreen" />
+					</el-icon>
+				</el-button>
 			</VideoControllerSpace>
 		</div>
 
@@ -136,8 +147,18 @@ function playbackRateClickHandler() {
 	padding-top: 1rem;
 	color: map.get(token.$theme, 'l-9');
 	background: linear-gradient(transparent, map.get(token.$theme, 'video-controller-dark'));
-	.icon {
+	:deep(.el-button) {
+		&.is-disabled {
+			opacity: 0.5;
+			.el-icon {
+				cursor: default;
+				transform: none;
+			}
+		}
+	}
+	:deep(.el-icon) {
 		cursor: pointer;
+		font-size: v-bind('ICON_SIZE');
 		transition: transform 0.3s ease;
 		&:hover {
 			transform: scale(1.1);

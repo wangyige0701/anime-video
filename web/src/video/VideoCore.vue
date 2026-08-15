@@ -21,10 +21,12 @@
 					@shot="videoPlayerRef?.shot()"
 				/>
 			</div>
-			<div ref="closeButton" class="close" @click.stop="close">
-				<el-icon size="2rem">
-					<CloseBold />
-				</el-icon>
+			<div ref="closeButton" class="close">
+				<el-button text @click.stop="close">
+					<el-icon size="2rem">
+						<CloseBold />
+					</el-icon>
+				</el-button>
 			</div>
 			<div
 				class="video-play-icon"
@@ -111,6 +113,20 @@ function close() {
 	width: 100%;
 	height: 100%;
 	position: relative;
+	:deep(.el-button) {
+		--el-fill-color-light: transparent;
+		--el-fill-color: transparent;
+		--el-button-hover-bg-color: transparent;
+		--el-button-hover-text-color: inherit;
+		--el-button-disabled-bg-color: transparent;
+		--el-button-disabled-text-color: inherit;
+		--el-button-active-bg-color: transparent;
+		--el-button-active-text-color: inherit;
+		height: auto;
+		padding: 0;
+		color: inherit;
+		border: none;
+	}
 }
 
 .video-player,

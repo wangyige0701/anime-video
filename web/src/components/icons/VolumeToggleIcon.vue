@@ -1,7 +1,7 @@
 <template>
 	<svg
 		class="volume-toggle-icon"
-		:class="{ 'is-muted': isMuted }"
+		:class="{ 'is-muted': isMuted, 'is-toggling': isToggling }"
 		viewBox="0 0 1024 1024"
 		xmlns="http://www.w3.org/2000/svg"
 	>
@@ -28,21 +28,23 @@
 				fill="currentColor"
 			/>
 
-			<path
-				class="volume-toggle-icon__wave volume-toggle-icon__wave--inner"
-				:class="{ 'is-visible': displayVolume > 0 }"
-				d="M552 358A170 170 0 0 1 552 666Z"
-			/>
-			<path
-				class="volume-toggle-icon__wave volume-toggle-icon__wave--middle"
-				:class="{ 'is-visible': displayVolume >= 31 }"
-				d="M588 281A255 255 0 0 1 588 743"
-			/>
-			<path
-				class="volume-toggle-icon__wave volume-toggle-icon__wave--outer"
-				:class="{ 'is-visible': displayVolume >= 71 }"
-				d="M638 175A372.136 372.136 0 0 1 638 849"
-			/>
+			<g class="volume-toggle-icon__wave-motion">
+				<path
+					class="volume-toggle-icon__wave volume-toggle-icon__wave--inner"
+					:class="{ 'is-visible': displayVolume > 0 }"
+					d="M552 358A170 170 0 0 1 552 666Z"
+				/>
+				<path
+					class="volume-toggle-icon__wave volume-toggle-icon__wave--middle"
+					:class="{ 'is-visible': displayVolume >= 31 }"
+					d="M600 265A275 275 0 0 1 600 759"
+				/>
+				<path
+					class="volume-toggle-icon__wave volume-toggle-icon__wave--outer"
+					:class="{ 'is-visible': displayVolume >= 71 }"
+					d="M648 135A400 400 0 0 1 648 889"
+				/>
+			</g>
 		</g>
 
 		<path class="volume-toggle-icon__slash" d="M170 110L894 834" pathLength="1" />
@@ -79,6 +81,10 @@ const volume = computed({
 });
 const isMuted = computed(() => volume.value === 0);
 const displayVolume = computed(() => (isMuted.value ? lastVolume.value : volume.value));
+const isToggling = ref(false);
+const artworkAnimationDuration = 340;
+let artworkAnimationFrame: number | undefined;
+let artworkAnimationTimeout: ReturnType<typeof setTimeout> | undefined;
 
 watch(
 	() => props.volume,
@@ -86,6 +92,10 @@ watch(
 		setVolume(value);
 	},
 );
+
+watch(isMuted, () => {
+	triggerArtworkAnimation();
+});
 
 function toMute() {
 	if (!isMuted.value) {
@@ -121,6 +131,35 @@ function setVolume(value: number) {
 	}
 }
 
+/**
+ * 重置并播放喇叭与声波的短暂切换动画。
+ *
+ * 通过下一帧重新启用动画类，确保连续切换静音状态时也能从头播放，
+ * 并在动画结束后清理状态与定时器。
+ */
+function triggerArtworkAnimation() {
+	if (artworkAnimationFrame !== undefined) {
+		cancelAnimationFrame(artworkAnimationFrame);
+	}
+	clearTimeout(artworkAnimationTimeout);
+	isToggling.value = false;
+	artworkAnimationFrame = requestAnimationFrame(() => {
+		isToggling.value = true;
+		artworkAnimationFrame = undefined;
+		artworkAnimationTimeout = setTimeout(() => {
+			isToggling.value = false;
+			artworkAnimationTimeout = undefined;
+		}, artworkAnimationDuration);
+	});
+}
+
+onBeforeUnmount(() => {
+	if (artworkAnimationFrame !== undefined) {
+		cancelAnimationFrame(artworkAnimationFrame);
+	}
+	clearTimeout(artworkAnimationTimeout);
+});
+
 defineOptions({
 	inheritAttrs: true,
 });
@@ -137,6 +176,7 @@ defineExpose({
 .volume-toggle-icon {
 	$root: &;
 	$motion-easing: cubic-bezier(0.22, 0.8, 0.32, 1);
+	shape-rendering: geometricPrecision;
 
 	&__wave--middle,
 	&__wave--outer,
@@ -164,10 +204,23 @@ defineExpose({
 		transition: opacity 180ms ease;
 	}
 
+	&__speaker,
+	&__wave-motion {
+		transform-box: fill-box;
+	}
+
+	&__speaker {
+		transform-origin: right center;
+	}
+
+	&__wave-motion {
+		transform-origin: left center;
+	}
+
 	&__wave {
 		--show-delay: 0ms;
 		--hide-delay: 0ms;
-		stroke-width: 64;
+		stroke-width: 76;
 		opacity: 0;
 		transform: translateX(-24%) scale(0.68);
 		transform-box: fill-box;
@@ -191,7 +244,7 @@ defineExpose({
 
 		&.is-visible {
 			opacity: 1;
-			transform: scale(1);
+			transform: none;
 			transition-delay: var(--show-delay);
 		}
 	}
@@ -228,6 +281,56 @@ defineExpose({
 				stroke-dashoffset 260ms $motion-easing,
 				opacity 80ms linear;
 		}
+	}
+
+	&.is-toggling {
+		#{$root}__speaker {
+			will-change: transform;
+			animation: volume-speaker-jolt 340ms cubic-bezier(0.22, 0.8, 0.32, 1);
+		}
+
+		#{$root}__wave-motion {
+			will-change: transform;
+			animation: volume-wave-jolt 340ms cubic-bezier(0.22, 0.8, 0.32, 1);
+		}
+	}
+}
+
+@keyframes volume-speaker-jolt {
+	0%,
+	100% {
+		transform: translate(0) rotate(0) scale(1);
+	}
+
+	22% {
+		transform: translate(-10%, 3%) rotate(-3deg) scale(0.95, 1.04);
+	}
+
+	46% {
+		transform: translate(8%, -2%) rotate(2.1deg) scale(1.04, 0.97);
+	}
+
+	70% {
+		transform: translate(-3%, 1%) rotate(-0.8deg) scale(0.99, 1.01);
+	}
+}
+
+@keyframes volume-wave-jolt {
+	0%,
+	100% {
+		transform: translate(0) scale(1);
+	}
+
+	26% {
+		transform: translate(-8%, 3%) scale(0.91, 1.06);
+	}
+
+	52% {
+		transform: translate(7%, -2%) scale(1.05, 0.96);
+	}
+
+	74% {
+		transform: translate(-2%, 1%) scale(0.99, 1.01);
 	}
 }
 </style>

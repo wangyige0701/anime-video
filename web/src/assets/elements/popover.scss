@@ -1,0 +1,12 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+body {
+	.el-popover.el-popper {
+		--el-popper-bg-color-dark: #{map.get(token.$theme, 'd-9')};
+		&.is-dark {
+			color: map.get(token.$theme, 'l-8');
+			border-color: map.get(token.$theme, 'd-8');
+		}
+	}
+}

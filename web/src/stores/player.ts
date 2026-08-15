@@ -153,8 +153,11 @@ export const usePlayerStore = defineStore('player', () => {
 	return {
 		isPlaying,
 		seriesTitle,
+		seriesId,
 		seasonTitle,
+		seasonId,
 		episodeTitle,
+		episodeId,
 		videoPath,
 		currentTime,
 		/** 是否支持 HLS */

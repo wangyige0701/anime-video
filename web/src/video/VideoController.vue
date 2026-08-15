@@ -45,6 +45,7 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
+				<VideoEpisodes :popover-container="tooltipContainer" />
 				<el-button
 					:data-tooltip="`倍速（${playerStore.playbackRate}x）`"
 					text
@@ -82,6 +83,7 @@ import VideoTimeline from './VideoTimeline.vue';
 import VideoTime from './VideoTime.vue';
 import VideoVolume from './VideoVolume.vue';
 import VideoControllerSpace from './VideoControllerSpace.vue';
+import VideoEpisodes from './VideoEpisodes.vue';
 
 const emit = defineEmits<{
 	(e: 'prev'): void;

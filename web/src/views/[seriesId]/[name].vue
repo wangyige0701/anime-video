@@ -41,6 +41,7 @@ import { getSeriesStatusName } from '~config/seriesStatus';
 import type { Episode } from '@/data/episode';
 import type { Season } from '@/data/season';
 import VideoBox from '@/components/detail/VideoBox.vue';
+import { DETAIL_SERIES_DATA } from '@/config/symbol';
 
 definePage({
 	name: 'Detail',
@@ -52,6 +53,11 @@ const videoBoxRef = useTemplateRef('videoBoxRef');
 const series = shallowReactive<{ value: Series }>({ value: {} as Series });
 const activeSeasonId = ref<string>('');
 const activeEpisodeId = ref<string>('');
+
+provide(
+	DETAIL_SERIES_DATA,
+	computed(() => series.value),
+);
 
 function play(episode: Episode, season: Season, series: Series) {
 	if (episode.id && videoBoxRef.value) {

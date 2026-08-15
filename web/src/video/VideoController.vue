@@ -1,5 +1,5 @@
 <template>
-	<div class="video-controller-container" @click.stop>
+	<div class="video-controller-container" @click.stop @dblclick.stop>
 		<VideoTimeline ref="timelineRef" @dragging="isTimelineDragging = $event" />
 
 		<div class="video-menus">

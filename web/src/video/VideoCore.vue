@@ -7,8 +7,8 @@
 			ref="videoMask"
 			class="video-mask"
 			:class="{ 'is-controller-active': playerStore.isControllerActive }"
-			@click.stop="playerStore.togglePlay()"
-			@dblclick="toggleFullscreen"
+			@click.stop="handleMaskClick"
+			@dblclick="handleMaskDoubleClick"
 		>
 			<div class="video-title">
 				<VideoTitle />
@@ -58,6 +58,7 @@ const videoMask = useTemplateRef('videoMask');
 const videoPlayerRef = useTemplateRef('videoPlayerRef');
 const videoController = useTemplateRef('videoController');
 const closeButton = useTemplateRef('closeButton');
+let playToggleTimeout: ReturnType<typeof setTimeout> | undefined;
 
 useVideoControllerActivity({
 	container: videoMask,
@@ -68,12 +69,30 @@ useVideoControllerActivity({
 	deactivate: playerStore.triggerControllerInactive,
 });
 
+onBeforeUnmount(() => {
+	playToggleTimeout && clearTimeout(playToggleTimeout);
+});
+
 function toggleFullscreen() {
 	if (document.fullscreenElement) {
 		document.exitFullscreen();
 	} else {
 		videoCoreRef.value?.requestFullscreen();
 	}
+}
+
+function handleMaskClick() {
+	clearTimeout(playToggleTimeout);
+	playToggleTimeout = setTimeout(() => {
+		playToggleTimeout = undefined;
+		playerStore.togglePlay();
+	}, 200);
+}
+
+function handleMaskDoubleClick() {
+	clearTimeout(playToggleTimeout);
+	playToggleTimeout = undefined;
+	toggleFullscreen();
 }
 
 function close() {

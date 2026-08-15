@@ -96,6 +96,8 @@ onBeforeUnmount(() => {
 	}
 });
 
+defineExpose({ seek });
+
 const setCurrentTimeDebounce = useDebounceFn(async (time: number) => {
 	playerStore.seek(time);
 	await nextTick();

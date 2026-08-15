@@ -1,6 +1,6 @@
 <template>
 	<div class="video-controller-container" @click.stop>
-		<VideoTimeline @dragging="isTimelineDragging = $event" />
+		<VideoTimeline ref="timelineRef" @dragging="isTimelineDragging = $event" />
 
 		<div class="video-menus">
 			<VideoControllerSpace
@@ -73,6 +73,7 @@ const emit = defineEmits<{
 
 const ICON_SIZE = '1.5rem';
 const playerStore = usePlayerStore();
+const timelineRef = useTemplateRef('timelineRef');
 const prevIcon = useTemplateRef('prevIcon');
 const nextIcon = useTemplateRef('nextIcon');
 const shotIcon = useTemplateRef('shotIcon');
@@ -107,7 +108,7 @@ function shot() {
 
 function backToStart() {
 	startIcon.value?.trigger();
-	playerStore.seek(0);
+	timelineRef.value?.seek(0);
 }
 </script>
 

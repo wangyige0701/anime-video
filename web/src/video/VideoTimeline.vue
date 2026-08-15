@@ -22,7 +22,7 @@
 				placement="top"
 				:offset="20"
 				:hide-after="0"
-				:visible="status.mouseEnter"
+				:visible="status.mouseEnter || status.dragging"
 				:fallback-placements="['top']"
 				:popper-options="tooltipPopperOptions"
 				:virtual-ref="virtualTrigger"
@@ -108,7 +108,11 @@ function getPointerTime(event: MouseEvent | PointerEvent) {
 		return null;
 	}
 	const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
-	mousePosition.x = rect.left + ratio * rect.width;
+	if (status.dragging) {
+		mousePosition.x = event.clientX;
+	} else {
+		mousePosition.x = rect.left + ratio * rect.width;
+	}
 	mousePosition.y = rect.bottom;
 	updateTooltipPosition();
 	if (!Number.isFinite(playerStore.duration) || playerStore.duration <= 0) {

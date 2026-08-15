@@ -4,6 +4,7 @@
 			class="search"
 			placeholder="搜索"
 			v-model="keyword"
+			clearable
 			@keydown.enter="handleSearch"
 			@input="input"
 			@compositionstart="status.onComposing()"
@@ -20,10 +21,21 @@ import { WebRoute } from '~routes/web';
 const status = useVueStatusRef('composing');
 const keyword = ref('');
 
+watch(
+	() => useRoute().query.keyword,
+	(newValue) => {
+		keyword.value = newValue as string;
+	},
+);
+
 async function toSearch() {
 	if (router.currentRoute.value.name !== WebRoute.INDEX) {
 		await router.push({ name: WebRoute.INDEX, query: { keyword: keyword.value } });
 	} else {
+		if (!keyword.value) {
+			await router.replace({ query: {} });
+			return;
+		}
 		await router.replace({ query: { keyword: keyword.value } });
 	}
 }

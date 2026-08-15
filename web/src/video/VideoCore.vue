@@ -88,6 +88,7 @@ function handleMaskClick() {
 	playToggleTimeout = setTimeout(() => {
 		playToggleTimeout = undefined;
 		playerStore.togglePlay();
+		playerStore.triggerControllerActive();
 	}, 200);
 }
 

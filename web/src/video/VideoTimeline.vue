@@ -201,6 +201,13 @@ function stopDragging(event?: PointerEvent) {
 		transform: translate(-50%, -50%) scale(1, calc(1 / var(--progress-sale)));
 		opacity: 1;
 	}
+	@mixin bar-hover {
+		background-color: map.get(token.$theme, 'video-timeline-runway-bg');
+		outline-color: rgba(#fff, 0.92);
+		box-shadow:
+			0 0 0 4px rgba(#fff, 0.18),
+			0 2px 8px rgba(#000, 0.32);
+	}
 
 	width: 100%;
 	height: calc(var(--progress-height) * var(--progress-sale));
@@ -255,6 +262,7 @@ function stopDragging(event?: PointerEvent) {
 			&.dragging {
 				.bar {
 					@include bar-active;
+					@include bar-hover;
 					transform: translate(-50%, -50%);
 				}
 			}
@@ -264,12 +272,20 @@ function stopDragging(event?: PointerEvent) {
 			height: 100%;
 			background-color: map.get(token.$theme, 'video-timeline-bar-color');
 			border-radius: 4px;
+			outline: 2px solid transparent;
 			transform: translate(-50%, -50%) scale(0, 0);
 			transform-origin: center center;
 			opacity: 0;
 			transition:
 				transform 0.3s ease,
-				opacity 0.3s ease;
+				opacity 0.3s ease,
+				background-color 0.2s ease,
+				outline-color 0.2s ease,
+				outline-width 0.2s ease,
+				box-shadow 0.2s ease;
+			&:hover {
+				@include bar-hover;
+			}
 		}
 		.loaded,
 		.runway {

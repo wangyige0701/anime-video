@@ -45,7 +45,7 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
-				<VideoEpisodes :popover-container="tooltipContainer" />
+				<VideoEpisodes :popover-container="tooltipContainer" :disabled="isTimelineDragging" />
 				<el-button
 					:data-tooltip="`倍速（${playerStore.playbackRate}x）`"
 					text

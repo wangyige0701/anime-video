@@ -10,6 +10,7 @@
 			:popper-options="popperOptions"
 			:append-to="props.popoverContainer || 'body'"
 			:width="250"
+			:disabled="props.disabled"
 		>
 			<template #reference>
 				<span class="episodes-title">选集</span>
@@ -21,10 +22,20 @@
 						<el-collapse-item :name="season.id" :title="season.title">
 							<div class="episodes-container">
 								<template v-for="episode in season.episodes" :key="episode.id">
-									<span class="episode-item">
-										<el-icon v-if="playerStore.episodeId === episode.id"></el-icon>
+									<button
+										type="button"
+										class="episode-item"
+										:class="{ 'is-active': playerStore.episodeId === episode.id }"
+										:aria-current="playerStore.episodeId === episode.id ? 'true' : undefined"
+										@click.stop="switchEpisode(season, episode)"
+									>
+										<span class="episode-indicator">
+											<el-icon v-if="playerStore.episodeId === episode.id" size="0.875rem">
+												<EpisodePlayingIcon :is-playing="playerStore.isPlaying" />
+											</el-icon>
+										</span>
 										<span class="episode-title">{{ episode.title }}</span>
-									</span>
+									</button>
 								</template>
 							</div>
 						</el-collapse-item>
@@ -37,13 +48,22 @@
 
 <script setup lang="ts">
 import type { Series } from '@/data/series';
+import type { Episode } from '@/data/episode';
+import type { Season } from '@/data/season';
 import { unref } from 'vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { usePlayerStore } from '@/stores/player';
+import EpisodePlayingIcon from '@/components/icons/EpisodePlayingIcon.vue';
 
-const props = defineProps<{
-	popoverContainer?: HTMLElement | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		popoverContainer?: HTMLElement | null;
+		disabled?: boolean;
+	}>(),
+	{
+		disabled: false,
+	},
+);
 
 const popperOptions = { strategy: 'fixed' as const };
 const playerStore = usePlayerStore();
@@ -57,6 +77,22 @@ watch(
 	},
 	{ immediate: true, flush: 'sync' },
 );
+
+function switchEpisode(season: Season, episode: Episode) {
+	if (playerStore.episodeId === episode.id) {
+		return;
+	}
+	const seriesData = unref(series);
+	playerStore.setVideo({
+		seriesId: seriesData.id,
+		seriesTitle: seriesData.title,
+		seasonId: season.id,
+		seasonTitle: season.title,
+		episodeId: episode.id,
+		episodeTitle: episode.title,
+		videoPath: episode.path,
+	});
+}
 </script>
 
 <style scoped lang="scss">
@@ -73,6 +109,11 @@ watch(
 	cursor: pointer;
 	font-size: 0.875rem;
 	padding: 5px 10px;
+	border-radius: 5px;
+	transition: background-color 0.3s ease;
+	&:hover {
+		background-color: rgb(255 255 255 / 0.12);
+	}
 }
 
 .episodes-list {
@@ -96,6 +137,7 @@ watch(
 		}
 		:deep(.el-collapse-item__title) {
 			@include ellipsis;
+			padding-right: 10px;
 		}
 	}
 }
@@ -103,16 +145,44 @@ watch(
 .episodes-container {
 	display: flex;
 	flex-direction: column;
-	padding-left: 1em;
 	.episode-item {
+		cursor: pointer;
+		width: 100%;
+		min-width: 0;
 		height: 2em;
+		padding: 0 0.25em;
+		border: 0;
+		border-radius: 3px;
+		background: transparent;
+		color: inherit;
+		font: inherit;
+		text-align: left;
 		display: flex;
 		flex-direction: row;
 		flex-wrap: nowrap;
 		align-items: center;
 		gap: 5px;
+		transition:
+			color 0.2s ease,
+			background-color 0.2s ease;
+		&:hover,
+		&:focus-visible {
+			background-color: rgb(255 255 255 / 0.12);
+			outline: none;
+		}
+		&.is-active {
+			color: map.get(token.$theme, 'primary');
+		}
+	}
+	.episode-indicator {
+		width: 0.875rem;
+		flex: 0 0 0.875rem;
+		display: inline-flex;
+		justify-content: center;
+		align-items: center;
 	}
 	.episode-title {
+		min-width: 0;
 		flex: 1;
 		@include ellipsis;
 	}

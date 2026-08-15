@@ -1,9 +1,13 @@
 <template>
 	<div class="video-controller-container" @click.stop>
-		<VideoTimeline />
+		<VideoTimeline @dragging="isTimelineDragging = $event" />
 
 		<div class="video-menus">
-			<VideoControllerSpace ref="leftControllerSpace" :tooltip-container="tooltipContainer">
+			<VideoControllerSpace
+				ref="leftControllerSpace"
+				:tooltip-container="tooltipContainer"
+				:disabled="isTimelineDragging"
+			>
 				<el-icon data-tooltip="上一个" class="icon" :size="ICON_SIZE" @click.stop="prev">
 					<PlayNextIcon ref="prevIcon" direction="prev" />
 				</el-icon>
@@ -26,7 +30,11 @@
 				/>
 			</VideoControllerSpace>
 
-			<VideoControllerSpace ref="rightControllerSpace" :tooltip-container="tooltipContainer">
+			<VideoControllerSpace
+				ref="rightControllerSpace"
+				:tooltip-container="tooltipContainer"
+				:disabled="isTimelineDragging"
+			>
 				<el-icon data-tooltip="截图" class="icon" :size="ICON_SIZE" @click.stop="shot">
 					<ScreenShotIcon ref="shotIcon" />
 				</el-icon>
@@ -68,6 +76,7 @@ const shotIcon = useTemplateRef('shotIcon');
 const tooltipContainer = useTemplateRef('tooltipContainer');
 const leftControllerSpace = useTemplateRef('leftControllerSpace');
 const rightControllerSpace = useTemplateRef('rightControllerSpace');
+const isTimelineDragging = ref(false);
 
 useEventListener(document, 'fullscreenchange', () => {
 	playerStore.setIsFullScreen(document.fullscreenElement !== null);

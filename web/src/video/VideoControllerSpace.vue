@@ -4,9 +4,9 @@
 			<el-tooltip
 				ref="tooltips"
 				:content="vnode.props?.['data-tooltip'] || ''"
-				:disabled="vnode.props?.['data-disabled'] ?? !vnode.props?.['data-tooltip']"
+				:disabled="props.disabled || (vnode.props?.['data-disabled'] ?? !vnode.props?.['data-tooltip'])"
 				:placement="vnode.props?.['data-placement'] ?? 'top'"
-				:append-to="tooltipContainer || 'body'"
+				:append-to="props.tooltipContainer || 'body'"
 				:hide-after="0"
 				:offset="25"
 				:show-arrow="false"
@@ -22,9 +22,15 @@
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
-	tooltipContainer?: HTMLElement | null;
-}>();
+const props = withDefaults(
+	defineProps<{
+		tooltipContainer?: HTMLElement | null;
+		disabled?: boolean;
+	}>(),
+	{
+		disabled: false,
+	},
+);
 
 const slots = useSlots();
 const tooltips = useTemplateRef('tooltips');

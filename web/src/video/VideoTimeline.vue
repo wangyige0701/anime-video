@@ -38,6 +38,10 @@ import { formatDuration } from '@/utils/duration';
 import { useDebounceFn, useEventListener } from '@vueuse/core';
 import type { Measurable } from 'element-plus';
 
+const emit = defineEmits<{
+	(e: 'dragging', value: boolean): void;
+}>();
+
 let isSyncCurrentTime = true;
 let tooltipFrame: number | null = null;
 const videoTimelineRef = useTemplateRef('videoTimelineRef');
@@ -66,6 +70,12 @@ watch(
 		}
 	},
 	{ flush: 'sync' },
+);
+
+watch(
+	() => status.dragging,
+	(value) => emit('dragging', value),
+	{ immediate: true, flush: 'sync' },
 );
 
 useEventListener(window, 'pointermove', updateDragging);

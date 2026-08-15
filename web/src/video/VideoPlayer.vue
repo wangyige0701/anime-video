@@ -104,6 +104,16 @@ watch(
 	{ immediate: true, flush: 'sync' },
 );
 
+watch(
+	() => playerStore.playbackRate,
+	(rate) => {
+		if (video.value) {
+			video.value.playbackRate = rate;
+		}
+	},
+	{ immediate: true, flush: 'sync' },
+);
+
 useEventListener(window, 'keydown', (e) => {
 	if (!isInitialized) {
 		return;

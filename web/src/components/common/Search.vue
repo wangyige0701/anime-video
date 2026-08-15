@@ -18,11 +18,12 @@ import router from '@/router';
 import { debounce } from '@wang-yige/utils';
 import { WebRoute } from '~routes/web';
 
+const route = useRoute();
 const status = useVueStatusRef('composing');
 const keyword = ref('');
 
 watch(
-	() => useRoute().query.keyword,
+	() => route.query.keyword,
 	(newValue) => {
 		keyword.value = newValue as string;
 	},

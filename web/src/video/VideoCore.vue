@@ -6,7 +6,7 @@
 		<div
 			ref="videoMask"
 			class="video-mask"
-			:class="{ 'is-controller-active': playerStore.isControllerActive }"
+			:class="{ 'is-controller-active': true }"
 			@click.stop="handleMaskClick"
 			@dblclick="handleMaskDoubleClick"
 		>

@@ -2,6 +2,7 @@ import type { VideoInfoEpisode, VideoInfoSeason, VideoInfoSeries, VideoInfoStore
 import Hls from 'hls.js';
 
 const DEFAULT_VOLUME = 100;
+const PLAYBACK_RATES = [1, 2, 4] as const;
 const VOLUME_STORAGE_KEY = 'volume';
 const VIDEO_INFO_STORAGE_KEY = 'videoInfo';
 const VIDEO_INFO_RESERVED_KEYS = new Set(['seriesId', 'seasonId', 'episodeId', 'seasons', 'episodes', 't']);
@@ -26,6 +27,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const duration = ref(0);
 	const buffer = ref<Array<[number, number]>>([]);
 	const volume = ref(readStoredVolume());
+	const playbackRate = ref<(typeof PLAYBACK_RATES)[number]>(PLAYBACK_RATES[0]);
 	const isLoading = ref(true);
 	const isControllerActive = ref(false);
 	const isVolumeDragging = ref(false);
@@ -72,6 +74,11 @@ export const usePlayerStore = defineStore('player', () => {
 		const volumePercent = normalizeVolumePercent(vol);
 		volume.value = volumePercent;
 		localStorage.setItem(VOLUME_STORAGE_KEY, volumePercent.toString());
+	}
+
+	function togglePlaybackRate() {
+		const currentIndex = PLAYBACK_RATES.indexOf(playbackRate.value);
+		playbackRate.value = PLAYBACK_RATES[(currentIndex + 1) % PLAYBACK_RATES.length] ?? PLAYBACK_RATES[0];
 	}
 
 	function setDuration(dur: number) {
@@ -155,6 +162,7 @@ export const usePlayerStore = defineStore('player', () => {
 		/** Safari 原生支持 HLS */
 		isSupportedNative,
 		volume,
+		playbackRate,
 		duration,
 		buffer,
 		isLoading,
@@ -178,6 +186,8 @@ export const usePlayerStore = defineStore('player', () => {
 		reset,
 		/** 设置音量 */
 		setVolume,
+		/** 切换播放速率 */
+		togglePlaybackRate,
 		/** 设置视频时长 */
 		setDuration,
 		/** 设置缓冲区时间 */

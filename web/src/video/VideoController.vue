@@ -38,6 +38,14 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
+				<el-icon
+					:data-tooltip="`播放倍率（×${playerStore.playbackRate}）`"
+					class="icon"
+					:size="ICON_SIZE"
+					@click.stop="playbackRateClickHandler"
+				>
+					<PlaybackRateIcon ref="playbackRateIcon" :rate="playerStore.playbackRate" />
+				</el-icon>
 				<el-icon data-tooltip="截图" class="icon" :size="ICON_SIZE" @click.stop="shot">
 					<ScreenShotIcon ref="shotIcon" />
 				</el-icon>
@@ -81,6 +89,7 @@ const tooltipContainer = useTemplateRef('tooltipContainer');
 const leftControllerSpace = useTemplateRef('leftControllerSpace');
 const rightControllerSpace = useTemplateRef('rightControllerSpace');
 const startIcon = useTemplateRef('startIcon');
+const playbackRateIcon = useTemplateRef('playbackRateIcon');
 const isTimelineDragging = ref(false);
 
 useEventListener(document, 'fullscreenchange', () => {
@@ -109,6 +118,11 @@ function shot() {
 function backToStart() {
 	startIcon.value?.trigger();
 	timelineRef.value?.seek(0);
+}
+
+function playbackRateClickHandler() {
+	playbackRateIcon.value?.trigger();
+	playerStore.togglePlaybackRate();
 }
 </script>
 

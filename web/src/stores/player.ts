@@ -24,7 +24,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const videoPath = ref('');
 	const currentTime = ref(0);
 	const duration = ref(0);
-	const loaded = ref(0);
+	const buffer = ref<Array<[number, number]>>([]);
 	const volume = ref(readStoredVolume());
 	const isLoading = ref(true);
 	const isControllerActive = ref(false);
@@ -78,8 +78,15 @@ export const usePlayerStore = defineStore('player', () => {
 		duration.value = dur;
 	}
 
-	function setLoaded(time: number) {
-		loaded.value = time;
+	function setBuffer(start: number, end: number) {
+		if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+			return;
+		}
+		buffer.value.push([start, end]);
+	}
+
+	function resetBuffer() {
+		buffer.value = [];
 	}
 
 	function setLoading(loading: boolean) {
@@ -127,8 +134,8 @@ export const usePlayerStore = defineStore('player', () => {
 		videoPath.value = '';
 		currentTime.value = 0;
 		duration.value = 0;
-		loaded.value = 0;
 		isLoading.value = true;
+		resetBuffer();
 		clearControllerActiveTimeout(false);
 	}
 
@@ -143,89 +150,51 @@ export const usePlayerStore = defineStore('player', () => {
 		episodeTitle,
 		videoPath,
 		currentTime,
-		/**
-		 * 是否支持 HLS
-		 */
+		/** 是否支持 HLS */
 		isSupportedHls,
-		/**
-		 * Safari 原生支持 HLS
-		 */
+		/** Safari 原生支持 HLS */
 		isSupportedNative,
 		volume,
 		duration,
-		loaded,
+		buffer,
 		isLoading,
-		/**
-		 * 是否激活控制器
-		 */
+		/** 是否激活控制器 */
 		isControllerActive,
-		/**
-		 * 是否正在拖动音量滑块
-		 */
+		/** 是否正在拖动音量滑块 */
 		isVolumeDragging,
-		/**
-		 * 是否全屏
-		 */
+		/** 是否全屏 */
 		isFullScreen,
-		/**
-		 * 设置视频信息
-		 */
+		/** 设置视频信息 */
 		setVideo,
-		/**
-		 * 播放视频
-		 */
+		/** 播放视频 */
 		play,
-		/**
-		 * 暂停视频
-		 */
+		/** 暂停视频 */
 		pause,
-		/**
-		 * 切换播放状态
-		 */
+		/** 切换播放状态 */
 		togglePlay,
-		/**
-		 * 设置当前播放时间
-		 */
+		/** 设置当前播放时间 */
 		seek,
-		/**
-		 * 重置播放信息
-		 */
+		/** 重置播放信息 */
 		reset,
-		/**
-		 * 设置音量
-		 */
+		/** 设置音量 */
 		setVolume,
-		/**
-		 * 设置视频时长
-		 */
+		/** 设置视频时长 */
 		setDuration,
-		/**
-		 * 设置已加载时间
-		 */
-		setLoaded,
-		/**
-		 * 设置加载状态
-		 */
+		/** 设置缓冲区时间 */
+		setBuffer,
+		/** 重置缓冲区时间 */
+		resetBuffer,
+		/** 设置加载状态 */
 		setLoading,
-		/**
-		 * 触发控制器激活
-		 */
+		/** 触发控制器激活 */
 		triggerControllerActive,
-		/**
-		 * 触发控制器不激活
-		 */
+		/** 触发控制器不激活 */
 		triggerControllerInactive,
-		/**
-		 * 清除控制器激活定时器
-		 */
+		/** 清除控制器激活定时器 */
 		clearControllerActiveTimeout,
-		/**
-		 * 设置是否正在拖动音量滑块
-		 */
+		/** 设置是否正在拖动音量滑块 */
 		setIsVolumeDragging,
-		/**
-		 * 设置是否全屏
-		 */
+		/** 设置是否全屏 */
 		setIsFullScreen,
 	};
 });

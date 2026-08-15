@@ -8,7 +8,12 @@
 			@click.stop="handleTrackClick"
 		>
 			<div class="line">
-				<div class="loaded"></div>
+				<div
+					v-for="item in bufferRatios"
+					:key="`buffer-${item[0]}`"
+					class="buffer"
+					:style="{ '--start': `${item[0]}`, '--end': `${item[1]}` }"
+				></div>
 				<div class="runway"></div>
 			</div>
 			<div class="bar-wrap" :class="{ dragging: status.dragging }">
@@ -59,7 +64,9 @@ const tooltipPopperOptions = {
 	strategy: 'fixed' as const,
 	modifiers: [{ name: 'preventOverflow', options: { mainAxis: false } }],
 };
-const loadedRatio = computed(() => getRatio(playerStore.loaded));
+const bufferRatios = computed(() => {
+	return playerStore.buffer.map(([startTime, endTime]) => [getRatio(startTime), getRatio(endTime)]);
+});
 const runwayRatio = computed(() => getRatio(currentTime.value));
 
 watch(
@@ -243,10 +250,17 @@ function stopDragging(event?: PointerEvent) {
 			transition: border-radius 0.3s ease;
 			overflow: hidden;
 		}
-		.loaded {
-			width: v-bind('loadedRatio');
+		.buffer,
+		.runway {
+			position: absolute;
+			top: 0;
+			left: 0;
+		}
+		.buffer {
+			width: calc(var(--end) - var(--start));
 			height: 100%;
-			background-color: map.get(token.$theme, 'video-timeline-loaded-bg');
+			background-color: map.get(token.$theme, 'video-timeline-buffer-bg');
+			left: var(--start);
 		}
 		.runway {
 			width: v-bind('runwayRatio');
@@ -286,12 +300,6 @@ function stopDragging(event?: PointerEvent) {
 			&:hover {
 				@include bar-hover;
 			}
-		}
-		.loaded,
-		.runway {
-			position: absolute;
-			top: 0;
-			left: 0;
 		}
 	}
 }

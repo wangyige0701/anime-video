@@ -24,6 +24,7 @@ let isSyncingCurrentTime = false;
 let pendingCurrentTime: number | undefined;
 let sourceVersion = 0;
 let playRequestVersion = 0;
+let bufferSyncFrame: number | null = null;
 const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
@@ -34,7 +35,7 @@ watch(
 		const currentSourceVersion = ++sourceVersion;
 		isMetadataLoaded = false;
 		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
-		playerStore.setLoaded(0);
+		playerStore.resetBuffer();
 		playerStore.setLoading(Boolean(path));
 
 		if (video.value) {
@@ -151,6 +152,23 @@ function isEditingElement(target: EventTarget | null) {
 	return target instanceof Element && Boolean(target.closest('input, textarea, select, button, [contenteditable]'));
 }
 
+function scheduleBufferedRangesSync() {
+	if (bufferSyncFrame !== null) {
+		return;
+	}
+	bufferSyncFrame = requestAnimationFrame(() => {
+		bufferSyncFrame = null;
+		const buffered = video.value?.buffered;
+		playerStore.resetBuffer();
+		if (!buffered) {
+			return;
+		}
+		for (let index = 0; index < buffered.length; index++) {
+			playerStore.setBuffer(buffered.start(index), buffered.end(index));
+		}
+	});
+}
+
 async function playState() {
 	const requestVersion = ++playRequestVersion;
 	if (!video.value || !playerStore.videoPath) {
@@ -210,11 +228,14 @@ onMounted(() => {
 		isMetadataLoaded = true;
 		playerStore.setDuration(el.duration);
 		applyPendingCurrentTime();
+		scheduleBufferedRangesSync();
 		void playState();
 	});
 	el.addEventListener('progress', () => {
-		playerStore.setLoaded(el.buffered.length ? el.buffered.end(el.buffered.length - 1) : 0);
+		scheduleBufferedRangesSync();
 	});
+	el.addEventListener('seeked', scheduleBufferedRangesSync);
+	el.addEventListener('emptied', () => playerStore.resetBuffer());
 	el.addEventListener('loadstart', () => {
 		playerStore.setLoading(Boolean(playerStore.videoPath));
 	});
@@ -258,6 +279,8 @@ onMounted(() => {
 		});
 
 		hls.attachMedia(el);
+		hls.on(Hls.Events.FRAG_BUFFERED, scheduleBufferedRangesSync);
+		hls.on(Hls.Events.BUFFER_FLUSHED, scheduleBufferedRangesSync);
 
 		hls.on(Hls.Events.ERROR, (_event, data) => {
 			if (data.fatal) {
@@ -276,6 +299,9 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+	if (bufferSyncFrame !== null) {
+		cancelAnimationFrame(bufferSyncFrame);
+	}
 	playerStore.setLoading(false);
 	playerStore.pause();
 	hls?.destroy();

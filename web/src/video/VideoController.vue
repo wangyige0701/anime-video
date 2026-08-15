@@ -39,7 +39,7 @@
 				:disabled="isTimelineDragging"
 			>
 				<el-icon
-					:data-tooltip="`播放倍率（×${playerStore.playbackRate}）`"
+					:data-tooltip="`倍速（${playerStore.playbackRate}x）`"
 					class="icon"
 					:size="ICON_SIZE"
 					@click.stop="playbackRateClickHandler"

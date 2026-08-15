@@ -133,7 +133,7 @@ defineExpose({
 	align-items: center;
 	position: fixed;
 	inset: 0;
-	z-index: 100;
+	z-index: 1000;
 	background-color: map.get(token.$theme, 'video-mask-bg');
 	backdrop-filter: blur(1px);
 }

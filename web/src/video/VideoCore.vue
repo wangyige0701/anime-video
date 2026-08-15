@@ -135,9 +135,10 @@ function close() {
 	inset: 0;
 }
 .video-mask {
-	cursor: pointer;
+	cursor: none;
 	z-index: 10;
 	&.is-controller-active {
+		cursor: pointer;
 		.video-title,
 		.video-controller,
 		.close {

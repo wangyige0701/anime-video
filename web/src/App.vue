@@ -82,7 +82,7 @@ onBeforeMount(async () => {
 		padding-left: token.$main-padding;
 	}
 	:deep(.el-scrollbar__bar) {
-		z-index: 9999;
+		z-index: 999;
 	}
 	:deep(.main-container) {
 		display: flex;

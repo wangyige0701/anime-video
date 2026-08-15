@@ -21,7 +21,7 @@
 					@shot="videoPlayerRef?.shot()"
 				/>
 			</div>
-			<div ref="closeButton" class="close" @click.stop="$emit('close')">
+			<div ref="closeButton" class="close" @click.stop="close">
 				<el-icon size="2rem">
 					<CloseBold />
 				</el-icon>
@@ -74,6 +74,13 @@ function toggleFullscreen() {
 	} else {
 		videoCoreRef.value?.requestFullscreen();
 	}
+}
+
+function close() {
+	if (document.fullscreenElement) {
+		document.exitFullscreen();
+	}
+	emit('close');
 }
 </script>
 

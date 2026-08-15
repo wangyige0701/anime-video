@@ -8,6 +8,7 @@
 				:placement="vnode.props?.['data-placement'] ?? 'top'"
 				:append-to="props.tooltipContainer || 'body'"
 				:hide-after="0"
+				:show-after="300"
 				:offset="25"
 				:show-arrow="false"
 				:fallback-placements="['top']"

@@ -8,6 +8,7 @@
 			class="video-mask"
 			:class="{ 'is-controller-active': playerStore.isControllerActive }"
 			@click.stop="playerStore.togglePlay()"
+			@dblclick="toggleFullscreen"
 		>
 			<div class="video-title">
 				<VideoTitle />
@@ -16,8 +17,7 @@
 				<VideoController
 					@prev=""
 					@next=""
-					@fullscreen="videoCoreRef?.requestFullscreen()"
-					@exit-fullscreen="exitFullscreen"
+					@toggle-fullscreen="toggleFullscreen"
 					@shot="videoPlayerRef?.shot()"
 				/>
 			</div>
@@ -68,8 +68,12 @@ useVideoControllerActivity({
 	deactivate: playerStore.triggerControllerInactive,
 });
 
-function exitFullscreen() {
-	document.exitFullscreen();
+function toggleFullscreen() {
+	if (document.fullscreenElement) {
+		document.exitFullscreen();
+	} else {
+		videoCoreRef.value?.requestFullscreen();
+	}
 }
 </script>
 

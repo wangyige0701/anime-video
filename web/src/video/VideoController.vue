@@ -34,7 +34,7 @@
 					:data-tooltip="playerStore.isFullScreen ? '退出全屏' : '全屏'"
 					class="icon"
 					:size="ICON_SIZE"
-					@click.stop="toggleFullScreen"
+					@click.stop="$emit('toggleFullscreen')"
 				>
 					<FullScreenToggleIcon :full-screen="playerStore.isFullScreen" />
 				</el-icon>
@@ -56,8 +56,7 @@ import VideoControllerSpace from './VideoControllerSpace.vue';
 const emit = defineEmits<{
 	(e: 'prev'): void;
 	(e: 'next'): void;
-	(e: 'fullscreen'): void;
-	(e: 'exitFullscreen'): void;
+	(e: 'toggleFullscreen'): void;
 	(e: 'shot'): void;
 }>();
 
@@ -86,14 +85,6 @@ function prev() {
 function next() {
 	nextIcon.value?.trigger();
 	emit('next');
-}
-
-function toggleFullScreen() {
-	if (document.fullscreenElement) {
-		emit('exitFullscreen');
-	} else {
-		emit('fullscreen');
-	}
 }
 
 function shot() {

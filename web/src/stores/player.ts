@@ -15,9 +15,9 @@ export const usePlayerStore = defineStore('player', () => {
 	video.remove();
 	(video as unknown) = null;
 
-	let seriesId = '';
-	let seasonId = '';
-	let episodeId = '';
+	const seriesId = ref('');
+	const seasonId = ref('');
+	const episodeId = ref('');
 	const isPlaying = ref(false);
 	const seriesTitle = ref('');
 	const seasonTitle = ref('');
@@ -34,9 +34,9 @@ export const usePlayerStore = defineStore('player', () => {
 	const isFullScreen = ref(false);
 
 	function setVideo(data: VideoPlayData) {
-		seriesId = data.seriesId;
-		seasonId = data.seasonId;
-		episodeId = data.episodeId;
+		seriesId.value = data.seriesId;
+		seasonId.value = data.seasonId;
+		episodeId.value = data.episodeId;
 		seriesTitle.value = data.seriesTitle;
 		seasonTitle.value = data.seasonTitle;
 		episodeTitle.value = data.episodeTitle;
@@ -49,8 +49,12 @@ export const usePlayerStore = defineStore('player', () => {
 
 	function seek(time: number) {
 		currentTime.value = time;
-		if (seriesId && seasonId && episodeId) {
-			setVideoInfoStored({ seriesId, seasonId, episodeId }, 'currentTime', time);
+		if (seriesId.value && seasonId.value && episodeId.value) {
+			setVideoInfoStored(
+				{ seriesId: seriesId.value, seasonId: seasonId.value, episodeId: episodeId.value },
+				'currentTime',
+				time,
+			);
 		}
 	}
 

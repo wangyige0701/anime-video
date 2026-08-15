@@ -82,7 +82,7 @@ watch(
 	() => playerStore.currentTime,
 	(currentTime) => {
 		if (!isSyncingCurrentTime) {
-			setCurrentTime(currentTime);
+			seek(currentTime);
 		}
 	},
 	{ flush: 'sync' },
@@ -114,7 +114,7 @@ useEventListener(window, 'keydown', (e) => {
 	}
 });
 
-function setCurrentTime(currentTime: number) {
+function seek(currentTime: number) {
 	const time = normalizeCurrentTime(currentTime);
 	if (!isMetadataLoaded || !video.value) {
 		pendingCurrentTime = time;
@@ -202,7 +202,7 @@ onMounted(() => {
 		if (el.currentTime !== playerStore.currentTime) {
 			// 避免更新 watcher 的回调
 			isSyncingCurrentTime = true;
-			playerStore.setCurrentTime(el.currentTime || 0);
+			playerStore.seek(el.currentTime || 0);
 			isSyncingCurrentTime = false;
 		}
 	});

@@ -90,13 +90,13 @@ onBeforeUnmount(() => {
 });
 
 const setCurrentTimeDebounce = useDebounceFn(async (time: number) => {
-	playerStore.setCurrentTime(time);
+	playerStore.seek(time);
 	await nextTick();
 	playerStore.play();
 	isSyncCurrentTime = true;
 }, 500);
 
-function setCurrentTime(time: number) {
+function seek(time: number) {
 	isSyncCurrentTime = false;
 	currentTime.value = time;
 	playerStore.pause();
@@ -154,7 +154,7 @@ function handleTrackClick(event: MouseEvent) {
 	}
 	const time = getPointerTime(event);
 	if (time !== null) {
-		setCurrentTime(time);
+		seek(time);
 	}
 }
 
@@ -173,7 +173,7 @@ function updateDragging(event: PointerEvent) {
 	}
 	const time = getPointerTime(event);
 	if (time !== null) {
-		setCurrentTime(time);
+		seek(time);
 	}
 }
 

@@ -45,7 +45,7 @@ export const usePlayerStore = defineStore('player', () => {
 		}
 	}
 
-	function setCurrentTime(time: number) {
+	function seek(time: number) {
 		currentTime.value = time;
 		if (seriesId && seasonId && episodeId) {
 			setVideoInfoStored({ seriesId, seasonId, episodeId }, 'currentTime', time);
@@ -186,7 +186,7 @@ export const usePlayerStore = defineStore('player', () => {
 		/**
 		 * 设置当前播放时间
 		 */
-		setCurrentTime,
+		seek,
 		/**
 		 * 重置播放信息
 		 */

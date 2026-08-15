@@ -22,6 +22,9 @@
 				<el-icon data-tooltip="下一个" class="icon" :size="ICON_SIZE" @click.stop="next">
 					<PlayNextIcon ref="nextIcon" direction="next" />
 				</el-icon>
+				<el-icon data-tooltip="回到开头" class="icon" :size="ICON_SIZE" @click.stop="backToStart">
+					<PlayStartIcon ref="startIcon" />
+				</el-icon>
 				<VideoTime />
 				<VideoVolume
 					:data-tooltip="`音量（${playerStore.volume}）`"
@@ -76,6 +79,7 @@ const shotIcon = useTemplateRef('shotIcon');
 const tooltipContainer = useTemplateRef('tooltipContainer');
 const leftControllerSpace = useTemplateRef('leftControllerSpace');
 const rightControllerSpace = useTemplateRef('rightControllerSpace');
+const startIcon = useTemplateRef('startIcon');
 const isTimelineDragging = ref(false);
 
 useEventListener(document, 'fullscreenchange', () => {
@@ -99,6 +103,11 @@ function next() {
 function shot() {
 	shotIcon.value?.trigger();
 	emit('shot');
+}
+
+function backToStart() {
+	startIcon.value?.trigger();
+	playerStore.seek(0);
 }
 </script>
 

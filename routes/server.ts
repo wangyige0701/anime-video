@@ -6,7 +6,7 @@ export enum ServerRoot {
 	IMAGE = '/image',
 }
 
-const SERVER_URL = 'http://localhost:3000';
+export const SERVER_URL = 'http://localhost:3000';
 
 export function getMasterM3u8Url(videoName: string) {
 	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${M3u8Config.MASTER_M3U8_NAME}.m3u8`;

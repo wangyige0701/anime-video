@@ -2,7 +2,9 @@
 	<el-config-provider>
 		<el-container class="container" :class="useDeviceStore().className">
 			<el-header class="header">
+				<div class="header-left"></div>
 				<Search />
+				<div class="header-right"></div>
 			</el-header>
 			<el-main class="main">
 				<el-scrollbar view-class="main-container" @end-reached="endReached">
@@ -23,21 +25,28 @@
 
 <script setup lang="ts">
 import type { ScrollbarDirection } from 'element-plus';
-import { onBeforeMount } from 'vue';
+import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { WebRoute } from '~routes/web';
 import { useVideoStore } from './stores/video';
 import { useDeviceStore } from './stores/device';
 import { endReachedEmitter } from './events/end-reached';
 import { useThemeStore } from './stores/theme';
+import { useSystemStore } from './stores/system';
 
 useThemeStore().initialize();
+const systemStore = useSystemStore();
 
 function endReached(direction: ScrollbarDirection) {
 	endReachedEmitter.emit('endReached', { direction });
 }
 
 onBeforeMount(async () => {
+	systemStore.start();
 	await useVideoStore().initialize();
+});
+
+onBeforeUnmount(() => {
+	systemStore.stop();
 });
 </script>
 
@@ -64,6 +73,12 @@ onBeforeMount(async () => {
 	background: map.get(token.$theme, 'header-bg');
 	backdrop-filter: blur(5px);
 	z-index: 100;
+	.header-left,
+	.header-right {
+		height: 100%;
+		flex: 1;
+		overflow: hidden;
+	}
 }
 
 .main {

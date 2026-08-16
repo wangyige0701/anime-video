@@ -17,30 +17,32 @@
 			</template>
 
 			<div class="episodes-list">
-				<el-collapse accordion v-model="activeSeason">
-					<template v-for="season in unref(series).seasons" :key="season.id">
-						<el-collapse-item :name="season.id" :title="season.title">
-							<div class="episodes-container">
-								<template v-for="episode in season.episodes" :key="episode.id">
-									<button
-										type="button"
-										class="episode-item"
-										:class="{ 'is-active': playerStore.episodeId === episode.id }"
-										:aria-current="playerStore.episodeId === episode.id ? 'true' : undefined"
-										@click.stop="switchEpisode(season, episode)"
-									>
-										<span class="episode-indicator">
-											<el-icon v-if="playerStore.episodeId === episode.id" size="0.875rem">
-												<EpisodePlayingIcon :is-playing="playerStore.isPlaying" />
-											</el-icon>
-										</span>
-										<span class="episode-title">{{ episode.title }}</span>
-									</button>
-								</template>
-							</div>
-						</el-collapse-item>
-					</template>
-				</el-collapse>
+				<el-scrollbar :max-height="playerStore.isFullScreen ? '60vh' : '40vh'">
+					<el-collapse accordion v-model="activeSeason">
+						<template v-for="season in unref(series).seasons" :key="season.id">
+							<el-collapse-item :name="season.id" :title="season.title">
+								<div class="episodes-container">
+									<template v-for="episode in season.episodes" :key="episode.id">
+										<button
+											type="button"
+											class="episode-item"
+											:class="{ 'is-active': playerStore.episodeId === episode.id }"
+											:aria-current="playerStore.episodeId === episode.id ? 'true' : undefined"
+											@click.stop="switchEpisode(season, episode)"
+										>
+											<span class="episode-indicator">
+												<el-icon v-if="playerStore.episodeId === episode.id" size="0.875rem">
+													<EpisodePlayingIcon :is-playing="playerStore.isPlaying" />
+												</el-icon>
+											</span>
+											<span class="episode-title">{{ episode.title }}</span>
+										</button>
+									</template>
+								</div>
+							</el-collapse-item>
+						</template>
+					</el-collapse>
+				</el-scrollbar>
 			</div>
 		</el-popover>
 	</div>
@@ -182,6 +184,9 @@ defineExpose({
 			@include ellipsis;
 			padding-right: 10px;
 		}
+	}
+	:deep(.el-scrollbar__wrap) {
+		padding-left: 0;
 	}
 }
 

@@ -237,6 +237,24 @@ export class VideoInfoStorage {
 		return true;
 	}
 
+	public async deleteSeries(key: string): Promise<boolean> {
+		return this.deleteField('series', key);
+	}
+
+	public async deleteSeason(key: string): Promise<boolean> {
+		if (!this.seasonId) {
+			return false;
+		}
+		return this.deleteField('season', key);
+	}
+
+	public async deleteEpisode(key: string): Promise<boolean> {
+		if (!this.seasonId || !this.episodeId) {
+			return false;
+		}
+		return this.deleteField('episode', key);
+	}
+
 	private createField(value: unknown): StoredField {
 		return { [VALUE_FIELD]: value, [TIMESTAMP_FIELD]: Date.now() };
 	}
@@ -279,6 +297,26 @@ export class VideoInfoStorage {
 
 	private canWrite(key: string, seriesId: string) {
 		return this.canRead(key, seriesId);
+	}
+
+	private async deleteField(scope: 'series' | 'season' | 'episode', key: string): Promise<boolean> {
+		if (!this.canRead(key, this.seriesId)) {
+			return false;
+		}
+		const videoInfo = await VideoInfoStorage.getValue();
+		const node =
+			scope === 'series'
+				? await this.findSeries(videoInfo)
+				: scope === 'season'
+					? await this.findSeason(videoInfo)
+					: await this.findEpisode(videoInfo);
+		if (!node || !Object.hasOwn(node, key)) {
+			return false;
+		}
+		delete node[key];
+		VideoInfoStorage.cleanup(videoInfo);
+		VideoInfoStorage.schedulePersist(videoInfo);
+		return true;
 	}
 
 	private async findSeries(value?: VideoInfoCache) {

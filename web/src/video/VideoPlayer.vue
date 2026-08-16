@@ -10,11 +10,12 @@
 </template>
 
 <script setup lang="ts">
-import Hls from 'hls.js';
-import { usePlayerStore } from '@/stores/player';
-import { getMasterM3u8Url } from '~routes/server';
+import Hls, { type ErrorData } from 'hls.js';
+import { ElMessage } from 'element-plus';
 import { useEventListener } from '@vueuse/core';
 import { createPromise } from '@wang-yige/utils';
+import { usePlayerStore } from '@/stores/player';
+import { getMasterM3u8Url } from '~routes/server';
 import { takeVideoShotToClipboard } from '@/utils/videoShot';
 
 let hls: Hls | null = null;
@@ -24,6 +25,8 @@ let isSyncingCurrentTime = false;
 let pendingCurrentTime: number | undefined;
 let sourceVersion = 0;
 let playRequestVersion = 0;
+let activeHlsSourceVersion = 0;
+let activeHlsSourceUrl = '';
 let bufferSyncFrame: number | null = null;
 const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
@@ -43,6 +46,8 @@ watch(
 		}
 		if (!path) {
 			pendingCurrentTime = undefined;
+			activeHlsSourceVersion = 0;
+			activeHlsSourceUrl = '';
 			hls?.stopLoad();
 			if (video.value) {
 				video.value.removeAttribute('src');
@@ -55,8 +60,10 @@ watch(
 		try {
 			await initialized;
 		} catch {
-			playerStore.setLoading(false);
-			playerStore.pause();
+			if (currentSourceVersion === sourceVersion) {
+				playerStore.setLoading(false);
+				playerStore.pause();
+			}
 			return;
 		}
 		if (currentSourceVersion !== sourceVersion) {
@@ -69,6 +76,8 @@ watch(
 			playerStore.pause();
 			return;
 		}
+		activeHlsSourceVersion = currentSourceVersion;
+		activeHlsSourceUrl = src;
 		if (playerStore.isSupportedHls) {
 			hls?.loadSource(src);
 		} else if (playerStore.isSupportedNative && video.value) {
@@ -98,9 +107,7 @@ watch(
 
 watch(
 	() => playerStore.volume,
-	(volume) => {
-		applyVolume(volume);
-	},
+	(volume) => applyVolume(volume),
 	{ immediate: true, flush: 'sync' },
 );
 
@@ -134,9 +141,6 @@ function seek(currentTime: number) {
 	video.value.currentTime = time;
 }
 
-/**
- * 元数据加载完成后的时间处理
- */
 function applyPendingCurrentTime() {
 	if (pendingCurrentTime === undefined || !video.value) {
 		return;
@@ -203,9 +207,10 @@ async function playState() {
 		}
 		try {
 			await video.value.play();
-		} catch {
+		} catch (error) {
 			if (requestVersion === playRequestVersion) {
 				playerStore.pause();
+				ElMessage.error(getErrorMessage(error, '视频播放失败'));
 			}
 			return;
 		}
@@ -217,6 +222,72 @@ async function playState() {
 	}
 }
 
+function handleTimeUpdate() {
+	const el = video.value;
+	if (el && el.currentTime !== playerStore.currentTime) {
+		isSyncingCurrentTime = true;
+		playerStore.seek(el.currentTime || 0);
+		isSyncingCurrentTime = false;
+	}
+}
+
+function handleLoadedMetadata() {
+	const el = video.value;
+	if (!el) {
+		return;
+	}
+	isMetadataLoaded = true;
+	playerStore.setDuration(el.duration);
+	applyPendingCurrentTime();
+	scheduleBufferedRangesSync();
+	void playState();
+}
+
+function handleLoadStart() {
+	playerStore.setLoading(Boolean(playerStore.videoPath));
+}
+
+function handleError() {
+	playerStore.setLoading(false);
+	playerStore.pause();
+	ElMessage.error(video.value?.error?.message || '视频播放错误');
+}
+
+function handleEnded() {
+	const duration = video.value?.duration;
+	playerStore.setLoading(false);
+	if (duration !== undefined && Number.isFinite(duration) && duration > 0) {
+		playerStore.seek(duration);
+	}
+	playerStore.pause();
+}
+
+useEventListener(video, 'timeupdate', handleTimeUpdate);
+useEventListener(video, 'loadedmetadata', handleLoadedMetadata);
+useEventListener(video, 'progress', scheduleBufferedRangesSync);
+useEventListener(video, 'seeked', scheduleBufferedRangesSync);
+useEventListener(video, 'emptied', () => playerStore.resetBuffer());
+useEventListener(video, 'loadstart', handleLoadStart);
+useEventListener(video, 'waiting', () => playerStore.setLoading(true));
+useEventListener(video, 'stalled', () => playerStore.setLoading(true));
+useEventListener(video, 'loadeddata', () => playerStore.setLoading(false));
+useEventListener(video, 'canplay', () => playerStore.setLoading(false));
+useEventListener(video, 'error', handleError);
+useEventListener(video, 'ended', handleEnded);
+useEventListener(video, 'play', () => playerStore.play());
+useEventListener(video, 'playing', () => playerStore.setLoading(false));
+useEventListener(video, 'pause', () => playerStore.pause());
+
+function getErrorMessage(error: unknown, fallback: string) {
+	if (error instanceof Error && error.message) {
+		return error.message;
+	}
+	if (typeof error === 'string' && error) {
+		return error;
+	}
+	return fallback;
+}
+
 onMounted(() => {
 	if (!video.value) {
 		playerStore.setLoading(false);
@@ -225,59 +296,6 @@ onMounted(() => {
 	}
 	const el = video.value;
 	applyVolume();
-
-	el.addEventListener('timeupdate', () => {
-		if (el.currentTime !== playerStore.currentTime) {
-			// 避免更新 watcher 的回调
-			isSyncingCurrentTime = true;
-			playerStore.seek(el.currentTime || 0);
-			isSyncingCurrentTime = false;
-		}
-	});
-	el.addEventListener('loadedmetadata', () => {
-		isMetadataLoaded = true;
-		playerStore.setDuration(el.duration);
-		applyPendingCurrentTime();
-		scheduleBufferedRangesSync();
-		void playState();
-	});
-	el.addEventListener('progress', () => {
-		scheduleBufferedRangesSync();
-	});
-	el.addEventListener('seeked', scheduleBufferedRangesSync);
-	el.addEventListener('emptied', () => playerStore.resetBuffer());
-	el.addEventListener('loadstart', () => {
-		playerStore.setLoading(Boolean(playerStore.videoPath));
-	});
-	el.addEventListener('waiting', () => {
-		playerStore.setLoading(true);
-	});
-	el.addEventListener('stalled', () => {
-		playerStore.setLoading(true);
-	});
-	el.addEventListener('loadeddata', () => {
-		playerStore.setLoading(false);
-	});
-	el.addEventListener('canplay', () => {
-		playerStore.setLoading(false);
-	});
-	el.addEventListener('error', () => {
-		playerStore.setLoading(false);
-		playerStore.pause();
-	});
-	el.addEventListener('ended', () => {
-		playerStore.setLoading(false);
-		playerStore.pause();
-	});
-	el.addEventListener('play', () => {
-		playerStore.play();
-	});
-	el.addEventListener('playing', () => {
-		playerStore.setLoading(false);
-	});
-	el.addEventListener('pause', () => {
-		playerStore.pause();
-	});
 
 	if (playerStore.isSupportedHls) {
 		hls = new Hls({
@@ -291,11 +309,16 @@ onMounted(() => {
 		hls.attachMedia(el);
 		hls.on(Hls.Events.FRAG_BUFFERED, scheduleBufferedRangesSync);
 		hls.on(Hls.Events.BUFFER_FLUSHED, scheduleBufferedRangesSync);
-
 		hls.on(Hls.Events.ERROR, (_event, data) => {
-			if (data.fatal) {
+			const sourceUrl = (data as ErrorData).url;
+			if (
+				data.fatal &&
+				activeHlsSourceVersion === sourceVersion &&
+				(!sourceUrl || sourceUrl === activeHlsSourceUrl)
+			) {
 				playerStore.setLoading(false);
 				playerStore.pause();
+				ElMessage.error(data.details || '视频播放错误');
 			}
 		});
 	} else if (!playerStore.isSupportedNative) {

@@ -69,6 +69,18 @@ const popperOptions = { strategy: 'fixed' as const };
 const playerStore = usePlayerStore();
 const activeSeason = ref(playerStore.seasonId);
 const series = inject<Ref<Series>>(DETAIL_SERIES_DATA)!;
+const episodeEntries = computed(() =>
+	unref(series).seasons.flatMap((season) => season.episodes.map((episode) => ({ season, episode }))),
+);
+const currentEpisodeIndex = computed(() =>
+	episodeEntries.value.findIndex(
+		({ season, episode }) => season.id === playerStore.seasonId && episode.id === playerStore.episodeId,
+	),
+);
+const canPrev = computed(() => currentEpisodeIndex.value > 0);
+const canNext = computed(
+	() => currentEpisodeIndex.value >= 0 && currentEpisodeIndex.value < episodeEntries.value.length - 1,
+);
 
 watch(
 	() => playerStore.seasonId,
@@ -79,7 +91,7 @@ watch(
 );
 
 async function switchEpisode(season: Season, episode: Episode) {
-	if (playerStore.episodeId === episode.id) {
+	if (playerStore.seasonId === season.id && playerStore.episodeId === episode.id) {
 		return;
 	}
 	const seriesData = unref(series);
@@ -94,6 +106,35 @@ async function switchEpisode(season: Season, episode: Episode) {
 	});
 	playerStore.play();
 }
+
+async function prev() {
+	const index = currentEpisodeIndex.value;
+	if (index <= 0) {
+		return;
+	}
+	const target = episodeEntries.value[index - 1];
+	if (target) {
+		await switchEpisode(target.season, target.episode);
+	}
+}
+
+async function next() {
+	const index = currentEpisodeIndex.value;
+	if (index < 0 || index >= episodeEntries.value.length - 1) {
+		return;
+	}
+	const target = episodeEntries.value[index + 1];
+	if (target) {
+		await switchEpisode(target.season, target.episode);
+	}
+}
+
+defineExpose({
+	prev,
+	next,
+	canPrev,
+	canNext,
+});
 </script>
 
 <style scoped lang="scss">

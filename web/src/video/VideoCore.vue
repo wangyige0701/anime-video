@@ -14,12 +14,7 @@
 				<VideoTitle />
 			</div>
 			<div ref="videoController" class="video-controller">
-				<VideoController
-					@prev=""
-					@next=""
-					@toggle-fullscreen="toggleFullscreen"
-					@shot="videoPlayerRef?.shot()"
-				/>
+				<VideoController @toggle-fullscreen="toggleFullscreen" @shot="shot" />
 			</div>
 			<div ref="closeButton" class="close">
 				<el-button text @click.stop="close">
@@ -49,6 +44,7 @@ import VideoTitle from './VideoTitle.vue';
 import { CloseBold } from '@element-plus/icons-vue';
 import PlayToggleIcon from '@/components/icons/PlayToggleIcon.vue';
 import { useVideoControllerActivity } from '@/utils/useVideoControllerActivity';
+import { ElMessage } from 'element-plus';
 
 const emit = defineEmits<{
 	(e: 'close'): void;
@@ -96,6 +92,17 @@ function handleMaskDoubleClick() {
 	clearTimeout(playToggleTimeout);
 	playToggleTimeout = undefined;
 	toggleFullscreen();
+}
+
+async function shot() {
+	try {
+		if (!videoPlayerRef.value) {
+			throw new Error('播放器未就绪');
+		}
+		await videoPlayerRef.value.shot();
+	} catch (error) {
+		ElMessage.error(error instanceof Error ? error.message : typeof error === 'string' ? error : '截图失败');
+	}
 }
 
 function close() {

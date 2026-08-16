@@ -28,8 +28,10 @@ export const usePlayerStore = defineStore('player', () => {
 	const isControllerActive = ref(false);
 	const isVolumeDragging = ref(false);
 	const isFullScreen = ref(false);
+	let videoRequestVersion = 0;
 
 	async function setVideo(data: VideoPlayData) {
+		const requestVersion = ++videoRequestVersion;
 		seriesId.value = data.seriesId;
 		seasonId.value = data.seasonId;
 		episodeId.value = data.episodeId;
@@ -42,22 +44,31 @@ export const usePlayerStore = defineStore('player', () => {
 		if (isNumber(data.currentTime) && data.currentTime >= 0) {
 			currentTime.value = data.currentTime;
 		} else {
-			const record = await VideoInfoStorage.create(
-				seriesId.value,
-				seasonId.value,
-				episodeId.value,
-			).getEpisode<number>(VideoInfoStorage.CURRENT_TIME_FIELD);
-			currentTime.value = record ?? 0;
+			const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
+			const record = await storage.getEpisode<number>(VideoInfoStorage.CURRENT_TIME_FIELD);
+			if (requestVersion !== videoRequestVersion) {
+				return;
+			}
+			if (isValidPlaybackTime(record)) {
+				currentTime.value = record;
+			} else {
+				currentTime.value = 0;
+				if (record !== undefined) {
+					void storage.deleteEpisode(VideoInfoStorage.CURRENT_TIME_FIELD);
+				}
+			}
 		}
 	}
 
 	function seek(time: number) {
 		currentTime.value = time;
 		if (seriesId.value && seasonId.value && episodeId.value) {
-			VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value).setEpisode(
-				VideoInfoStorage.CURRENT_TIME_FIELD,
-				time,
-			);
+			const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
+			if (duration.value > 0 && Number.isFinite(duration.value) && time >= duration.value) {
+				void storage.deleteEpisode(VideoInfoStorage.CURRENT_TIME_FIELD);
+			} else {
+				void storage.setEpisode(VideoInfoStorage.CURRENT_TIME_FIELD, time);
+			}
 		}
 	}
 
@@ -221,6 +232,10 @@ export const usePlayerStore = defineStore('player', () => {
 
 function normalizeVolumePercent(volume: number) {
 	return Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) : DEFAULT_VOLUME;
+}
+
+function isValidPlaybackTime(value: unknown): value is number {
+	return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
 
 function readStoredVolume() {

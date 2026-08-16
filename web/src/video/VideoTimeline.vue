@@ -3,6 +3,7 @@
 		<div
 			ref="track"
 			class="track"
+			@mouseenter="status.onMouseEnter()"
 			@mousemove="handleTrackMouseMove"
 			@mouseleave="status.offMouseEnter()"
 			@click.stop="handleTrackClick"
@@ -25,7 +26,7 @@
 				:show-arrow="false"
 				:append-to="videoTimelineRef || void 0"
 				placement="top"
-				:offset="20"
+				:offset="30"
 				:hide-after="0"
 				:visible="status.mouseEnter || status.dragging"
 				:fallback-placements="['top']"
@@ -34,14 +35,27 @@
 				virtual-triggering
 			></el-tooltip>
 		</div>
+		<div
+			v-if="status.mouseEnter || status.dragging"
+			class="pointer"
+			:class="{ enter: status.mouseEnter, dragging: status.dragging }"
+			:style="{ '--x': `${pointerPosition}px` }"
+		>
+			<el-icon class="pointer__icon pointer__icon--top" size=".75rem">
+				<Pointer direction="bottom" />
+			</el-icon>
+			<el-icon class="pointer__icon pointer__icon--bottom" size=".75rem">
+				<Pointer />
+			</el-icon>
+		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
+import type { Measurable } from 'element-plus';
 import { usePlayerStore } from '@/stores/player';
 import { formatDuration } from '@/utils/duration';
 import { useDebounceFn, useEventListener } from '@vueuse/core';
-import type { Measurable } from 'element-plus';
 
 const emit = defineEmits<{
 	(e: 'dragging', value: boolean): void;
@@ -56,6 +70,7 @@ const status = useVueStatusRef('mouseEnter', 'dragging');
 const playerStore = usePlayerStore();
 const currentTime = ref(playerStore.currentTime);
 const mouseTime = ref(0);
+const pointerPosition = ref(0);
 const mousePosition = { x: 0, y: 0 };
 const virtualTrigger: Measurable = {
 	getBoundingClientRect: () => new DOMRect(mousePosition.x, mousePosition.y),
@@ -127,6 +142,10 @@ function getPointerTime(event: MouseEvent | PointerEvent) {
 		return null;
 	}
 	const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1);
+	const timelineRect = videoTimelineRef.value?.getBoundingClientRect();
+	if (timelineRect) {
+		pointerPosition.value = rect.left - timelineRect.left + ratio * rect.width;
+	}
 	if (status.dragging) {
 		mousePosition.x = event.clientX;
 	} else {
@@ -205,6 +224,7 @@ function stopDragging(event?: PointerEvent) {
 	--bar-height: 12px;
 	--bar-width: 24px;
 	--progress-sale: 2;
+	--pointer-gap: 5px;
 
 	@mixin bar-active {
 		transform: translate(-50%, -50%) scale(1, calc(1 / var(--progress-sale)));
@@ -225,6 +245,7 @@ function stopDragging(event?: PointerEvent) {
 	align-items: flex-end;
 	justify-content: center;
 	background-color: transparent;
+	position: relative;
 	.track {
 		cursor: pointer;
 		width: calc(100% - var(--bar-width) - 2px);
@@ -232,6 +253,7 @@ function stopDragging(event?: PointerEvent) {
 		transition: transform 0.3s ease;
 		transform-origin: bottom center;
 		position: relative;
+		z-index: 2;
 		&:hover {
 			transform: scaleY(var(--progress-sale));
 			.line {
@@ -302,6 +324,38 @@ function stopDragging(event?: PointerEvent) {
 			&:hover {
 				@include bar-hover;
 			}
+		}
+	}
+	.pointer {
+		pointer-events: none;
+		width: 0px;
+		height: var(--progress-height);
+		background-color: transparent;
+		position: absolute;
+		left: var(--x);
+		bottom: 0;
+		color: map.get(token.$theme, 'video-timeline-runway-bg');
+		transition: height 0.3s ease;
+		z-index: 1;
+		&__icon {
+			pointer-events: none;
+			position: absolute;
+			left: 0;
+		}
+		&__icon--top {
+			bottom: calc(100% + var(--pointer-gap));
+			transform: translateX(-50%);
+		}
+		&__icon--bottom {
+			top: calc(100% + var(--pointer-gap));
+			transform: translateX(-50%);
+		}
+		&.enter,
+		&.dragging {
+			height: calc(var(--progress-height) * var(--progress-sale));
+		}
+		&.dragging:not(.enter) {
+			height: var(--progress-height);
 		}
 	}
 }

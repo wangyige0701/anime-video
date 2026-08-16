@@ -8,7 +8,7 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
-				<el-button data-tooltip="上一个" text :disabled="!canPrev" @click.stop="prev">
+				<el-button data-tooltip="上一个" text :disabled="!(episodesRef?.canPrev ?? false)" @click.stop="prev">
 					<el-icon>
 						<PlayNextIcon ref="prevIcon" direction="prev" />
 					</el-icon>
@@ -22,7 +22,7 @@
 						<PlayToggleIcon :play="!playerStore.isPlaying" />
 					</el-icon>
 				</el-button>
-				<el-button data-tooltip="下一个" text :disabled="!canNext" @click.stop="next">
+				<el-button data-tooltip="下一个" text :disabled="!(episodesRef?.canNext ?? false)" @click.stop="next">
 					<el-icon>
 						<PlayNextIcon ref="nextIcon" direction="next" />
 					</el-icon>
@@ -89,7 +89,6 @@ import VideoTime from './VideoTime.vue';
 import VideoVolume from './VideoVolume.vue';
 import VideoControllerSpace from './VideoControllerSpace.vue';
 import VideoEpisodes from './VideoEpisodes.vue';
-import type { ComponentInstance } from 'vue';
 
 const emit = defineEmits<{
 	(e: 'toggleFullscreen'): void;
@@ -107,10 +106,8 @@ const leftControllerSpace = useTemplateRef('leftControllerSpace');
 const rightControllerSpace = useTemplateRef('rightControllerSpace');
 const startIcon = useTemplateRef('startIcon');
 const playbackRateIcon = useTemplateRef('playbackRateIcon');
-const episodesRef = useTemplateRef<ComponentInstance<typeof VideoEpisodes>>('episodesRef');
+const episodesRef = useTemplateRef('episodesRef');
 const isTimelineDragging = ref(false);
-const canPrev = computed(() => episodesRef.value?.canPrev ?? false);
-const canNext = computed(() => episodesRef.value?.canNext ?? false);
 
 useEventListener(document, 'fullscreenchange', () => {
 	playerStore.setIsFullScreen(document.fullscreenElement !== null);

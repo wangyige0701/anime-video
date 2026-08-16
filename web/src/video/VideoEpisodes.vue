@@ -134,8 +134,12 @@ async function next() {
 defineExpose({
 	prev,
 	next,
-	canPrev,
-	canNext,
+	get canPrev() {
+		return canPrev.value;
+	},
+	get canNext() {
+		return canNext.value;
+	},
 });
 </script>
 

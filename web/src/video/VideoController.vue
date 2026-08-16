@@ -27,7 +27,12 @@
 						<PlayNextIcon ref="nextIcon" direction="next" />
 					</el-icon>
 				</el-button>
-				<el-button data-tooltip="回到开头" text :disabled="!playerStore.currentTime" @click.stop="backToStart">
+				<el-button
+					data-tooltip="回到开头"
+					text
+					:disabled="playerStore.currentTime < 1"
+					@click.stop="backToStart"
+				>
 					<el-icon>
 						<PlayStartIcon ref="startIcon" />
 					</el-icon>

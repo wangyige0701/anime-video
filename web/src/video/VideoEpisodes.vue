@@ -110,6 +110,7 @@ function switchEpisode(season: Season, episode: Episode) {
 	font-size: 0.875rem;
 	padding: 5px 10px;
 	border-radius: 5px;
+	white-space: nowrap;
 	transition: background-color 0.3s ease;
 	&:hover {
 		background-color: rgb(255 255 255 / 0.12);

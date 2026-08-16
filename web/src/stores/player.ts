@@ -1,12 +1,8 @@
-import type { VideoInfoEpisode, VideoInfoSeason, VideoInfoSeries, VideoInfoStore, VideoPlayData } from '@/@types/video';
+import type { VideoPlayData } from '@/@types/video';
+import { DEFAULT_VOLUME, PLAYBACK_RATES, VOLUME_STORAGE_KEY } from '@/config/constants';
+import { VideoInfoStorage } from '@/utils/videoInfoStorage';
+import { isNumber } from '@wang-yige/utils';
 import Hls from 'hls.js';
-
-const DEFAULT_VOLUME = 100;
-const PLAYBACK_RATES = [1, 2, 4] as const;
-const VOLUME_STORAGE_KEY = 'volume';
-const VIDEO_INFO_STORAGE_KEY = 'videoInfo';
-const VIDEO_INFO_RESERVED_KEYS = new Set(['seriesId', 'seasonId', 'episodeId', 'seasons', 'episodes', 't']);
-const VIDEO_INFO_CACHE = { value: null } as { value: VideoInfoStore | null };
 
 export const usePlayerStore = defineStore('player', () => {
 	const isSupportedHls = Hls.isSupported();
@@ -33,7 +29,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const isVolumeDragging = ref(false);
 	const isFullScreen = ref(false);
 
-	function setVideo(data: VideoPlayData) {
+	async function setVideo(data: VideoPlayData) {
 		seriesId.value = data.seriesId;
 		seasonId.value = data.seasonId;
 		episodeId.value = data.episodeId;
@@ -41,18 +37,25 @@ export const usePlayerStore = defineStore('player', () => {
 		seasonTitle.value = data.seasonTitle;
 		episodeTitle.value = data.episodeTitle;
 		videoPath.value = data.videoPath;
-		currentTime.value = data.currentTime ?? 0;
-		if (currentTime.value < 0) {
-			currentTime.value = 0;
+		pause();
+		setDuration(0);
+		if (isNumber(data.currentTime) && data.currentTime >= 0) {
+			currentTime.value = data.currentTime;
+		} else {
+			const record = await VideoInfoStorage.create(
+				seriesId.value,
+				seasonId.value,
+				episodeId.value,
+			).getEpisode<number>(VideoInfoStorage.CURRENT_TIME_FIELD);
+			currentTime.value = record ?? 0;
 		}
 	}
 
 	function seek(time: number) {
 		currentTime.value = time;
 		if (seriesId.value && seasonId.value && episodeId.value) {
-			setVideoInfoStored(
-				{ seriesId: seriesId.value, seasonId: seasonId.value, episodeId: episodeId.value },
-				'currentTime',
+			VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value).setEpisode(
+				VideoInfoStorage.CURRENT_TIME_FIELD,
 				time,
 			);
 		}
@@ -227,95 +230,4 @@ function readStoredVolume() {
 	} catch {
 		return DEFAULT_VOLUME;
 	}
-}
-
-function getVideoInfoStored() {
-	if (VIDEO_INFO_CACHE.value) {
-		return VIDEO_INFO_CACHE.value;
-	}
-	try {
-		const stored = JSON.parse(localStorage.getItem(VIDEO_INFO_STORAGE_KEY) ?? '[]') as unknown;
-		const videoInfoStored = Array.isArray(stored) ? (stored as VideoInfoStore) : [];
-		VIDEO_INFO_CACHE.value = videoInfoStored;
-		return videoInfoStored;
-	} catch {
-		VIDEO_INFO_CACHE.value = [];
-		return [];
-	}
-}
-
-function setVideoInfoStored(
-	ids: { seriesId: string; seasonId?: string; episodeId?: string },
-	key: string,
-	value: unknown,
-	isDelete: boolean = false,
-) {
-	if (!ids.seriesId || !key || VIDEO_INFO_RESERVED_KEYS.has(key) || (ids.episodeId && !ids.seasonId)) {
-		return false;
-	}
-
-	const videoInfo = getVideoInfoStored();
-	const now = Date.now();
-	let series = videoInfo.find((item) => item.seriesId === ids.seriesId);
-	if (!series) {
-		if (isDelete) {
-			return false;
-		}
-		series = { seriesId: ids.seriesId, t: now, seasons: [] };
-		videoInfo.push(series);
-	}
-
-	const updatedNodes: Array<VideoInfoSeries | VideoInfoSeason | VideoInfoEpisode> = [series];
-	let target: VideoInfoSeries | VideoInfoSeason | VideoInfoEpisode = series;
-	if (ids.seasonId) {
-		let season = series.seasons.find((item) => item.seasonId === ids.seasonId);
-		if (!season) {
-			if (isDelete) {
-				return false;
-			}
-			season = { seasonId: ids.seasonId, t: now, episodes: [] };
-			series.seasons.push(season);
-		}
-		updatedNodes.push(season);
-		target = season;
-	}
-
-	if (ids.episodeId) {
-		const season = target as VideoInfoSeason;
-		let episode = season.episodes.find((item) => item.episodeId === ids.episodeId);
-		if (!episode) {
-			if (isDelete) {
-				return false;
-			}
-			episode = { episodeId: ids.episodeId, t: now };
-			season.episodes.push(episode);
-		}
-		updatedNodes.push(episode);
-		target = episode;
-	}
-
-	if (isDelete) {
-		if (!Object.hasOwn(target, key)) {
-			return false;
-		}
-		delete target[key];
-	} else {
-		target[key] = value;
-	}
-	updatedNodes.forEach((node) => {
-		node.t = now;
-	});
-
-	const debouncedSetter = setVideoInfoStored as typeof setVideoInfoStored & {
-		persistTimer?: ReturnType<typeof setTimeout>;
-	};
-	if (debouncedSetter.persistTimer) {
-		clearTimeout(debouncedSetter.persistTimer);
-	}
-	debouncedSetter.persistTimer = setTimeout(() => {
-		try {
-			localStorage.setItem(VIDEO_INFO_STORAGE_KEY, JSON.stringify(videoInfo));
-		} catch {}
-	}, 500);
-	return true;
 }

@@ -78,12 +78,12 @@ watch(
 	{ immediate: true, flush: 'sync' },
 );
 
-function switchEpisode(season: Season, episode: Episode) {
+async function switchEpisode(season: Season, episode: Episode) {
 	if (playerStore.episodeId === episode.id) {
 		return;
 	}
 	const seriesData = unref(series);
-	playerStore.setVideo({
+	await playerStore.setVideo({
 		seriesId: seriesData.id,
 		seriesTitle: seriesData.title,
 		seasonId: season.id,
@@ -92,6 +92,7 @@ function switchEpisode(season: Season, episode: Episode) {
 		episodeTitle: episode.title,
 		videoPath: episode.path,
 	});
+	playerStore.play();
 }
 </script>
 
@@ -186,6 +187,7 @@ function switchEpisode(season: Season, episode: Episode) {
 		min-width: 0;
 		flex: 1;
 		@include ellipsis;
+		line-height: 1;
 	}
 }
 </style>

@@ -32,7 +32,7 @@ const emit = defineEmits<{
 	(e: 'hide'): void;
 }>();
 
-const status = useVueStatusRef('show', 'mounted').onMounted();
+const status = useVueStatusRef('show', 'mounted');
 const playerStore = usePlayerStore();
 const container = useTemplateRef('container');
 const containerHeight = ref(0);
@@ -48,9 +48,10 @@ useResizeObserver(container, (enteries) => {
 });
 
 useEventListener('keydown', (event) => {
-	if (event.code === 'Escape') {
+	if (status.show && event.code === 'Escape') {
 		event.preventDefault();
 		hide();
+		return;
 	}
 });
 
@@ -71,6 +72,7 @@ async function hide() {
 	}
 	emit('beforeHide');
 	const transitionFinished = waitForTransition();
+	pause();
 	status.offShow();
 	await transitionFinished;
 }
@@ -95,13 +97,13 @@ function onAfterLeave() {
 }
 
 async function openAndPlay(data: VideoPlayData) {
-	setVideo(data);
+	await setVideo(data);
 	await show();
 	play();
 }
 
-function setVideo(data: VideoPlayData) {
-	playerStore.setVideo(data);
+async function setVideo(data: VideoPlayData) {
+	await playerStore.setVideo(data);
 }
 
 function play() {

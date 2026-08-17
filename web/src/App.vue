@@ -4,7 +4,9 @@
 			<el-header class="header">
 				<div class="header-left"></div>
 				<Search />
-				<div class="header-right"></div>
+				<div class="header-right">
+					<SystemInfo />
+				</div>
 			</el-header>
 			<el-main class="main">
 				<el-scrollbar view-class="main-container" @end-reached="endReached">
@@ -78,6 +80,11 @@ onBeforeUnmount(() => {
 		height: 100%;
 		flex: 1;
 		overflow: hidden;
+	}
+	.header-right {
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
 	}
 }
 

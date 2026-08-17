@@ -25,7 +25,7 @@ export default defineConfig({
 		}),
 		vue(),
 		vueJsx(),
-		vueDevTools(),
+		// vueDevTools(),
 		AutoImport({
 			resolvers: [ElementPlusResolver()],
 			imports: ['vue', 'vue-router', 'pinia', { 'status-ref/vue': ['useVueStatusRef'] }],

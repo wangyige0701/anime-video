@@ -1,5 +1,11 @@
 <template>
 	<div v-if="systemInfo" class="system-info">
+		<span class="system-info-label">
+			<el-icon size="1.2rem">
+				<ServerIcon />
+			</el-icon>
+			<span>服务端资源</span>
+		</span>
 		<div class="metric">
 			<div class="metric-header">
 				<span>CPU</span>
@@ -60,9 +66,20 @@ function formatBytes(bytes: number) {
 
 .system-info {
 	display: flex;
+	align-items: flex-end;
 	gap: 22px;
 	padding: 0 20px;
 	color: map.get(token.$theme, 'l-8');
+}
+
+.system-info-label {
+	display: inline-flex;
+	align-items: flex-end;
+	gap: 5px;
+	font-size: 0.75rem;
+	white-space: nowrap;
+	color: map.get(token.$theme, 'l-7');
+	line-height: 1;
 }
 
 .metric {

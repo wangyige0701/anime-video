@@ -6,11 +6,13 @@ import { ServerRoot } from '~routes/server';
 import { Response } from '~server/middlewares/response';
 
 const UPDATE_INTERVAL_MS = 2000;
+const MEMORY_CACHE_TTL_MS = 5000;
 // 复用监控库实例，并让监控项缓存与全局采集周期保持一致。
 const osUtils = new OSUtils({
 	cacheTTL: UPDATE_INTERVAL_MS,
 	cpu: { cacheTTL: UPDATE_INTERVAL_MS },
-	memory: { cacheTTL: UPDATE_INTERVAL_MS },
+	// 内存变化相对缓慢，降低底层系统读取频率，但仍按采集周期广播最新缓存。
+	memory: { cacheTTL: MEMORY_CACHE_TTL_MS },
 });
 
 @Singleton()
@@ -33,39 +35,52 @@ export class SystemController {
 		ctx.respond = false;
 		ctx.req.setTimeout(0);
 		ctx.res.flushHeaders();
+		ctx.log.debug({ event: 'system.stream.connected' }, 'System info stream connected');
 
 		let closed = false;
 		let unsubscribe: (() => void) | undefined;
 		const { resolve: resolveStream, promise } = createPromise<void>();
 
 		// 客户端断开或响应出错时，及时移除订阅并结束当前请求。
-		const close = () => {
+		const close = (reason: 'client_closed' | 'response_error' | 'write_error') => {
 			if (closed) {
 				return;
 			}
 			closed = true;
 			unsubscribe?.();
 			resolveStream();
+			ctx.log.debug({ event: 'system.stream.closed', reason }, 'System info stream closed');
 		};
+
+		ctx.res.once('close', () => {
+			close('client_closed');
+		});
+		ctx.res.once('error', (error) => {
+			ctx.log.warn({ event: 'system.stream.response_error', err: error }, 'System info stream response error');
+			close('response_error');
+		});
 
 		unsubscribe = systemInfoCollector.subscribe((event) => {
 			if (closed || ctx.res.writableEnded || ctx.res.destroyed) {
-				close();
+				close('client_closed');
 				return;
+			}
+			if (event.type === 'error') {
+				ctx.log.warn(
+					{ event: 'system.info.collection_failed', message: event.data.message },
+					'System information collection failed',
+				);
 			}
 			try {
 				ctx.res.write(`event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`);
-			} catch {
-				close();
+			} catch (error) {
+				ctx.log.warn({ event: 'system.stream.write_failed', err: error }, 'Failed to write system info event');
+				close('write_error');
 			}
 		});
-
-		ctx.res.once('close', () => {
-			close();
-		});
-		ctx.res.once('error', () => {
-			close();
-		});
+		if (closed) {
+			unsubscribe();
+		}
 
 		await promise;
 	}

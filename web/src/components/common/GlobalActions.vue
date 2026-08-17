@@ -19,8 +19,15 @@ import { Refresh } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
 import { useVideoStore } from '@/stores/video';
 
+const videoStore = useVideoStore();
 const status = useVueStatusRef('refresh');
-const isDetail = computed(() => !!useVideoStore().currentSeries.value?.id);
+const detailSeries = computed(() => {
+	if (videoStore.currentSeries) {
+		return videoStore.currentSeries.value;
+	}
+	return;
+});
+const isDetail = computed(() => !!detailSeries.value?.id);
 
 async function handleRefresh() {
 	if (status.refresh) {
@@ -30,9 +37,9 @@ async function handleRefresh() {
 	status.onRefresh();
 	try {
 		if (isDetail.value) {
-			await useVideoStore().refreshSeries(useVideoStore().currentSeries.value!.id);
+			await videoStore.refreshSeries(detailSeries.value!.id);
 		} else {
-			await useVideoStore().refresh();
+			await videoStore.refresh();
 		}
 		ElMessage.success(isDetail.value ? '当前系列视频数据已刷新' : '视频库已同步');
 	} catch (error) {

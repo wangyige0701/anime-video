@@ -104,8 +104,8 @@ importers:
         specifier: ^14.3.0
         version: 14.3.0(vue@3.5.40(typescript@5.9.3))
       axios-useful:
-        specifier: ^0.0.1
-        version: 0.0.1(debug@4.4.3)
+        specifier: ^0.2.0
+        version: 0.2.0(debug@4.4.3)
       element-plus:
         specifier: ^2.14.3
         version: 2.14.3(vue@3.5.40(typescript@5.9.3))
@@ -1119,11 +1119,11 @@ packages:
     resolution: {integrity: sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==}
     engines: {node: '>=8.0.0'}
 
-  axios-useful@0.0.1:
-    resolution: {integrity: sha512-mDSZg2iHYfy/igM35z5jaxot0sje/KaVRqD1x0oBy6VxaLmgbkiT6VmLjGIZW9m+UpH+fW/2BG+6xuerrDmq/g==}
+  axios-useful@0.2.0:
+    resolution: {integrity: sha512-AkcsB0Vw8uBskLODAi0ueCRi3+7RRLf5WyHIrBK7wuR8355pZ+b7lrfPGbzneq8nrlue463+HEAynLYe9mR7Bg==}
 
-  axios@1.18.1:
-    resolution: {integrity: sha512-3nTvFlvpn9Zu/RkHUqtc7/+al4UpRW5az71ap5zccp6e8RAYEzhMTecX8Dz1wWDYrPpUoB1HAQEGEAEvUr7S9g==}
+  axios@1.19.0:
+    resolution: {integrity: sha512-ht/iuYZXEjFxLH/Hkezgd7m6JKlHHXEUSneaDz8uZe1Gj5QZtCnpyDsckvAiEnT89OEbCLmnte4R4sn7P0EKFw==}
 
   baseline-browser-mapping@2.11.1:
     resolution: {integrity: sha512-HYXq73DDpCtNzOmrFsm9eSwCvWCql0RzqjpDzXN9EadiLJ4DNat0nsZ/Bzmy+Ud12mb4/zKDY0cQ805ZzN+i0A==}
@@ -3340,15 +3340,15 @@ snapshots:
 
   atomic-sleep@1.0.0: {}
 
-  axios-useful@0.0.1(debug@4.4.3):
+  axios-useful@0.2.0(debug@4.4.3):
     dependencies:
       '@wang-yige/utils': 0.0.18
-      axios: 1.18.1(debug@4.4.3)
+      axios: 1.19.0(debug@4.4.3)
     transitivePeerDependencies:
       - debug
       - supports-color
 
-  axios@1.18.1(debug@4.4.3):
+  axios@1.19.0(debug@4.4.3):
     dependencies:
       follow-redirects: 1.16.0(debug@4.4.3)
       form-data: 4.0.6

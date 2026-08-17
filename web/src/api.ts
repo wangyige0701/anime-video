@@ -18,18 +18,18 @@ API.interceptors.response.use(
 	},
 	(error) => {
 		if (error instanceof axios.CanceledError) {
-			return;
+			throw error;
 		}
 		if (error instanceof Error) {
 			ElMessage.error(error.message);
-			return;
+			throw error;
 		}
 		const data = error.response?.data as Response<any>;
 		if (isString(data.message)) {
 			ElMessage.error(data.message);
-			return;
+			throw error;
 		}
 		ElMessage.error('请求失败，请稍后重试');
-		return;
+		throw error;
 	},
 );

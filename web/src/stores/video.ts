@@ -1,14 +1,14 @@
 import { Series } from '@/data/series';
 
 export const useVideoStore = defineStore('video', () => {
-	const currentSeries = ref<{ value: Series | undefined }>({ value: void 0 });
+	const currentSeries = shallowReactive<{ value: Series | undefined }>({ value: void 0 });
 
 	function setCurrentSeries(series: Series) {
-		currentSeries.value.value = series;
+		currentSeries.value = series;
 	}
 
 	function resetCurrentSeries() {
-		currentSeries.value.value = void 0;
+		currentSeries.value = void 0;
 	}
 
 	async function initialize() {

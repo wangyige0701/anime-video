@@ -26,6 +26,7 @@ export class DataController {
 		const directories = await normalizeDirectories(ctx.request.body as string[]);
 		await Series.setDirectories(...directories);
 		await Series.updateSeries();
+		ctx.log.info({ event: 'directories.updated', count: directories.length }, 'Data directories updated');
 		return ctx.Success();
 	}
 }

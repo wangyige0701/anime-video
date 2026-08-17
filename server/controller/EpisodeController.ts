@@ -28,6 +28,7 @@ export class EpisodeController {
 		const episode = await Series.getEpisodeById(episodeId);
 		await episode.updateSort(sort);
 		await episode.waitDataSave();
+		ctx.log.info({ event: 'episode.sort.updated', episodeId, sort }, 'Episode sort updated');
 		return ctx.Success();
 	}
 
@@ -38,6 +39,7 @@ export class EpisodeController {
 		const episode = await Series.getEpisodeById(episodeId);
 		await episode.updateTitle(title);
 		await episode.waitDataSave();
+		ctx.log.info({ event: 'episode.title.updated', episodeId }, 'Episode title updated');
 		return ctx.Success();
 	}
 }

@@ -28,6 +28,7 @@ export class SeriesController {
 	@HttpMethod.Post('/series/refresh')
 	public async refreshSeries(@Context() ctx: Koa.Context) {
 		await Series.updateSeries();
+		ctx.log.info({ event: 'series.refreshed', scope: 'all' }, 'All series refreshed');
 		return ctx.Success();
 	}
 
@@ -36,6 +37,7 @@ export class SeriesController {
 		// 先确认目标存在，避免不存在的 ID 被刷新接口静默视为成功。
 		await Series.getSeriesById(seriesId);
 		await Series.updateSeries(seriesId);
+		ctx.log.info({ event: 'series.refreshed', scope: 'single', seriesId }, 'Series refreshed');
 		return ctx.Success();
 	}
 
@@ -52,6 +54,7 @@ export class SeriesController {
 		const series = await Series.getSeriesById(seriesId);
 		await series.updateTitle(title);
 		await series.waitDataSave();
+		ctx.log.info({ event: 'series.title.updated', seriesId }, 'Series title updated');
 		return ctx.Success();
 	}
 
@@ -62,6 +65,7 @@ export class SeriesController {
 		const series = await Series.getSeriesById(seriesId);
 		await series.updateDescription(description);
 		await series.waitDataSave();
+		ctx.log.info({ event: 'series.description.updated', seriesId }, 'Series description updated');
 		return ctx.Success();
 	}
 
@@ -72,6 +76,7 @@ export class SeriesController {
 		const series = await Series.getSeriesById(seriesId);
 		await series.updateDate(year, month);
 		await series.waitDataSave();
+		ctx.log.info({ event: 'series.date.updated', seriesId, year, month }, 'Series date updated');
 		return ctx.Success();
 	}
 
@@ -86,6 +91,7 @@ export class SeriesController {
 		const series = await Series.getSeriesById(seriesId);
 		await series.updateStatus(status);
 		await series.waitDataSave();
+		ctx.log.info({ event: 'series.status.updated', seriesId, status }, 'Series status updated');
 		return ctx.Success();
 	}
 
@@ -106,6 +112,10 @@ export class SeriesController {
 			await series.updateTypes(types);
 		}
 		await series.waitDataSave();
+		ctx.log.info(
+			{ event: 'series.types.updated', seriesId, operation, count: types.length },
+			'Series types updated',
+		);
 		return ctx.Success();
 	}
 
@@ -126,6 +136,10 @@ export class SeriesController {
 			await series.updateImages(images);
 		}
 		await series.waitDataSave();
+		ctx.log.info(
+			{ event: 'series.images.updated', seriesId, operation, count: images.length },
+			'Series images updated',
+		);
 		return ctx.Success();
 	}
 }

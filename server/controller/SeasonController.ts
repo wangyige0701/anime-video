@@ -28,6 +28,7 @@ export class SeasonController {
 		const season = await Series.getSeasonById(seasonId);
 		await season.updateSort(sort);
 		await season.waitDataSave();
+		ctx.log.info({ event: 'season.sort.updated', seasonId, sort }, 'Season sort updated');
 		return ctx.Success();
 	}
 
@@ -38,6 +39,7 @@ export class SeasonController {
 		const season = await Series.getSeasonById(seasonId);
 		await season.updateTitle(title);
 		await season.waitDataSave();
+		ctx.log.info({ event: 'season.title.updated', seasonId }, 'Season title updated');
 		return ctx.Success();
 	}
 }

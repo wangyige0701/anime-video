@@ -32,14 +32,14 @@
 </template>
 
 <script setup lang="ts">
+import type { Episode } from '@/data/episode';
+import type { Season } from '@/data/season';
 import { Series } from '@/data/series';
 import { useVideoStore } from '@/stores/video';
 import { WebRoute } from '~routes/web';
 import router from '@/router';
 import { getSeriesTypeName } from '~config/seriesTypes';
 import { getSeriesStatusName } from '~config/seriesStatus';
-import type { Episode } from '@/data/episode';
-import type { Season } from '@/data/season';
 import VideoBox from '@/components/detail/VideoBox.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 
@@ -47,6 +47,7 @@ definePage({
 	name: 'Detail',
 });
 
+let isUnmounted = false;
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
 const status = useVueStatusRef('waiting').onWaiting();
 const videoBoxRef = useTemplateRef('videoBoxRef');
@@ -80,9 +81,16 @@ onMounted(async () => {
 		series.value = info;
 		activeSeasonId.value = series.value.seasons?.[0]?.id || '';
 		status.offWaiting();
+		!isUnmounted && useVideoStore().setCurrentSeries(series.value);
 	} catch (error) {
 		router.replace({ name: WebRoute.INDEX, replace: true });
+		useVideoStore().resetCurrentSeries();
 	}
+});
+
+onBeforeUnmount(() => {
+	isUnmounted = true;
+	useVideoStore().resetCurrentSeries();
 });
 </script>
 

@@ -1,11 +1,14 @@
 <template>
 	<div class="global-actions" role="toolbar" aria-label="全局操作">
-		<el-tooltip content="扫描并同步所有系列的视频数据" placement="bottom">
+		<el-tooltip
+			:content="isDetail ? '扫描并同步当前系列的视频数据' : '扫描并同步所有系列的视频数据'"
+			placement="bottom"
+		>
 			<el-button class="global-action" type="primary" plain :loading="status.refresh" @click="handleRefresh">
 				<template #icon>
 					<el-icon><Refresh /></el-icon>
 				</template>
-				{{ status.refresh ? '正在同步' : '同步视频库' }}
+				{{ status.refresh ? '正在同步' : isDetail ? '刷新当前系列' : '同步视频库' }}
 			</el-button>
 		</el-tooltip>
 	</div>
@@ -17,6 +20,7 @@ import { ElMessage } from 'element-plus';
 import { useVideoStore } from '@/stores/video';
 
 const status = useVueStatusRef('refresh');
+const isDetail = computed(() => !!useVideoStore().currentSeries.value?.id);
 
 async function handleRefresh() {
 	if (status.refresh) {
@@ -25,10 +29,15 @@ async function handleRefresh() {
 
 	status.onRefresh();
 	try {
-		await useVideoStore().refresh();
-		ElMessage.success('视频库已同步');
+		if (isDetail.value) {
+			await useVideoStore().refreshSeries(useVideoStore().currentSeries.value!.id);
+		} else {
+			await useVideoStore().refresh();
+		}
+		ElMessage.success(isDetail.value ? '当前系列视频数据已刷新' : '视频库已同步');
 	} catch (error) {
-		ElMessage.error(error instanceof Error ? error.message : '视频库同步失败，请稍后重试');
+		const msg = isDetail.value ? '当前系列视频数据刷新失败，请稍后重试' : '视频库同步失败，请稍后重试';
+		ElMessage.error(error instanceof Error ? error.message : msg);
 	} finally {
 		status.offRefresh();
 	}

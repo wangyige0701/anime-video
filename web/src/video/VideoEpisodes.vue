@@ -1,5 +1,5 @@
 <template>
-	<div>
+	<div class="video-episodes">
 		<el-popover
 			placement="top"
 			effect="dark"
@@ -151,6 +151,10 @@ defineExpose({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.video-episodes {
+	line-height: 1;
 }
 
 .episodes-title {

@@ -37,27 +37,11 @@
 
 <script setup lang="ts">
 import { useSystemStore } from '@/stores/system';
+import { formatMemory, formatPercentage, normalizePercentage } from '@/utils/format';
 
 const { systemInfo } = storeToRefs(useSystemStore());
 const cpuUsage = computed(() => normalizePercentage(systemInfo.value?.cpu.usagePercentage ?? 0));
 const memoryUsage = computed(() => normalizePercentage(systemInfo.value?.memory.usagePercentage ?? 0));
-
-function normalizePercentage(value: number) {
-	return Math.min(Math.max(value, 0), 100);
-}
-
-function formatPercentage(value: number) {
-	return `${Math.round(value)}%`;
-}
-
-function formatMemory(used: number, total: number) {
-	return `${formatBytes(used)} / ${formatBytes(total)}`;
-}
-
-function formatBytes(bytes: number) {
-	const gib = 1024 ** 3;
-	return `${(bytes / gib).toFixed(1)} GB`;
-}
 </script>
 
 <style scoped lang="scss">

@@ -1,5 +1,5 @@
 import type Koa from 'koa';
-import { Context, Controller, Cors, HttpMethod, Singleton } from 'koa-use-decorator-router';
+import { Context, Controller, Cors, HttpMethod, ResponseHeader, Singleton } from 'koa-use-decorator-router';
 import { OSUtils, type MemoryInfo, type MonitorResult } from 'node-os-utils';
 import { ServerRoot } from '~routes/server';
 import { Response } from '~server/middlewares/response';
@@ -18,13 +18,13 @@ export class SystemController {
 	}
 
 	@HttpMethod.Get('/system/stream')
+	@ResponseHeader('Content-Type', 'text/event-stream')
+	@ResponseHeader('Cache-Control', 'no-cache, no-transform')
+	@ResponseHeader('Connection', 'keep-alive')
+	@ResponseHeader('X-Accel-Buffering', 'no')
 	public async streamSystemInfo(@Context() ctx: Koa.Context) {
 		// SSE 直接写入原始响应流，因此不交给 Koa 在请求结束时自动处理响应。
 		ctx.status = 200;
-		ctx.set('Content-Type', 'text/event-stream');
-		ctx.set('Cache-Control', 'no-cache, no-transform');
-		ctx.set('Connection', 'keep-alive');
-		ctx.set('X-Accel-Buffering', 'no');
 		ctx.respond = false;
 		ctx.req.setTimeout(0);
 		ctx.res.flushHeaders();

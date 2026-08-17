@@ -80,6 +80,7 @@ function formatBytes(bytes: number) {
 	white-space: nowrap;
 	color: map.get(token.$theme, 'l-7');
 	line-height: 1;
+	padding-right: 0.5em;
 }
 
 .metric {
@@ -121,6 +122,12 @@ strong {
 
 @media (max-width: 1240px) {
 	.system-info {
+		display: none;
+	}
+}
+
+@media (max-width: 1450px) {
+	.system-info-label {
 		display: none;
 	}
 }

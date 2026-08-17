@@ -1,12 +1,17 @@
 import type Koa from 'koa';
+import { createPromise } from '@wang-yige/utils';
 import { Context, Controller, Cors, HttpMethod, ResponseHeader, Singleton } from 'koa-use-decorator-router';
 import { OSUtils, type MemoryInfo, type MonitorResult } from 'node-os-utils';
 import { ServerRoot } from '~routes/server';
 import { Response } from '~server/middlewares/response';
 
 const UPDATE_INTERVAL_MS = 2000;
-// 监控库实例复用，避免每次请求重复初始化平台适配器。
-const osUtils = new OSUtils({ cacheTTL: UPDATE_INTERVAL_MS });
+// 复用监控库实例，并让监控项缓存与全局采集周期保持一致。
+const osUtils = new OSUtils({
+	cacheTTL: UPDATE_INTERVAL_MS,
+	cpu: { cacheTTL: UPDATE_INTERVAL_MS },
+	memory: { cacheTTL: UPDATE_INTERVAL_MS },
+});
 
 @Singleton()
 @Controller(ServerRoot.DATA)
@@ -23,79 +28,146 @@ export class SystemController {
 	@ResponseHeader('Connection', 'keep-alive')
 	@ResponseHeader('X-Accel-Buffering', 'no')
 	public async streamSystemInfo(@Context() ctx: Koa.Context) {
-		// SSE 直接写入原始响应流，因此不交给 Koa 在请求结束时自动处理响应。
+		// SSE 直接写入原始响应流，因此不交给 Koa 的响应体处理。
 		ctx.status = 200;
 		ctx.respond = false;
 		ctx.req.setTimeout(0);
 		ctx.res.flushHeaders();
 
 		let closed = false;
-		let timer: NodeJS.Timeout | undefined;
+		let unsubscribe: (() => void) | undefined;
+		const { resolve: resolveStream, promise } = createPromise<void>();
 
+		// 客户端断开或响应出错时，及时移除订阅并结束当前请求。
 		const close = () => {
 			if (closed) {
 				return;
 			}
 			closed = true;
-			if (timer) {
-				clearTimeout(timer);
-			}
+			unsubscribe?.();
+			resolveStream();
 		};
 
-		const send = async () => {
-			if (closed || ctx.res.writableEnded) {
+		unsubscribe = systemInfoCollector.subscribe((event) => {
+			if (closed || ctx.res.writableEnded || ctx.res.destroyed) {
+				close();
 				return;
 			}
 			try {
-				// SSE 中复用普通接口的响应外层，客户端可使用同一套数据解析逻辑。
-				const response = (ctx.Success(await collectSystemInfo()) as unknown as Response<unknown>).getBody();
-				ctx.res.write(`event: system\ndata: ${JSON.stringify(response)}\n\n`);
-			} catch (error) {
-				if (closed || ctx.res.writableEnded) {
-					return;
-				}
-				const message = error instanceof Error ? error.message : 'Unable to collect system information';
-				ctx.res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`);
+				ctx.res.write(`event: ${event.type}\ndata: ${JSON.stringify(event.data)}\n\n`);
+			} catch {
+				close();
 			}
-		};
-
-		await new Promise<void>((resolve) => {
-			ctx.res.once('close', () => {
-				close();
-				resolve();
-			});
-			ctx.res.once('error', () => {
-				close();
-				resolve();
-			});
-
-			const schedule = () => {
-				if (closed) {
-					return;
-				}
-				// 使用递归 setTimeout，确保一次采集结束后再开始下一次，避免采集任务重叠。
-				timer = setTimeout(async () => {
-					if (closed) {
-						return;
-					}
-					await send();
-					if (!closed) {
-						schedule();
-					}
-				}, UPDATE_INTERVAL_MS);
-			};
-
-			// 连接建立后立即推送首条数据，后续再按固定间隔更新。
-			void send().then(() => {
-				if (!closed) {
-					schedule();
-				}
-			});
 		});
+
+		ctx.res.once('close', () => {
+			close();
+		});
+		ctx.res.once('error', () => {
+			close();
+		});
+
+		await promise;
 	}
 }
 
-async function collectSystemInfo() {
+type SystemInfo = {
+	cpu: {
+		usagePercentage: number;
+	};
+	memory: {
+		total: number;
+		used: number;
+		free: number;
+		available: number;
+		usagePercentage: number;
+	};
+};
+
+// SSE 推送事件，成功和失败使用不同的事件类型。
+type SystemInfoEvent =
+	| { type: 'system'; data: ReturnType<Response<SystemInfo>['getBody']> }
+	| { type: 'error'; data: { message: string } };
+
+type SystemInfoSubscriber = (event: SystemInfoEvent) => void;
+
+// 全局系统信息采集器：所有 SSE 连接共享一次采集结果。
+class SystemInfoCollector {
+	// 当前连接的广播订阅者。
+	private readonly subscribers = new Set<SystemInfoSubscriber>();
+	// 新连接建立时先发送最近一次结果，避免等待下一轮采集。
+	private latestEvent: SystemInfoEvent | undefined;
+	// 采集完成后等待下一轮的定时器。
+	private timer: NodeJS.Timeout | undefined;
+	// 防止采集任务尚未完成时重复启动。
+	private collecting = false;
+
+	// 添加订阅者；首个订阅者到来时启动采集循环。
+	public subscribe(subscriber: SystemInfoSubscriber) {
+		this.subscribers.add(subscriber);
+		if (this.latestEvent) {
+			this.notify(subscriber, this.latestEvent);
+		}
+		if (this.subscribers.size === 1) {
+			void this.collectAndBroadcast();
+		}
+
+		return () => {
+			this.subscribers.delete(subscriber);
+			// 没有客户端监听时停止定时器，避免后台持续采集。
+			if (this.subscribers.size === 0 && this.timer) {
+				clearTimeout(this.timer);
+				this.timer = undefined;
+			}
+		};
+	}
+
+	// 单次采集完成后统一广播，并在仍有订阅者时安排下一轮采集。
+	private async collectAndBroadcast() {
+		if (this.collecting || this.subscribers.size === 0) {
+			return;
+		}
+
+		this.collecting = true;
+		try {
+			const data = new Response(await collectSystemInfo(), 200, true, 'OK').getBody();
+			this.broadcast({ type: 'system', data });
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Unable to collect system information';
+			this.broadcast({ type: 'error', data: { message } });
+		} finally {
+			this.collecting = false;
+			if (this.subscribers.size > 0) {
+				this.timer = setTimeout(() => {
+					this.timer = undefined;
+					void this.collectAndBroadcast();
+				}, UPDATE_INTERVAL_MS);
+			}
+		}
+	}
+
+	// 保存最近一次事件，并发送给所有当前订阅者。
+	private broadcast(event: SystemInfoEvent) {
+		this.latestEvent = event;
+		for (const subscriber of this.subscribers) {
+			this.notify(subscriber, event);
+		}
+	}
+
+	// 单个订阅者写入失败时只移除该订阅，不影响其他连接。
+	private notify(subscriber: SystemInfoSubscriber, event: SystemInfoEvent) {
+		try {
+			subscriber(event);
+		} catch {
+			this.subscribers.delete(subscriber);
+		}
+	}
+}
+
+// 控制器实例之外只创建一个采集器，避免每个请求重复采集系统信息。
+const systemInfoCollector = new SystemInfoCollector();
+
+async function collectSystemInfo(): Promise<SystemInfo> {
 	// CPU 与内存信息彼此独立，可并行采集以缩短接口响应时间。
 	const [cpu, memory] = await Promise.all([osUtils.cpu.usage(), osUtils.memory.info()]);
 	const cpuUsage = getMonitorData(cpu);

@@ -50,7 +50,6 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
-				<SystemInfo />
 				<VideoEpisodes ref="episodesRef" :popover-container="tooltipContainer" :disabled="isTimelineDragging" />
 				<el-button
 					:data-tooltip="`倍速（${playerStore.playbackRate}x）`"
@@ -90,7 +89,6 @@ import VideoTime from './VideoTime.vue';
 import VideoVolume from './VideoVolume.vue';
 import VideoControllerSpace from './VideoControllerSpace.vue';
 import VideoEpisodes from './VideoEpisodes.vue';
-import SystemInfo from './SystemInfo.vue';
 
 const emit = defineEmits<{
 	(e: 'toggleFullscreen'): void;

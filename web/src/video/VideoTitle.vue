@@ -1,5 +1,15 @@
 <template>
 	<div class="video-title-container">
+		<div class="system-info" v-if="systemInfo">
+			<div class="info cpu">
+				<span class="label">CPU</span>
+				<span>{{ formatPercentage(systemInfo.cpu.usagePercentage) }}</span>
+			</div>
+			<div class="info memory">
+				<span class="label">内存</span>
+				<span>{{ formatPercentage(systemInfo.memory.usagePercentage) }}</span>
+			</div>
+		</div>
 		<span v-if="playerStore.seriesTitle" class="title">{{ playerStore.seriesTitle }}</span>
 		<span>
 			<span v-if="playerStore.seasonTitle" class="subtitle">{{ playerStore.seasonTitle }}</span>
@@ -13,8 +23,11 @@
 
 <script setup lang="ts">
 import { usePlayerStore } from '@/stores/player';
+import { useSystemStore } from '@/stores/system';
+import { formatPercentage } from '@/utils/format';
 
 const playerStore = usePlayerStore();
+const { systemInfo } = storeToRefs(useSystemStore());
 </script>
 
 <style scoped lang="scss">
@@ -31,6 +44,7 @@ const playerStore = usePlayerStore();
 	padding: 1rem;
 	padding-bottom: 2rem;
 	padding-right: 4rem;
+	padding-top: 0.5rem;
 	.title {
 		font-size: 1rem;
 	}
@@ -39,6 +53,28 @@ const playerStore = usePlayerStore();
 	}
 	.slash {
 		vertical-align: middle;
+	}
+	.system-info {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: nowrap;
+		align-items: center;
+		justify-content: center;
+		gap: 1rem;
+		font-size: 0.75rem;
+		color: map.get(token.$theme, 'l-9');
+		opacity: 0.8;
+		.info {
+			display: flex;
+			flex-direction: row;
+			flex-wrap: nowrap;
+			align-items: center;
+			gap: 5px;
+		}
+		.label {
+			line-height: 1;
+			gap: 1rem;
+		}
 	}
 }
 </style>

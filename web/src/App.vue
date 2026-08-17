@@ -2,7 +2,9 @@
 	<el-config-provider>
 		<el-container class="container" :class="useDeviceStore().className">
 			<el-header class="header">
-				<div class="header-left"></div>
+				<div class="header-left">
+					<GlobalActions />
+				</div>
 				<Search />
 				<div class="header-right">
 					<SystemInfo />

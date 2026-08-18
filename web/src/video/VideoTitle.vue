@@ -1,5 +1,5 @@
 <template>
-	<div class="video-title-container">
+	<div class="video-title-container" :class="{ system: !!systemInfo }">
 		<div class="system-info" v-if="systemInfo">
 			<div class="info cpu">
 				<span class="label">CPU</span>
@@ -44,7 +44,9 @@ const { systemInfo } = storeToRefs(useSystemStore());
 	padding: 1rem;
 	padding-bottom: 2rem;
 	padding-right: 4rem;
-	padding-top: 0.5rem;
+	&.system {
+		padding-top: 5px;
+	}
 	.title {
 		font-size: 1rem;
 	}
@@ -64,6 +66,7 @@ const { systemInfo } = storeToRefs(useSystemStore());
 		font-size: 0.75rem;
 		color: map.get(token.$theme, 'l-9');
 		opacity: 0.8;
+		line-height: 1;
 		.info {
 			display: flex;
 			flex-direction: row;

@@ -310,6 +310,7 @@ describe('Video Data Config', () => {
 			const nonVideoPath = path.join(dir, '视频1', '第一季', 'metadata.txt');
 			await Promise.all([fs.writeFile(temporaryVideoPath, ''), fs.writeFile(nonVideoPath, '')]);
 			await Series.updateSeries(await series.id);
+			expect(await series.images).toEqual([originImagePath2, originImagePath1]);
 			const episodesWithTemporaryVideo = await Episode.getAllEpisodes(season);
 			const temporaryEpisode = episodesWithTemporaryVideo.find(
 				(item) => item.getEpisodeName() === path.basename(temporaryVideoPath),
@@ -334,6 +335,36 @@ describe('Video Data Config', () => {
 				await fs.rm(path.join(dir, '视频1', '第一季', 'temporary.webm'), { force: true });
 				await fs.rm(path.join(dir, '视频1', '第一季', 'metadata.txt'), { force: true });
 			} catch (error) {}
+		}
+	});
+
+	it('Should discover images added after an initially empty series is refreshed', async () => {
+		const seriesName = '刷新图片测试';
+		const seriesDirectory = path.join(dir, seriesName);
+		const imagePath = path.join(seriesDirectory, 'cover.png');
+
+		try {
+			await fs.rm(seriesDirectory, { recursive: true, force: true });
+			await fs.mkdir(seriesDirectory);
+			await Series.clearCache();
+			await Series.setDirectories(dir);
+
+			const series = (await Series.getAllSeries()).find((item) => item.getSeriesName() === seriesName)!;
+			expect(await series.images).toEqual([]);
+
+			await fs.writeFile(imagePath, '');
+			await Series.updateSeries(await series.id);
+
+			expect(await series.images).toEqual([imagePath]);
+			const data = await getJsonFIle();
+			const seriesId = await series.id;
+			expect(data.find((item: any) => item.id === seriesId)?.images).toEqual([
+				{ path: path.basename(imagePath), sort: 1 },
+			]);
+		} finally {
+			await fs.rm(seriesDirectory, { recursive: true, force: true });
+			await Series.updateSeries();
+			await Series.clearCache();
 		}
 	});
 

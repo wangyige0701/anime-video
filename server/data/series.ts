@@ -122,14 +122,18 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			}
 		}
 		const allSeries = await this.getAllSeries(true);
+		const dataInstances = new Set<Data<SeriesStore[]>>();
 		for (const series of allSeries) {
 			if (seriesId && (await series.id) !== seriesId) {
 				continue;
 			}
+			await series.refreshConfig();
+			dataInstances.add(series.getDataInstance());
 			for (const season of await Season.getAllSeasons(series)) {
 				await Episode.getAllEpisodes(season);
 			}
 		}
+		await Promise.all([...dataInstances].map((data) => data.save()));
 	}
 
 	/**
@@ -663,15 +667,21 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 		await this.getDataInstance()
 			.read()
-			.then((configs) => {
-				return this.resolveSeriesConfig(configs, resolve);
+			.then(async (configs) => {
+				resolve(await this.resolveSeriesConfig(configs));
 			})
 			.catch(() => {
 				reject(new Error(`数据文件 ${this.dataFile} 数据初始化异常`));
 			});
 	}
 
-	private async resolveSeriesConfig(configs: SeriesStore[], resolve: PromiseResolve<SeriesStore>) {
+	private async refreshConfig() {
+		const configs = await this.getDataInstance().read();
+		await this.resolveSeriesConfig(configs);
+		this.registerImages();
+	}
+
+	private async resolveSeriesConfig(configs: SeriesStore[]) {
 		const id = this.hashId;
 		const name = path.basename(this.directory);
 		const images = [] as SeriesImagesStoreStruct;
@@ -709,11 +719,10 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 
 		// 图片重排序
 		const oldImages = config.images || [];
-		let maxSort = Math.max(...oldImages.map((image) => image.sort));
+		let maxSort = Math.max(0, ...oldImages.map((image) => image.sort));
 		for (const image of images) {
-			if (!oldImages.find((oldImage) => oldImage.path === image.path)) {
-				image.sort = ++maxSort;
-			}
+			const oldImage = oldImages.find((item) => item.path === image.path);
+			image.sort = oldImage ? oldImage.sort : ++maxSort;
 		}
 
 		config.id = id;
@@ -725,7 +734,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		config.status = config.status || 0;
 		config.description = config.description || '';
 		config.seasons = config.seasons || [];
-		return resolve(config);
+		return config;
 	}
 	// endregion
 }

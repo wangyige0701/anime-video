@@ -60,6 +60,10 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	 */
 	public static async refresh() {
 		initialize.offInitialized();
+		// 全量刷新后必须丢弃旧的系列、季、集实例，否则构造函数会命中旧缓存而忽略接口新数据。
+		this.clearCache();
+		Season.clearCache();
+		Episode.clearCache();
 		await refreshSeries();
 		return await this.initialized();
 	}

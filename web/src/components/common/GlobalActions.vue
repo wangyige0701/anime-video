@@ -17,6 +17,7 @@
 <script setup lang="ts">
 import { Refresh } from '@element-plus/icons-vue';
 import { useVideoStore } from '@/stores/video';
+import { refreshEmitter } from '@/events/refresh';
 
 const videoStore = useVideoStore();
 const status = useVueStatusRef('refresh');
@@ -37,7 +38,8 @@ async function handleRefresh() {
 		if (isDetail.value) {
 			await videoStore.refreshSeries(detailSeries.value!.id);
 		} else {
-			await videoStore.refresh();
+			const series = await videoStore.refresh();
+			refreshEmitter.emit('series', series);
 		}
 		ElMessage.success(isDetail.value ? '当前系列视频数据已刷新' : '视频库已同步');
 	} catch (error) {

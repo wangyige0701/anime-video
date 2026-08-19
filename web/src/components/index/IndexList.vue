@@ -22,6 +22,7 @@
 <script setup lang="ts">
 import type { Series } from '@/data/series';
 import { endReachedEmitter } from '@/events/end-reached';
+import { refreshEmitter } from '@/events/refresh';
 import { useVideoStore } from '@/stores/video';
 import { getSeriesPath } from '@/utils/series';
 import { getImageUrl } from '~routes/server';
@@ -62,6 +63,10 @@ endReachedEmitter.on('endReached', (event) => {
 	}
 	page.value++;
 	getData();
+});
+
+refreshEmitter.on('series', (series) => {
+	datas.splice(0, datas.length, ...series.slice(0, page.value * props.pageSize));
 });
 
 async function getData() {

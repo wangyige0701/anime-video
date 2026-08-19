@@ -128,5 +128,8 @@ onBeforeUnmount(() => {
 
 .list {
 	border: 0;
+	.season:not(:last-child) {
+		margin-bottom: 20px;
+	}
 }
 </style>

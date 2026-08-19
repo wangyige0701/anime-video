@@ -46,6 +46,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			await Season.deleteCache(await season.id);
 		}
 		this.cache.delete(id);
+		this.isIndexed = false;
 	}
 
 	/**
@@ -175,7 +176,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		}
 		const allSeries = await this.getAllSeries();
 		for (const series of allSeries) {
-			const seasons = await Season.getAllSeasons(series);
+			const seasons = await series.seasons;
 			for (const season of seasons) {
 				if ((await season.id) === seasonId) {
 					return season;
@@ -263,6 +264,12 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		};
 
 		// 需要在构造函数中立刻注册
+		this.register();
+
+		this.initialize(resolve, fail).catch(fail);
+	}
+
+	private register() {
 		this.registerId();
 		this.registerPath();
 		this.registerName();
@@ -273,8 +280,6 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerTypes();
 		this.registerStatus();
 		this.registerSeasons();
-
-		this.initialize(resolve, fail).catch(fail);
 	}
 
 	/**
@@ -678,7 +683,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	private async refreshConfig() {
 		const configs = await this.getDataInstance().read();
 		await this.resolveSeriesConfig(configs);
-		this.registerImages();
+		this.register();
 	}
 
 	private async resolveSeriesConfig(configs: SeriesStore[]) {

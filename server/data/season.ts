@@ -47,6 +47,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			}
 			const season = new Season(entry.name, series);
 			await season.getPromise();
+			season.register();
 			result.push({ season, sort: await season.sort });
 		}
 
@@ -115,13 +116,17 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			reject(error);
 		};
 
+		this.register();
+
+		this.initialize(resolve, fail).catch(fail);
+	}
+
+	private register() {
 		this.registerId();
 		this.registerSort();
 		this.registerPath();
 		this.registerTitle();
 		this.registerEpisodes();
-
-		this.initialize(resolve, fail).catch(fail);
 	}
 
 	/**

@@ -31,6 +31,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 			}
 			const episode = new Episode(entry.name, season);
 			await episode.getPromise();
+			episode.register();
 			result.push({ episode, sort: await episode.sort });
 		}
 		result.sort((a, b) => a.sort - b.sort);
@@ -92,13 +93,17 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 			reject(error);
 		};
 
+		this.register();
+
+		this.initialize(resolve, fail).catch(fail);
+	}
+
+	private register() {
 		this.registerId();
 		this.registerSort();
 		this.registerPath();
 		this.registerExtension();
 		this.registerTitle();
-
-		this.initialize(resolve, fail).catch(fail);
 	}
 
 	/**

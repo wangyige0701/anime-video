@@ -11,7 +11,6 @@
 
 <script setup lang="ts">
 import type { Series } from '@/data/series';
-import { ElMessage } from 'element-plus';
 
 const props = defineProps<{
 	series: Series;

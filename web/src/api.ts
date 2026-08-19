@@ -1,7 +1,6 @@
 import type { Response } from '~types/response';
 import { AxiosRequest, axios } from 'axios-useful';
-import { isBoolean, isNumber, isObject, isString } from '@wang-yige/utils';
-import { ElMessage } from 'element-plus';
+import { isBoolean, isNumber, isString } from '@wang-yige/utils';
 
 export const API = new AxiosRequest('http://localhost:3000');
 

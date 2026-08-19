@@ -1,5 +1,5 @@
 import type { Series as ISeries } from '~types/videos';
-import { createPromise } from '@wang-yige/utils';
+import { createPromise, type Fn } from '@wang-yige/utils';
 import {
 	getSeries,
 	getSeriesDetail,
@@ -16,7 +16,6 @@ import { getSeasons } from '@/api/season';
 import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
-import type { ShallowReactive } from 'vue';
 
 const initialize = useVueStatusRef('loading', 'initialized');
 
@@ -47,8 +46,8 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 				result.push(new Series(seriesItem));
 			}
 			initialize.onInitialized();
-		} catch (error) {
-			console.error('初始化系列数据失败', error);
+		} catch (error: any) {
+			ElMessage.error('初始化系列数据失败' + (error?.message || ''));
 		}
 		initialize.offLoading();
 		resolve(result);
@@ -64,8 +63,11 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		this.clearCache();
 		Season.clearCache();
 		Episode.clearCache();
-		await refreshSeries();
-		return await this.initialized();
+		const series = await refreshSeries();
+		this.filterBindCache(series.map((item) => item.id));
+		const result = series.map((item) => new Series(item));
+		initialize.onInitialized();
+		return result;
 	}
 
 	public static get isInitialized() {
@@ -147,7 +149,9 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	private _date: Ref<ISeries['date']> = ref([]);
 	private _types: Ref<ISeries['types']> = ref([]);
 	private _status: Ref<ISeries['status']> = ref(0);
-	private _seasons: ShallowReactive<{ value: Season[] }> = shallowReactive({ value: [] });
+	private _seasons!: Ref<Season[]>;
+	private seasonsTrack!: Fn<[]>;
+	private seasonsUpdate!: Fn<[Season[]]>;
 
 	private useStatus = useVueStatusRef('title', 'images', 'description', 'date', 'types', 'status');
 
@@ -171,11 +175,24 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		this._types.value = series.types;
 		this._status.value = series.status;
 
+		if (!Series.hasBindCache(series.id)) {
+			const { ref, track, update } = Series.createRef<Season>();
+			this.seasonsTrack = track;
+			this.seasonsUpdate = update;
+			this._seasons = ref;
+			Series.setBindCache(series.id, { ref, track, update });
+		} else {
+			const { ref, track, update } = Series.getBindCache<Season>(series.id)!;
+			this._seasons = ref;
+			this.seasonsTrack = track;
+			this.seasonsUpdate = update;
+		}
+
 		Series.cache.set(series.id, this);
 	}
 
 	public setSeasons(seasons: Season[]) {
-		this._seasons.value = seasons;
+		this.seasonsUpdate(seasons);
 	}
 
 	// region 系列属性值
@@ -216,7 +233,8 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	}
 
 	public get seasons() {
-		return this._seasons.value;
+		this.seasonsTrack();
+		return unref(this._seasons);
 	}
 	// endregion
 

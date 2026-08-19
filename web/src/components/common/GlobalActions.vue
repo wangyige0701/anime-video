@@ -16,7 +16,6 @@
 
 <script setup lang="ts">
 import { Refresh } from '@element-plus/icons-vue';
-import { ElMessage } from 'element-plus';
 import { useVideoStore } from '@/stores/video';
 
 const videoStore = useVideoStore();
@@ -33,7 +32,6 @@ async function handleRefresh() {
 	if (status.refresh) {
 		return;
 	}
-
 	status.onRefresh();
 	try {
 		if (isDetail.value) {

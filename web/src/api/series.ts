@@ -16,7 +16,7 @@ export function getSeries() {
 }
 
 export function refreshSeries() {
-	return API.post<any, null>(`${ServerRoot.DATA}/series/refresh`, null, {
+	return API.post<any, Series[]>(`${ServerRoot.DATA}/series/refresh`, null, {
 		single: {
 			type: AxiosRequest.Single.PREV,
 		},

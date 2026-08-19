@@ -1,8 +1,8 @@
+import type { Fn } from '@wang-yige/utils';
 import type { Season as ISeason } from '~types/videos';
 import { updateSeasonSort, updateSeasonTitle } from '@/api/season';
 import { Episode } from './episode';
 import { Common } from './common';
-import type { ShallowReactive } from 'vue';
 
 export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	protected static cache: Map<string, Season> = new Map();
@@ -11,7 +11,9 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	private _sort: Ref<ISeason['sort']> = ref(0);
 	private _path: Ref<ISeason['path']> = ref('');
 	private _title: Ref<ISeason['title']> = ref('');
-	private _episodes: ShallowReactive<{ value: Episode[] }> = shallowReactive({ value: [] });
+	private _episodes!: Ref<Episode[]>;
+	private episodesTrack!: Fn<[]>;
+	private episodesUpdate!: Fn<[Episode[]]>;
 
 	private useStatus = useVueStatusRef('title', 'sort');
 
@@ -27,11 +29,24 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 		this._path.value = season.path;
 		this._title.value = season.title;
 
+		if (!Season.hasBindCache(season.id)) {
+			const { ref, track, update } = Season.createRef<Episode>();
+			this.episodesTrack = track;
+			this.episodesUpdate = update;
+			this._episodes = ref;
+			Season.setBindCache(season.id, { ref, track, update });
+		} else {
+			const { ref, track, update } = Season.getBindCache<Episode>(season.id)!;
+			this._episodes = ref;
+			this.episodesTrack = track;
+			this.episodesUpdate = update;
+		}
+
 		Season.cache.set(season.id, this);
 	}
 
 	public setEpisodes(episodes: Episode[]) {
-		this._episodes.value = episodes;
+		this.episodesUpdate(episodes);
 	}
 
 	// region 属性访问器
@@ -52,7 +67,8 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	}
 
 	public get episodes() {
-		return this._episodes.value;
+		this.episodesTrack();
+		return unref(this._episodes);
 	}
 	// endregion
 

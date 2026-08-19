@@ -11,7 +11,6 @@
 
 <script setup lang="ts">
 import Hls, { type ErrorData } from 'hls.js';
-import { ElMessage } from 'element-plus';
 import { useEventListener } from '@vueuse/core';
 import { createPromise } from '@wang-yige/utils';
 import { usePlayerStore } from '@/stores/player';

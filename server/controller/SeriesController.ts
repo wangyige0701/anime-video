@@ -29,7 +29,7 @@ export class SeriesController {
 	public async refreshSeries(@Context() ctx: Koa.Context) {
 		await Series.updateSeries();
 		ctx.log.info({ event: 'series.refreshed', scope: 'all' }, 'All series refreshed');
-		return ctx.Success();
+		return ctx.Success(await this.getSeries(ctx));
 	}
 
 	@HttpMethod.Post('/series/refresh/:seriesId')

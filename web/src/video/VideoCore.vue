@@ -44,7 +44,6 @@ import VideoTitle from './VideoTitle.vue';
 import { CloseBold } from '@element-plus/icons-vue';
 import PlayToggleIcon from '@/components/icons/PlayToggleIcon.vue';
 import { useVideoControllerActivity } from '@/utils/useVideoControllerActivity';
-import { ElMessage } from 'element-plus';
 
 const emit = defineEmits<{
 	(e: 'close'): void;

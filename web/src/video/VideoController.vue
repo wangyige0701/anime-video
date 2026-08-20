@@ -50,7 +50,19 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
+				<!-- 剧集选择 -->
 				<VideoEpisodes ref="episodesRef" :popover-container="tooltipContainer" :disabled="isTimelineDragging" />
+				<!-- 自动播放开关 -->
+				<el-switch
+					inactive-text="单播"
+					active-text="连播"
+					:active-value="true"
+					:inactive-value="false"
+					inline-prompt
+					:model-value="playerStore.isAutoPlay"
+					@update:model-value="playerStore.setIsAutoPlay($event as boolean)"
+				></el-switch>
+				<!-- 倍速选择 -->
 				<el-button
 					:data-tooltip="`倍速（${playerStore.playbackRate}x）`"
 					text
@@ -60,11 +72,13 @@
 						<PlaybackRateIcon ref="playbackRateIcon" :rate="playerStore.playbackRate" />
 					</el-icon>
 				</el-button>
+				<!-- 截图 -->
 				<el-button data-tooltip="截图" text @click.stop="shot">
 					<el-icon>
 						<ScreenShotIcon ref="shotIcon" />
 					</el-icon>
 				</el-button>
+				<!-- 全屏 -->
 				<el-button
 					:data-tooltip="playerStore.isFullScreen ? '退出全屏' : '全屏'"
 					text
@@ -141,6 +155,15 @@ function playbackRateClickHandler() {
 	playbackRateIcon.value?.trigger();
 	playerStore.togglePlaybackRate();
 }
+
+defineExpose({
+	autoNext() {
+		if (!episodesRef.value?.canNext) {
+			return;
+		}
+		episodesRef.value?.next();
+	},
+});
 </script>
 
 <style scoped lang="scss">

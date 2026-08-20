@@ -23,6 +23,8 @@
 </template>
 
 <script setup lang="ts">
+import { Comment } from 'vue';
+
 const props = withDefaults(
 	defineProps<{
 		tooltipContainer?: HTMLElement | null;
@@ -41,7 +43,7 @@ const render = computed(() => {
 	if (!slots.default) {
 		return [];
 	}
-	return slots.default();
+	return slots.default().filter((node) => node.type !== Comment);
 });
 
 function updatePoppers() {

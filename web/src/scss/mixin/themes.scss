@@ -42,6 +42,8 @@ $theme: ();
 				rgba(color.mix(#000, $color, 10%), 0.5);
 			#{var.varName('loading', 'bg')}: rgba(color.mix(#000, $color, 80%), 0.3);
 			#{var.varName('season', 'bg')}: rgba(color.mix(#fff, $color, 10%), 0.3);
+
+			// 播放器样式
 			#{var.varName('video', 'mask', 'bg')}: rgba(color.mix(#000, $color, 80%), 0.76);
 			#{var.varName('video', 'bg')}: color.mix(#000, $color, 92%);
 			#{var.varName('video', 'shadow')}:
@@ -53,6 +55,12 @@ $theme: ();
 			#{var.varName('video', 'timeline', 'buffer', 'bg')}: rgba(color.mix(#fff, $color, 72%), 0.75);
 			#{var.varName('video', 'timeline', 'runway', 'bg')}: color.mix(#fff, $color, 4%);
 			#{var.varName('video', 'timeline', 'bar', 'color')}: #fff;
+
+			// 开关样式
+			#{var.varName('switch', 'off', 'bg')}: color.change(color.mix(#cfd3dc, $color, 90%), $alpha: 0.74);
+			#{var.varName('switch', 'off', 'thumb')}: color.mix(#fff, $color, 94%);
+			#{var.varName('switch', 'off', 'text')}: color.mix(#4c5568, $color, 84%);
+			#{var.varName('switch', 'on', 'bg')}: color.mix(#000, $color, 10%);
 		}
 	}
 }
@@ -77,4 +85,8 @@ $theme: ();
 	$theme: map.set($theme, 'video-timeline-buffer-bg', var(--video-timeline-buffer-bg));
 	$theme: map.set($theme, 'video-timeline-runway-bg', var(--video-timeline-runway-bg));
 	$theme: map.set($theme, 'video-timeline-bar-color', var(--video-timeline-bar-color));
+	$theme: map.set($theme, 'switch-off-bg', var(--switch-off-bg));
+	$theme: map.set($theme, 'switch-off-thumb', var(--switch-off-thumb));
+	$theme: map.set($theme, 'switch-off-text', var(--switch-off-text));
+	$theme: map.set($theme, 'switch-on-bg', var(--switch-on-bg));
 }

@@ -1,0 +1,41 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+body {
+	.el-switch {
+		--el-switch-on-color: #{map.get(token.$theme, 'switch-on-bg')};
+		--el-switch-off-color: #{map.get(token.$theme, 'switch-off-bg')};
+		.el-switch__core {
+			height: 24px;
+			border-radius: 12px;
+			.el-switch__inner {
+				padding-right: 8px;
+				padding-left: 24px;
+				&-wrapper {
+					color: map.get(token.$theme, 'switch-off-text');
+				}
+			}
+			.el-switch__action {
+				width: 18px;
+				height: 18px;
+				background-color: map.get(token.$theme, 'switch-off-thumb');
+				left: 2px;
+			}
+		}
+		&.is-checked {
+			.el-switch__core {
+				.el-switch__inner {
+					padding-left: 8px;
+					padding-right: 24px;
+					&-wrapper {
+						color: #fff;
+					}
+				}
+				.el-switch__action {
+					left: calc(100% - 20px);
+					background-color: #fff;
+				}
+			}
+		}
+	}
+}

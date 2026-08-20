@@ -57,6 +57,7 @@ const { systemInfo } = storeToRefs(useSystemStore());
 		vertical-align: middle;
 	}
 	.system-info {
+		width: calc(100% + 3rem);
 		display: flex;
 		flex-direction: row;
 		flex-wrap: nowrap;

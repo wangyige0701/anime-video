@@ -1,7 +1,7 @@
 <template>
 	<div class="video-core" ref="videoCoreRef">
 		<div class="video-player">
-			<VideoPlayer ref="videoPlayerRef" />
+			<VideoPlayer ref="videoPlayerRef" @auto-next="videoControllerRef?.autoNext()" />
 		</div>
 		<div
 			ref="videoMask"
@@ -14,7 +14,7 @@
 				<VideoTitle />
 			</div>
 			<div ref="videoController" class="video-controller">
-				<VideoController @toggle-fullscreen="toggleFullscreen" @shot="shot" />
+				<VideoController ref="videoControllerRef" @toggle-fullscreen="toggleFullscreen" @shot="shot" />
 			</div>
 			<div ref="closeButton" class="close">
 				<el-button text @click.stop="close">
@@ -55,6 +55,7 @@ const videoMask = useTemplateRef('videoMask');
 const videoPlayerRef = useTemplateRef('videoPlayerRef');
 const videoController = useTemplateRef('videoController');
 const closeButton = useTemplateRef('closeButton');
+const videoControllerRef = useTemplateRef('videoControllerRef');
 let playToggleTimeout: ReturnType<typeof setTimeout> | undefined;
 
 useVideoControllerActivity({

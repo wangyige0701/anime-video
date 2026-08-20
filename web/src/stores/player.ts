@@ -28,6 +28,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const isControllerActive = ref(false);
 	const isVolumeDragging = ref(false);
 	const isFullScreen = ref(false);
+	const isAutoPlay = ref(true);
 	let videoRequestVersion = 0;
 
 	async function setVideo(data: VideoPlayData) {
@@ -151,6 +152,10 @@ export const usePlayerStore = defineStore('player', () => {
 		isVolumeDragging.value = dragging;
 	}
 
+	function setIsAutoPlay(autoPlay: boolean) {
+		isAutoPlay.value = autoPlay;
+	}
+
 	function reset() {
 		isPlaying.value = false;
 		seriesTitle.value = '';
@@ -193,6 +198,8 @@ export const usePlayerStore = defineStore('player', () => {
 		isVolumeDragging,
 		/** 是否全屏 */
 		isFullScreen,
+		/** 是否自动播放 */
+		isAutoPlay,
 		/** 设置视频信息 */
 		setVideo,
 		/** 播放视频 */
@@ -227,6 +234,8 @@ export const usePlayerStore = defineStore('player', () => {
 		setIsVolumeDragging,
 		/** 设置是否全屏 */
 		setIsFullScreen,
+		/** 设置是否自动播放 */
+		setIsAutoPlay,
 	};
 });
 

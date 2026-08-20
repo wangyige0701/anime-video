@@ -17,6 +17,10 @@ import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
 import { takeVideoShotToClipboard } from '@/utils/videoShot';
 
+const emit = defineEmits<{
+	(e: 'autoNext'): void;
+}>();
+
 let hls: Hls | null = null;
 let isInitialized = false;
 let isMetadataLoaded = false;
@@ -27,6 +31,8 @@ let playRequestVersion = 0;
 let activeHlsSourceVersion = 0;
 let activeHlsSourceUrl = '';
 let bufferSyncFrame: number | null = null;
+const END_THRESHOLD = 0.25;
+let endHandled = false;
 const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
@@ -34,6 +40,7 @@ const video = useTemplateRef('video');
 watch(
 	() => playerStore.videoPath,
 	async (path) => {
+		endHandled = false;
 		const currentSourceVersion = ++sourceVersion;
 		isMetadataLoaded = false;
 		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
@@ -259,12 +266,37 @@ function handleEnded() {
 		playerStore.seek(duration);
 	}
 	playerStore.pause();
+	autoNextVideo();
+}
+
+function isAtEnd() {
+	const el = video.value;
+	return Boolean(
+		el && Number.isFinite(el.duration) && el.duration > 0 && el.currentTime >= el.duration - END_THRESHOLD,
+	);
+}
+
+function finishPlayback() {
+	if (endHandled) {
+		return;
+	}
+	endHandled = true;
+	handleEnded();
+}
+
+function handleSeeked() {
+	scheduleBufferedRangesSync();
+	if (isAtEnd()) {
+		finishPlayback();
+	} else {
+		endHandled = false;
+	}
 }
 
 useEventListener(video, 'timeupdate', handleTimeUpdate);
 useEventListener(video, 'loadedmetadata', handleLoadedMetadata);
 useEventListener(video, 'progress', scheduleBufferedRangesSync);
-useEventListener(video, 'seeked', scheduleBufferedRangesSync);
+useEventListener(video, 'seeked', handleSeeked);
 useEventListener(video, 'emptied', () => playerStore.resetBuffer());
 useEventListener(video, 'loadstart', handleLoadStart);
 useEventListener(video, 'waiting', () => playerStore.setLoading(true));
@@ -272,7 +304,7 @@ useEventListener(video, 'stalled', () => playerStore.setLoading(true));
 useEventListener(video, 'loadeddata', () => playerStore.setLoading(false));
 useEventListener(video, 'canplay', () => playerStore.setLoading(false));
 useEventListener(video, 'error', handleError);
-useEventListener(video, 'ended', handleEnded);
+useEventListener(video, 'ended', finishPlayback);
 useEventListener(video, 'play', () => playerStore.play());
 useEventListener(video, 'playing', () => playerStore.setLoading(false));
 useEventListener(video, 'pause', () => playerStore.pause());
@@ -285,6 +317,13 @@ function getErrorMessage(error: unknown, fallback: string) {
 		return error;
 	}
 	return fallback;
+}
+
+function autoNextVideo() {
+	if (!playerStore.isAutoPlay) {
+		return;
+	}
+	emit('autoNext');
 }
 
 onMounted(() => {

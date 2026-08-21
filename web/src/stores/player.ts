@@ -1,7 +1,7 @@
 import type { VideoPlayData } from '@/@types/video';
-import { DEFAULT_VOLUME, PLAYBACK_RATES, VOLUME_STORAGE_KEY } from '@/config/constants';
+import { AUTO_PLAY_STORAGE_KEY, DEFAULT_VOLUME, PLAYBACK_RATES, VOLUME_STORAGE_KEY } from '@/config/constants';
 import { VideoInfoStorage } from '@/utils/videoInfoStorage';
-import { isNumber } from '@wang-yige/utils';
+import { isNumber, toBoolean } from '@wang-yige/utils';
 import Hls from 'hls.js';
 
 export const usePlayerStore = defineStore('player', () => {
@@ -28,7 +28,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const isControllerActive = ref(false);
 	const isVolumeDragging = ref(false);
 	const isFullScreen = ref(false);
-	const isAutoPlay = ref(true);
+	const isAutoPlay = ref(readStoredAutoPlay());
 	let videoRequestVersion = 0;
 
 	async function setVideo(data: VideoPlayData) {
@@ -154,6 +154,7 @@ export const usePlayerStore = defineStore('player', () => {
 
 	function setIsAutoPlay(autoPlay: boolean) {
 		isAutoPlay.value = autoPlay;
+		localStorage.setItem(AUTO_PLAY_STORAGE_KEY, autoPlay.toString());
 	}
 
 	function reset() {
@@ -253,5 +254,14 @@ function readStoredVolume() {
 		return storedValue === null ? DEFAULT_VOLUME : normalizeVolumePercent(Number(storedValue));
 	} catch {
 		return DEFAULT_VOLUME;
+	}
+}
+
+function readStoredAutoPlay() {
+	try {
+		const storedValue = localStorage.getItem(AUTO_PLAY_STORAGE_KEY);
+		return storedValue === null ? true : toBoolean(storedValue);
+	} catch {
+		return true;
 	}
 }

@@ -3,9 +3,9 @@
 		<div
 			ref="track"
 			class="track"
-			@mouseenter="status.onMouseEnter()"
-			@mousemove="handleTrackMouseMove"
-			@mouseleave="status.offMouseEnter()"
+			:class="{ 'in-track': status.mouseEnter || status.dragging }"
+			@mouseenter="handleTrackMouseEnter"
+			@mouseleave="handleTrackMouseLeave"
 			@click.stop="handleTrackClick"
 		>
 			<div class="line">
@@ -35,19 +35,21 @@
 				virtual-triggering
 			></el-tooltip>
 		</div>
-		<div
-			v-if="status.mouseEnter || status.dragging"
-			class="pointer"
-			:class="{ enter: status.mouseEnter, dragging: status.dragging }"
-			:style="{ '--x': `${pointerPosition}px` }"
-		>
-			<el-icon class="pointer__icon pointer__icon--top" size=".75rem">
-				<Pointer direction="bottom" />
-			</el-icon>
-			<el-icon class="pointer__icon pointer__icon--bottom" size=".75rem">
-				<Pointer />
-			</el-icon>
-		</div>
+		<Transition name="pointer">
+			<div
+				v-if="status.mouseEnter || status.dragging"
+				class="pointer"
+				:class="{ enter: status.mouseEnter, dragging: status.dragging }"
+				:style="{ '--x': `${pointerPosition}px` }"
+			>
+				<el-icon class="pointer__icon pointer__icon--top" size=".75rem">
+					<Pointer direction="bottom" />
+				</el-icon>
+				<el-icon class="pointer__icon pointer__icon--bottom" size=".75rem">
+					<Pointer />
+				</el-icon>
+			</div>
+		</Transition>
 	</div>
 </template>
 
@@ -101,6 +103,7 @@ watch(
 );
 
 useEventListener(window, 'pointermove', updateDragging);
+useEventListener(window, 'mousemove', handleTrackMouseMove);
 useEventListener(window, 'pointerup', stopDragging);
 useEventListener(window, 'pointercancel', stopDragging);
 useEventListener(window, 'blur', () => stopDragging());
@@ -119,6 +122,24 @@ const setCurrentTimeDebounce = useDebounceFn(async (time: number) => {
 	playerStore.play();
 	isSyncCurrentTime = true;
 }, 500);
+
+const trackMouseEnterDebounce = useDebounceFn((event: MouseEvent) => {
+	getPointerTime(event);
+	status.onMouseEnter();
+}, 100);
+const trackMouseLeaveDebounce = useDebounceFn(() => {
+	status.offMouseEnter();
+}, 100);
+
+function handleTrackMouseEnter(event: MouseEvent) {
+	trackMouseLeaveDebounce.cancel();
+	trackMouseEnterDebounce(event);
+}
+
+function handleTrackMouseLeave() {
+	trackMouseEnterDebounce.cancel();
+	trackMouseLeaveDebounce();
+}
 
 function seek(time: number) {
 	isSyncCurrentTime = false;
@@ -172,7 +193,9 @@ function updateTooltipPosition() {
 }
 
 function handleTrackMouseMove(event: MouseEvent) {
-	status.onMouseEnter();
+	if (!status.mouseEnter && !status.dragging) {
+		return;
+	}
 	getPointerTime(event);
 }
 
@@ -249,12 +272,13 @@ function stopDragging(event?: PointerEvent) {
 	.track {
 		cursor: pointer;
 		width: calc(100% - var(--bar-width) - 2px);
-		height: var(--progress-height);
+		height: calc(var(--progress-height) * var(--progress-sale));
 		transition: transform 0.3s ease;
 		transform-origin: bottom center;
 		position: relative;
 		z-index: 2;
-		&:hover {
+		&:hover,
+		&.in-track {
 			transform: scaleY(var(--progress-sale));
 			.line {
 				border-radius: calc(var(--progress-height) * var(--progress-sale) / 2) /
@@ -267,9 +291,11 @@ function stopDragging(event?: PointerEvent) {
 		}
 		.line {
 			width: 100%;
-			height: 100%;
+			height: var(--progress-height);
 			background-color: map.get(token.$theme, 'video-timeline-bg');
-			position: relative;
+			position: absolute;
+			left: 0;
+			bottom: 0;
 			border-radius: calc(var(--progress-height) / 2);
 			transition: border-radius 0.3s ease;
 			overflow: hidden;
@@ -297,6 +323,7 @@ function stopDragging(event?: PointerEvent) {
 			position: absolute;
 			top: 50%;
 			left: v-bind('runwayRatio');
+			transform: translateY(calc(var(--progress-height) * (var(--progress-sale) - 1) / 2));
 			&.dragging {
 				.bar {
 					@include bar-active;
@@ -354,9 +381,36 @@ function stopDragging(event?: PointerEvent) {
 		&.dragging {
 			height: calc(var(--progress-height) * var(--progress-sale));
 		}
-		&.dragging:not(.enter) {
-			height: var(--progress-height);
-		}
+	}
+}
+
+.pointer-enter-active {
+	animation: pop-in 0.25s ease-out;
+}
+.pointer-leave-active {
+	animation: pop-out 0.18s ease-in forwards;
+}
+@keyframes pop-in {
+	0% {
+		transform: scale(0.6);
+		opacity: 0;
+	}
+	70% {
+		transform: scale(1.05);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(1);
+	}
+}
+@keyframes pop-out {
+	0% {
+		transform: scale(1);
+		opacity: 1;
+	}
+	100% {
+		transform: scale(0.6);
+		opacity: 0;
 	}
 }
 </style>

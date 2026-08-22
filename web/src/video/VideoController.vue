@@ -54,6 +54,7 @@
 				<VideoEpisodes ref="episodesRef" :popover-container="tooltipContainer" :disabled="isTimelineDragging" />
 				<!-- 自动播放开关 -->
 				<el-switch
+					:data-tooltip="playerStore.isAutoPlay ? '已开启自动连播' : '已关闭自动连播'"
 					inactive-text="单播"
 					active-text="连播"
 					:active-value="true"

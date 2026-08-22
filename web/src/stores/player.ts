@@ -73,6 +73,11 @@ export const usePlayerStore = defineStore('player', () => {
 		}
 	}
 
+	function clearSeekStorage() {
+		const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
+		void storage.deleteEpisode(VideoInfoStorage.CURRENT_TIME_FIELD);
+	}
+
 	function play() {
 		isPlaying.value = true;
 	}
@@ -211,6 +216,8 @@ export const usePlayerStore = defineStore('player', () => {
 		togglePlay,
 		/** 设置当前播放时间 */
 		seek,
+		/** 清除当前播放时间存储 */
+		clearSeekStorage,
 		/** 重置播放信息 */
 		reset,
 		/** 设置音量 */

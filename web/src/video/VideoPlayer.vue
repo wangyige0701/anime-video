@@ -260,12 +260,9 @@ function handleError() {
 }
 
 function handleEnded() {
-	const duration = video.value?.duration;
 	playerStore.setLoading(false);
-	if (duration !== undefined && Number.isFinite(duration) && duration > 0) {
-		playerStore.seek(duration);
-	}
 	playerStore.pause();
+	playerStore.clearSeekStorage();
 	autoNextVideo();
 }
 
@@ -359,6 +356,9 @@ onMounted(() => {
 				ElMessage.error(data.details || '视频播放错误');
 			}
 		});
+		hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_, data) => {
+			console.log(data.subtitleTracks);
+		});
 	} else if (!playerStore.isSupportedNative) {
 		playerStore.setLoading(false);
 		rejectInitialized('浏览器不支持 HLS');
@@ -413,5 +413,18 @@ defineExpose({
 	left: 50%;
 	transform: translate(-50%, -50%);
 	color: map.get(token.$theme, 'l-9');
+}
+</style>
+<style lang="scss">
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+.video-target {
+	&::cue {
+		color: map.get(token.$theme, 'l-9');
+		font-size: 1rem;
+		font-weight: 500;
+		background-color: transparent;
+	}
 }
 </style>

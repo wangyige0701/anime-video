@@ -8,10 +8,13 @@ import { createPinia } from 'pinia';
 
 import App from './App.vue';
 import router from './router';
+import { usePlayerStore } from './stores/player.ts';
 
 const app = createApp(App);
 
 app.use(createPinia());
 app.use(router);
+
+await usePlayerStore().initialize();
 
 app.mount('#app');

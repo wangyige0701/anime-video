@@ -1,4 +1,5 @@
 import { VIDEO_INFO_STORAGE_KEY } from '@/config/constants';
+import { createPromise, type Fn } from '@wang-yige/utils';
 
 const SERIES_ID_FIELD = 'seriesId';
 const SERIES_SEASONS_FIELD = 'seasons';
@@ -49,6 +50,61 @@ type VideoInfoCache = StoredSeries[];
  * ```
  */
 export class VideoInfoStorage {
+	private static queue: Map<string, { timeout?: number; promise?: Promise<void>; resolves?: Array<Fn<[]>> }> =
+		new Map();
+
+	public static async get<T>(key: string, defaultValue?: T): Promise<T> {
+		if (this.queue.has(key)) {
+			const { promise } = this.queue.get(key)!;
+			if (promise) {
+				await promise;
+			}
+		}
+		try {
+			const value = JSON.parse(localStorage.getItem(key)!) as { v: T; t: number; __persist: boolean };
+			if (!value.__persist && Date.now() - value.t > EXPIRE_TIME) {
+				await this.delete(key);
+				return defaultValue as T;
+			}
+			return value?.v ?? (defaultValue as T);
+		} catch (error) {
+			return defaultValue as T;
+		}
+	}
+
+	public static async set<T>(key: string, value: T, persist: boolean = false): Promise<void> {
+		if (this.queue.has(key)) {
+			const timeout = this.queue.get(key)!.timeout;
+			timeout && clearTimeout(timeout);
+		} else {
+			this.queue.set(key, {});
+		}
+		const target = this.queue.get(key)!;
+		if (!target.resolves) {
+			target.resolves = [];
+		}
+		const { promise, resolve } = createPromise<void>();
+		target.promise = promise;
+		target.resolves.push(resolve);
+		target.timeout = setTimeout(() => {
+			try {
+				localStorage.setItem(key, JSON.stringify({ v: value, t: Date.now(), __persist: persist }));
+			} catch (error) {}
+			target.resolves!.forEach((resolve) => resolve());
+			target.resolves!.length = 0;
+			if (promise === target.promise) {
+				target.promise = undefined;
+				target.timeout = undefined;
+				this.queue.delete(key);
+			}
+		}, 100);
+		return promise;
+	}
+
+	public static async delete(key: string): Promise<void> {
+		localStorage.removeItem(key);
+	}
+
 	public static readonly CURRENT_TIME_FIELD = 'currentTime';
 	private static readonly RESERVED = new Set([
 		SERIES_ID_FIELD,
@@ -67,7 +123,7 @@ export class VideoInfoStorage {
 			return this.cache;
 		}
 		try {
-			const stored = JSON.parse(localStorage.getItem(VIDEO_INFO_STORAGE_KEY) ?? '[]') as unknown;
+			const stored = await this.get(VIDEO_INFO_STORAGE_KEY, []);
 			this.cache = Array.isArray(stored) ? (stored as VideoInfoCache) : [];
 		} catch {
 			this.cache = [];
@@ -82,7 +138,7 @@ export class VideoInfoStorage {
 		this.persistTimer = setTimeout(() => {
 			this.persistTimer = void 0;
 			try {
-				localStorage.setItem(VIDEO_INFO_STORAGE_KEY, JSON.stringify(value));
+				this.set(VIDEO_INFO_STORAGE_KEY, value, true);
 			} catch {
 				// Storage can be unavailable or full; the in-memory cache remains usable.
 			}

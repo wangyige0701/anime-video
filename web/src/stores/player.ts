@@ -1,5 +1,16 @@
 import type { VideoPlayData } from '@/@types/video';
-import { AUTO_PLAY_STORAGE_KEY, DEFAULT_VOLUME, PLAYBACK_RATES, VOLUME_STORAGE_KEY } from '@/config/constants';
+import {
+	AUTO_PLAY_STORAGE_KEY,
+	DEFAULT_VOLUME,
+	PLAYBACK_RATES,
+	VOLUME_STORAGE_KEY,
+	SUBTITLE_TRACK_STORAGE_KEY,
+	LAST_SEASON_ID_FIELD,
+	LAST_EPISODE_ID_FIELD,
+	LAST_SERIES_ID_STORAGE_KEY,
+	DEFAULT_AUTO_PLAY,
+	DEFAULT_SUBTITLE_TRACK,
+} from '@/config/constants';
 import { VideoInfoStorage } from '@/utils/videoInfoStorage';
 import { isNumber, toBoolean } from '@wang-yige/utils';
 import Hls from 'hls.js';
@@ -22,14 +33,21 @@ export const usePlayerStore = defineStore('player', () => {
 	const currentTime = ref(0);
 	const duration = ref(0);
 	const buffer = ref<Array<[number, number]>>([]);
-	const volume = ref(readStoredVolume());
+	const volume = ref(DEFAULT_VOLUME);
 	const playbackRate = ref<(typeof PLAYBACK_RATES)[number]>(PLAYBACK_RATES[0]);
 	const isLoading = ref(true);
 	const isControllerActive = ref(false);
 	const isVolumeDragging = ref(false);
 	const isFullScreen = ref(false);
-	const isAutoPlay = ref(readStoredAutoPlay());
+	const isAutoPlay = ref(DEFAULT_AUTO_PLAY);
+	const isSubtitleTrack = ref(DEFAULT_SUBTITLE_TRACK);
 	let videoRequestVersion = 0;
+
+	async function initialize() {
+		volume.value = normalizeVolumePercent(await VideoInfoStorage.get<number>(VOLUME_STORAGE_KEY, DEFAULT_VOLUME));
+		isAutoPlay.value = await VideoInfoStorage.get<boolean>(AUTO_PLAY_STORAGE_KEY, DEFAULT_AUTO_PLAY);
+		isSubtitleTrack.value = await VideoInfoStorage.get<boolean>(SUBTITLE_TRACK_STORAGE_KEY, DEFAULT_SUBTITLE_TRACK);
+	}
 
 	async function setVideo(data: VideoPlayData) {
 		const requestVersion = ++videoRequestVersion;
@@ -40,10 +58,18 @@ export const usePlayerStore = defineStore('player', () => {
 		seasonTitle.value = data.seasonTitle;
 		episodeTitle.value = data.episodeTitle;
 		videoPath.value = data.videoPath;
+		if (seriesId.value && seasonId.value && episodeId.value) {
+			const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
+			void storage.setSeries(LAST_SEASON_ID_FIELD, seasonId.value);
+			void storage.setSeries(LAST_EPISODE_ID_FIELD, episodeId.value);
+		}
+		if (seriesId.value) {
+			await VideoInfoStorage.set(LAST_SERIES_ID_STORAGE_KEY, seriesId.value, true);
+		}
 		pause();
 		setDuration(0);
 		if (isNumber(data.currentTime) && data.currentTime >= 0) {
-			currentTime.value = data.currentTime;
+			seek(data.currentTime);
 		} else {
 			const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
 			const record = await storage.getEpisode<number>(VideoInfoStorage.CURRENT_TIME_FIELD);
@@ -51,9 +77,9 @@ export const usePlayerStore = defineStore('player', () => {
 				return;
 			}
 			if (isValidPlaybackTime(record)) {
-				currentTime.value = record;
+				seek(record);
 			} else {
-				currentTime.value = 0;
+				seek(0);
 				if (record !== undefined) {
 					void storage.deleteEpisode(VideoInfoStorage.CURRENT_TIME_FIELD);
 				}
@@ -97,7 +123,7 @@ export const usePlayerStore = defineStore('player', () => {
 	function setVolume(vol: number) {
 		const volumePercent = normalizeVolumePercent(vol);
 		volume.value = volumePercent;
-		localStorage.setItem(VOLUME_STORAGE_KEY, volumePercent.toString());
+		VideoInfoStorage.set(VOLUME_STORAGE_KEY, volumePercent, true);
 	}
 
 	function togglePlaybackRate() {
@@ -159,18 +185,39 @@ export const usePlayerStore = defineStore('player', () => {
 
 	function setIsAutoPlay(autoPlay: boolean) {
 		isAutoPlay.value = autoPlay;
-		localStorage.setItem(AUTO_PLAY_STORAGE_KEY, autoPlay.toString());
+		VideoInfoStorage.set(AUTO_PLAY_STORAGE_KEY, autoPlay, true);
+	}
+
+	function setIsSubtitleTrack(enabled: boolean) {
+		isSubtitleTrack.value = enabled;
+		VideoInfoStorage.set(SUBTITLE_TRACK_STORAGE_KEY, enabled, true);
+	}
+
+	function setSeasonSubtitleTrack(track: number) {
+		if (!seriesId.value || !seasonId.value) {
+			return;
+		}
+		const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
+		void storage.setSeason(SUBTITLE_TRACK_STORAGE_KEY, track);
+	}
+
+	async function getSeasonSubtitleTrack() {
+		if (!seriesId.value || !seasonId.value) {
+			return;
+		}
+		const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
+		return storage.getSeason<number>(SUBTITLE_TRACK_STORAGE_KEY);
 	}
 
 	function reset() {
-		isPlaying.value = false;
+		pause();
 		seriesTitle.value = '';
 		seasonTitle.value = '';
 		episodeTitle.value = '';
 		videoPath.value = '';
-		currentTime.value = 0;
-		duration.value = 0;
-		isLoading.value = true;
+		seek(0);
+		setDuration(0);
+		setLoading(true);
 		resetBuffer();
 		clearControllerActiveTimeout(false);
 	}
@@ -180,6 +227,7 @@ export const usePlayerStore = defineStore('player', () => {
 	}
 
 	return {
+		initialize,
 		isPlaying,
 		seriesTitle,
 		seriesId,
@@ -206,6 +254,8 @@ export const usePlayerStore = defineStore('player', () => {
 		isFullScreen,
 		/** 是否自动播放 */
 		isAutoPlay,
+		/** 是否开启字幕轨道 */
+		isSubtitleTrack,
 		/** 设置视频信息 */
 		setVideo,
 		/** 播放视频 */
@@ -244,6 +294,12 @@ export const usePlayerStore = defineStore('player', () => {
 		setIsFullScreen,
 		/** 设置是否自动播放 */
 		setIsAutoPlay,
+		/** 设置是否开启字幕轨道 */
+		setIsSubtitleTrack,
+		/** 设置当前 season 的字幕源 */
+		setSeasonSubtitleTrack,
+		/** 读取当前 season 的字幕源 */
+		getSeasonSubtitleTrack,
 	};
 });
 
@@ -253,22 +309,4 @@ function normalizeVolumePercent(volume: number) {
 
 function isValidPlaybackTime(value: unknown): value is number {
 	return typeof value === 'number' && Number.isFinite(value) && value >= 0;
-}
-
-function readStoredVolume() {
-	try {
-		const storedValue = localStorage.getItem(VOLUME_STORAGE_KEY);
-		return storedValue === null ? DEFAULT_VOLUME : normalizeVolumePercent(Number(storedValue));
-	} catch {
-		return DEFAULT_VOLUME;
-	}
-}
-
-function readStoredAutoPlay() {
-	try {
-		const storedValue = localStorage.getItem(AUTO_PLAY_STORAGE_KEY);
-		return storedValue === null ? true : toBoolean(storedValue);
-	} catch {
-		return true;
-	}
 }

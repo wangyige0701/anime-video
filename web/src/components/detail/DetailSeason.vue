@@ -16,6 +16,9 @@
 					>
 						<span class="index">第 {{ index + 1 }} 集</span>
 						<span class="title">{{ episode.title }}</span>
+						<el-icon v-if="episode.id === props.lastEpisodeId" class="last-episode" size="2rem">
+							<LastViewedIcon />
+						</el-icon>
 					</div>
 				</template>
 			</div>
@@ -30,6 +33,7 @@ import type { Season } from '@/data/season';
 const props = defineProps<{
 	season: Season;
 	activeEpisodeId?: string;
+	lastEpisodeId?: string;
 }>();
 defineEmits<{
 	(e: 'play', episode: Episode): void;
@@ -120,6 +124,7 @@ const seasonCount = computed(() => props.season.episodes.length);
 	border-radius: 10px;
 	border: 1px solid transparent;
 	background-color: map.get(token.$theme, 'd-4');
+	position: relative;
 	transition:
 		border-color 0.3s ease,
 		box-shadow 0.3s ease,
@@ -139,6 +144,12 @@ const seasonCount = computed(() => props.season.episodes.length);
 		flex: 1;
 		word-break: break-all;
 		color: token.$text-color-secondary;
+	}
+	.last-episode {
+		position: absolute;
+		top: 0.2rem;
+		right: 0.2rem;
+		color: map.get(token.$theme, 'l-9');
 	}
 }
 </style>

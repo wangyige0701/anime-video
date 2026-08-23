@@ -21,6 +21,7 @@
 				<DetailSeason
 					:season="season"
 					:active-episode-id="activeEpisodeId"
+					:last-episode-id="lastEpisodeId"
 					@play="play($event, season, series.value)"
 				></DetailSeason>
 			</template>

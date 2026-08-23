@@ -135,10 +135,10 @@ export class VideoInfoStorage {
 		if (this.persistTimer !== void 0) {
 			clearTimeout(this.persistTimer);
 		}
-		this.persistTimer = setTimeout(() => {
+		this.persistTimer = setTimeout(async () => {
 			this.persistTimer = void 0;
 			try {
-				this.set(VIDEO_INFO_STORAGE_KEY, value, true);
+				await this.set(VIDEO_INFO_STORAGE_KEY, value, true);
 			} catch {
 				// Storage can be unavailable or full; the in-memory cache remains usable.
 			}

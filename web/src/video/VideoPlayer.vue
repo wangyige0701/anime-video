@@ -36,14 +36,11 @@ let endHandled = false;
 const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
-const subtitleTrack = reactive<Array<{ id: number; name: string }>>([]);
-const isSubtitleTrackUseable = ref(false);
 
 watch(
 	() => playerStore.videoPath,
 	async (path) => {
 		endHandled = false;
-		isSubtitleTrackUseable.value = false;
 		const currentSourceVersion = ++sourceVersion;
 		isMetadataLoaded = false;
 		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
@@ -125,6 +122,27 @@ watch(
 	(rate) => {
 		if (video.value) {
 			video.value.playbackRate = rate;
+		}
+	},
+	{ immediate: true, flush: 'sync' },
+);
+
+watch(
+	() => playerStore.subtitleTrackId,
+	async (id) => {
+		try {
+			await initialized;
+		} catch (error) {
+			return;
+		}
+		if (playerStore.isSupportedHls) {
+			hls && (hls.subtitleTrack = id);
+		} else if (playerStore.isSupportedNative) {
+			if (video.value) {
+				for (const track of video.value.textTracks) {
+					track.mode = track.id === id.toString() ? 'showing' : 'disabled';
+				}
+			}
 		}
 	},
 	{ immediate: true, flush: 'sync' },
@@ -245,13 +263,10 @@ function handleLoadedMetadata() {
 	if (!el) {
 		return;
 	}
-	if (playerStore.isSupportedNative) {
+	if (!playerStore.isSupportedHls && playerStore.isSupportedNative) {
 		// 原生支持浏览器读取字幕轨道
-		isSubtitleTrackUseable.value = true;
-		subtitleTrack.splice(
-			0,
-			subtitleTrack.length,
-			...[...el.textTracks].map((track) => {
+		playerStore.setSubtitleTracks(
+			[...el.textTracks].map((track) => {
 				return {
 					id: Number(track.id) || 0,
 					name: track.label || track.language || '',
@@ -374,11 +389,8 @@ onMounted(() => {
 			}
 		});
 		hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_, data) => {
-			isSubtitleTrackUseable.value = true;
-			subtitleTrack.splice(
-				0,
-				subtitleTrack.length,
-				...data.subtitleTracks.map((track) => {
+			playerStore.setSubtitleTracks(
+				data.subtitleTracks.map((track) => {
 					return {
 						id: track.id,
 						name: track.name || track.lang || '',
@@ -413,12 +425,6 @@ defineExpose({
 	shot() {
 		return takeVideoShotToClipboard(video.value);
 	},
-	get isSubtitleTrackUseable() {
-		return isSubtitleTrackUseable.value;
-	},
-	get subtitleTrack() {
-		return subtitleTrack;
-	},
 });
 </script>
 
@@ -446,18 +452,5 @@ defineExpose({
 	left: 50%;
 	transform: translate(-50%, -50%);
 	color: map.get(token.$theme, 'l-9');
-}
-</style>
-<style lang="scss">
-@use 'sass:map';
-@use '@/scss/token.scss' as token;
-
-.video-target {
-	&::cue {
-		color: map.get(token.$theme, 'l-9');
-		font-size: 1rem;
-		font-weight: 500;
-		background-color: transparent;
-	}
 }
 </style>

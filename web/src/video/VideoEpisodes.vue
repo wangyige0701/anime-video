@@ -55,7 +55,6 @@ import type { Season } from '@/data/season';
 import { unref } from 'vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { usePlayerStore } from '@/stores/player';
-import EpisodePlayingIcon from '@/components/icons/EpisodePlayingIcon.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -146,53 +145,18 @@ defineExpose({
 <style scoped lang="scss">
 @use 'sass:map';
 @use '@/scss/token.scss' as token;
-
-@mixin ellipsis {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
+@use './common.scss' as *;
 
 .video-episodes {
 	line-height: 1;
 }
 
 .episodes-title {
-	cursor: pointer;
-	font-size: 0.875rem;
-	padding: 5px 10px;
-	border-radius: 5px;
-	white-space: nowrap;
-	transition: background-color 0.3s ease;
-	&:hover {
-		background-color: rgb(255 255 255 / 0.12);
-	}
+	@include video-controller-reference;
 }
 
 .episodes-list {
-	.el-collapse {
-		--el-collapse-border-color: transparent;
-		--el-collapse-header-bg-color: transparent;
-		--el-collapse-content-bg-color: transparent;
-		--el-collapse-header-text-color: #{map.get(token.$theme, 'l-8')};
-		--el-collapse-content-text-color: #{map.get(token.$theme, 'l-8')};
-		--el-collapse-header-height: 2em;
-		--el-collapse-header-font-size: 0.875rem;
-		--el-collapse-content-font-size: 0.75rem;
-		:deep(.el-icon) {
-			font-size: inherit;
-		}
-		:deep(.el-collapse-item__content) {
-			padding: 0;
-			&:not(:last-child) {
-				padding-bottom: 1em;
-			}
-		}
-		:deep(.el-collapse-item__title) {
-			@include ellipsis;
-			padding-right: 10px;
-		}
-	}
+	@include video-collapse;
 	:deep(.el-scrollbar__wrap) {
 		padding-left: 0;
 	}
@@ -202,46 +166,7 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	.episode-item {
-		cursor: pointer;
-		width: 100%;
-		min-width: 0;
-		height: 2em;
-		padding: 0 0.25em;
-		border: 0;
-		border-radius: 3px;
-		background: transparent;
-		color: inherit;
-		font: inherit;
-		text-align: left;
-		display: flex;
-		flex-direction: row;
-		flex-wrap: nowrap;
-		align-items: center;
-		gap: 5px;
-		transition:
-			color 0.2s ease,
-			background-color 0.2s ease;
-		&:hover,
-		&:focus-visible {
-			background-color: rgb(255 255 255 / 0.12);
-			outline: none;
-		}
-		&.is-active {
-			color: map.get(token.$theme, 'primary');
-		}
-	}
-	.episode-indicator {
-		width: 0.875rem;
-		flex: 0 0 0.875rem;
-		display: inline-flex;
-		justify-content: center;
-		align-items: center;
-	}
-	.episode-title {
-		min-width: 0;
-		flex: 1;
-		@include ellipsis;
-		line-height: 1;
+		@include video-collapse-btn('episode');
 	}
 }
 </style>

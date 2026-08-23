@@ -52,6 +52,13 @@
 			>
 				<!-- 剧集选择 -->
 				<VideoEpisodes ref="episodesRef" :popover-container="tooltipContainer" :disabled="isTimelineDragging" />
+				<!-- 字幕选择 -->
+				<VideoSubtitle
+					v-if="playerStore.isSubtitleTrackUseable && playerStore.subtitleTracks.length"
+					ref="subtitleRef"
+					:popover-container="tooltipContainer"
+					:disabled="isTimelineDragging"
+				/>
 				<!-- 自动播放开关 -->
 				<el-switch
 					:data-tooltip="playerStore.isAutoPlay ? '已开启自动连播' : '已关闭自动连播'"
@@ -104,6 +111,7 @@ import VideoTime from './VideoTime.vue';
 import VideoVolume from './VideoVolume.vue';
 import VideoControllerSpace from './VideoControllerSpace.vue';
 import VideoEpisodes from './VideoEpisodes.vue';
+import VideoSubtitle from './VideoSubtitle.vue';
 
 const emit = defineEmits<{
 	(e: 'toggleFullscreen'): void;

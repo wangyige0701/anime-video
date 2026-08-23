@@ -41,6 +41,10 @@ export const usePlayerStore = defineStore('player', () => {
 	const isFullScreen = ref(false);
 	const isAutoPlay = ref(DEFAULT_AUTO_PLAY);
 	const isSubtitleTrack = ref(DEFAULT_SUBTITLE_TRACK);
+	const isSubtitleTrackUseable = ref(false);
+	const subtitleTracks = ref<Array<{ id: number; name: string }>>([]);
+	const subtitleTrackId = ref<number>(-1);
+
 	let videoRequestVersion = 0;
 
 	async function initialize() {
@@ -58,6 +62,8 @@ export const usePlayerStore = defineStore('player', () => {
 		seasonTitle.value = data.seasonTitle;
 		episodeTitle.value = data.episodeTitle;
 		videoPath.value = data.videoPath;
+		isSubtitleTrackUseable.value = true;
+		subtitleTrackId.value = (await getSeasonSubtitleTrack()) ?? -1;
 		if (seriesId.value && seasonId.value && episodeId.value) {
 			const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
 			void storage.setSeries(LAST_SEASON_ID_FIELD, seasonId.value);
@@ -77,9 +83,9 @@ export const usePlayerStore = defineStore('player', () => {
 				return;
 			}
 			if (isValidPlaybackTime(record)) {
-				seek(record);
+				currentTime.value = record;
 			} else {
-				seek(0);
+				currentTime.value = 0;
 				if (record !== undefined) {
 					void storage.deleteEpisode(VideoInfoStorage.CURRENT_TIME_FIELD);
 				}
@@ -197,6 +203,7 @@ export const usePlayerStore = defineStore('player', () => {
 		if (!seriesId.value || !seasonId.value) {
 			return;
 		}
+		subtitleTrackId.value = track;
 		const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
 		void storage.setSeason(SUBTITLE_TRACK_STORAGE_KEY, track);
 	}
@@ -209,17 +216,24 @@ export const usePlayerStore = defineStore('player', () => {
 		return storage.getSeason<number>(SUBTITLE_TRACK_STORAGE_KEY);
 	}
 
+	function setSubtitleTracks(tracks: Array<{ id: number; name: string }>) {
+		subtitleTracks.value = tracks;
+		isSubtitleTrackUseable.value = true;
+	}
+
 	function reset() {
 		pause();
 		seriesTitle.value = '';
 		seasonTitle.value = '';
 		episodeTitle.value = '';
 		videoPath.value = '';
-		seek(0);
+		currentTime.value = 0;
 		setDuration(0);
 		setLoading(true);
 		resetBuffer();
 		clearControllerActiveTimeout(false);
+		subtitleTracks.value = [];
+		isSubtitleTrackUseable.value = false;
 	}
 
 	function setIsFullScreen(fullScreen: boolean) {
@@ -256,6 +270,12 @@ export const usePlayerStore = defineStore('player', () => {
 		isAutoPlay,
 		/** 是否开启字幕轨道 */
 		isSubtitleTrack,
+		/** 是否字幕轨道可用 */
+		isSubtitleTrackUseable,
+		/** 字幕轨道列表 */
+		subtitleTracks,
+		/** 当前字幕轨道 */
+		subtitleTrackId,
 		/** 设置视频信息 */
 		setVideo,
 		/** 播放视频 */
@@ -300,6 +320,8 @@ export const usePlayerStore = defineStore('player', () => {
 		setSeasonSubtitleTrack,
 		/** 读取当前 season 的字幕源 */
 		getSeasonSubtitleTrack,
+		/** 设置字幕轨道列表 */
+		setSubtitleTracks,
 	};
 });
 

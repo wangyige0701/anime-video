@@ -12,7 +12,7 @@ import {
 	DEFAULT_SUBTITLE_TRACK,
 } from '@/config/constants';
 import { VideoInfoStorage } from '@/utils/videoInfoStorage';
-import { isNumber, toBoolean } from '@wang-yige/utils';
+import { isNumber } from '@wang-yige/utils';
 import Hls from 'hls.js';
 
 export const usePlayerStore = defineStore('player', () => {
@@ -44,6 +44,9 @@ export const usePlayerStore = defineStore('player', () => {
 	const isSubtitleTrackUseable = ref(false);
 	const subtitleTracks = ref<Array<{ id: number; name: string }>>([]);
 	const subtitleTrackId = ref<number>(-1);
+	const lastSeriesId = ref('');
+	const lastSeasonId = ref('');
+	const lastEpisodeId = ref('');
 
 	let videoRequestVersion = 0;
 
@@ -51,6 +54,7 @@ export const usePlayerStore = defineStore('player', () => {
 		volume.value = normalizeVolumePercent(await VideoInfoStorage.get<number>(VOLUME_STORAGE_KEY, DEFAULT_VOLUME));
 		isAutoPlay.value = await VideoInfoStorage.get<boolean>(AUTO_PLAY_STORAGE_KEY, DEFAULT_AUTO_PLAY);
 		isSubtitleTrack.value = await VideoInfoStorage.get<boolean>(SUBTITLE_TRACK_STORAGE_KEY, DEFAULT_SUBTITLE_TRACK);
+		lastSeriesId.value = await VideoInfoStorage.get<string>(LAST_SERIES_ID_STORAGE_KEY, '');
 	}
 
 	async function setVideo(data: VideoPlayData) {
@@ -66,12 +70,11 @@ export const usePlayerStore = defineStore('player', () => {
 		subtitleTrackId.value = (await getSeasonSubtitleTrack()) ?? -1;
 		if (seriesId.value && seasonId.value && episodeId.value) {
 			const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
-			void storage.setSeries(LAST_SEASON_ID_FIELD, seasonId.value);
+			void setSeasonId(seasonId.value);
+			lastEpisodeId.value = episodeId.value;
 			void storage.setSeries(LAST_EPISODE_ID_FIELD, episodeId.value);
 		}
-		if (seriesId.value) {
-			await VideoInfoStorage.set(LAST_SERIES_ID_STORAGE_KEY, seriesId.value, true);
-		}
+		void setSeriesId(seriesId.value);
 		pause();
 		setDuration(0);
 		if (isNumber(data.currentTime) && data.currentTime >= 0) {
@@ -91,6 +94,32 @@ export const usePlayerStore = defineStore('player', () => {
 				}
 			}
 		}
+	}
+
+	async function setSeriesId(id: string) {
+		if (id) {
+			seriesId.value = id;
+			lastSeriesId.value = id;
+			await VideoInfoStorage.set(LAST_SERIES_ID_STORAGE_KEY, id, true);
+		}
+	}
+
+	async function setSeasonId(id: string) {
+		if (id) {
+			seasonId.value = id;
+			lastSeasonId.value = id;
+			await VideoInfoStorage.set(LAST_SEASON_ID_FIELD, id, true);
+		}
+	}
+
+	async function getLastSeasonId() {
+		const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
+		return await storage.getSeries<string>(LAST_SEASON_ID_FIELD);
+	}
+
+	async function getLastEpisodeId() {
+		const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
+		return await storage.getSeries<string>(LAST_EPISODE_ID_FIELD);
 	}
 
 	function seek(time: number) {
@@ -223,8 +252,11 @@ export const usePlayerStore = defineStore('player', () => {
 
 	function reset() {
 		pause();
+		seriesId.value = '';
 		seriesTitle.value = '';
+		seasonId.value = '';
 		seasonTitle.value = '';
+		episodeId.value = '';
 		episodeTitle.value = '';
 		videoPath.value = '';
 		currentTime.value = 0;
@@ -234,6 +266,8 @@ export const usePlayerStore = defineStore('player', () => {
 		clearControllerActiveTimeout(false);
 		subtitleTracks.value = [];
 		isSubtitleTrackUseable.value = false;
+		lastSeasonId.value = '';
+		lastEpisodeId.value = '';
 	}
 
 	function setIsFullScreen(fullScreen: boolean) {
@@ -278,6 +312,14 @@ export const usePlayerStore = defineStore('player', () => {
 		subtitleTrackId,
 		/** 设置视频信息 */
 		setVideo,
+		/** 设置当前 series 的 ID */
+		setSeriesId,
+		/** 设置当前 season 的 ID */
+		setSeasonId,
+		/** 获取上一个 season 的 ID */
+		getLastSeasonId,
+		/** 获取上一个 episode 的 ID */
+		getLastEpisodeId,
 		/** 播放视频 */
 		play,
 		/** 暂停视频 */

@@ -35,7 +35,9 @@
 													<EpisodePlayingIcon :is-playing="playerStore.isPlaying" />
 												</el-icon>
 											</span>
-											<span class="episode-title">{{ episode.title }}</span>
+											<span class="episode-title" :title="episode.title">
+												{{ episode.title }}
+											</span>
 										</button>
 									</template>
 								</div>

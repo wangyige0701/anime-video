@@ -10,7 +10,13 @@
 					></el-image>
 				</div>
 				<div class="name">
-					<el-tooltip :content="item.name" placement="bottom">
+					<el-tooltip
+						:content="item.name"
+						placement="bottom"
+						:show-after="0"
+						:hide-after="0"
+						:enterable="false"
+					>
 						<span class="name-text">{{ item.name }}</span>
 					</el-tooltip>
 				</div>

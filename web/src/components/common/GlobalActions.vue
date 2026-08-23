@@ -16,18 +16,14 @@
 
 <script setup lang="ts">
 import { Refresh } from '@element-plus/icons-vue';
-import { useVideoStore } from '@/stores/video';
+import { usePlayerStore } from '@/stores/player';
 import { refreshEmitter } from '@/events/refresh';
+import { useVideoStore } from '@/stores/video';
 
+const playerStore = usePlayerStore();
 const videoStore = useVideoStore();
 const status = useVueStatusRef('refresh');
-const detailSeries = computed(() => {
-	if (videoStore.currentSeries) {
-		return videoStore.currentSeries.value;
-	}
-	return;
-});
-const isDetail = computed(() => !!detailSeries.value?.id);
+const isDetail = computed(() => !!playerStore.seriesId);
 
 async function handleRefresh() {
 	if (status.refresh) {
@@ -36,7 +32,7 @@ async function handleRefresh() {
 	status.onRefresh();
 	try {
 		if (isDetail.value) {
-			await videoStore.refreshSeries(detailSeries.value!.id);
+			await videoStore.refreshSeries(playerStore.seriesId);
 		} else {
 			const series = await videoStore.refresh();
 			refreshEmitter.emit('series', series);

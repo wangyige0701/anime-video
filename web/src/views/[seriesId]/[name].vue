@@ -42,18 +42,21 @@ import { getSeriesTypeName } from '~config/seriesTypes';
 import { getSeriesStatusName } from '~config/seriesStatus';
 import VideoBox from '@/components/detail/VideoBox.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
+import { usePlayerStore } from '@/stores/player';
 
 definePage({
 	name: 'Detail',
 });
 
 let isUnmounted = false;
+const playerStore = usePlayerStore();
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
 const status = useVueStatusRef('waiting').onWaiting();
 const videoBoxRef = useTemplateRef('videoBoxRef');
 const series = shallowReactive<{ value: Series }>({ value: {} as Series });
 const activeSeasonId = ref<string>('');
 const activeEpisodeId = ref<string>('');
+const lastEpisodeId = ref<string>('');
 
 provide(
 	DETAIL_SERIES_DATA,
@@ -79,18 +82,29 @@ onMounted(async () => {
 	try {
 		const info = await useVideoStore().getSeriesDetail(seriesId);
 		series.value = info;
-		activeSeasonId.value = series.value.seasons?.[0]?.id || '';
+		if (!isUnmounted) {
+			playerStore.setSeriesId(series.value.id);
+			const lastSeasonId = await playerStore.getLastSeasonId();
+			if (lastSeasonId) {
+				activeSeasonId.value = lastSeasonId;
+			} else {
+				activeSeasonId.value = series.value.seasons?.[0]?.id || '';
+			}
+			const lastEpisodeIdValue = await playerStore.getLastEpisodeId();
+			if (lastEpisodeIdValue) {
+				lastEpisodeId.value = lastEpisodeIdValue;
+			}
+		}
 		status.offWaiting();
-		!isUnmounted && useVideoStore().setCurrentSeries(series.value);
 	} catch (error) {
 		router.replace({ name: WebRoute.INDEX, replace: true });
-		useVideoStore().resetCurrentSeries();
+		playerStore.reset();
 	}
 });
 
 onBeforeUnmount(() => {
 	isUnmounted = true;
-	useVideoStore().resetCurrentSeries();
+	playerStore.reset();
 });
 </script>
 

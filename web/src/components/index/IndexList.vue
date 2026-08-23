@@ -13,7 +13,7 @@
 					<el-tooltip
 						:content="item.name"
 						placement="bottom"
-						:show-after="0"
+						:show-after="300"
 						:hide-after="0"
 						:enterable="false"
 					>

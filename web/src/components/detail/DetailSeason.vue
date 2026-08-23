@@ -16,9 +16,18 @@
 					>
 						<span class="index">第 {{ index + 1 }} 集</span>
 						<span class="title">{{ episode.title }}</span>
-						<el-icon v-if="episode.id === props.lastEpisodeId" class="last-episode" size="2rem">
-							<LastViewedIcon />
-						</el-icon>
+						<el-tooltip
+							v-if="episode.id === props.lastEpisodeId"
+							content="最后观看"
+							placement="top"
+							:show-after="300"
+							:hide-after="0"
+							:enterable="false"
+						>
+							<el-icon class="last-episode" size="2rem">
+								<LastViewedIcon />
+							</el-icon>
+						</el-tooltip>
 					</div>
 				</template>
 			</div>

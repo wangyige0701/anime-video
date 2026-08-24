@@ -16,6 +16,7 @@ import { createPromise } from '@wang-yige/utils';
 import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
 import { takeVideoShotToClipboard } from '@/utils/videoShot';
+import { isEditingElement } from '@/utils/is';
 
 const emit = defineEmits<{
 	(e: 'autoNext'): void;
@@ -186,10 +187,6 @@ function applyVolume(volume = playerStore.volume) {
 		const volumePercent = Number.isFinite(volume) ? Math.min(Math.max(volume, 0), 100) : 100;
 		video.value.volume = volumePercent / 100;
 	}
-}
-
-function isEditingElement(target: EventTarget | null) {
-	return target instanceof Element && Boolean(target.closest('input, textarea, select, button, [contenteditable]'));
 }
 
 function scheduleBufferedRangesSync() {

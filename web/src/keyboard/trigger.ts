@@ -26,5 +26,7 @@ export function triggerKeyboardEvent(e: KeyboardEvent) {
 	if (!isFunction(fn)) {
 		return;
 	}
+	e.stopPropagation();
+	e.preventDefault();
 	fn();
 }

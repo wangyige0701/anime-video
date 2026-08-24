@@ -40,6 +40,18 @@
 					<PlayToggleIcon :play="!playerStore.isPlaying" />
 				</el-icon>
 			</div>
+			<Transition name="fade">
+				<div v-if="status.volume" class="volume-tip">
+					<el-icon class="video-icon">
+						<VolumeToggleIcon
+							ref="volumeIcon"
+							:volume="playerStore.volume"
+							@update:volume="playerStore.setVolume($event)"
+						/>
+					</el-icon>
+					<span>{{ playerStore.volume }}%</span>
+				</div>
+			</Transition>
 		</div>
 	</div>
 </template>
@@ -68,10 +80,12 @@ const videoPlayerRef = useTemplateRef('videoPlayerRef');
 const videoController = useTemplateRef('videoController');
 const closeButton = useTemplateRef('closeButton');
 const videoControllerRef = useTemplateRef('videoControllerRef');
+const status = useVueStatusRef('volume');
 let playToggleTimeout: ReturnType<typeof setTimeout> | undefined;
+let volumeTipTimeout: ReturnType<typeof setTimeout> | undefined;
 
-useKeyboardAction(KeyboardAction.VolumeUp, () => playerStore.volumeUp(10));
-useKeyboardAction(KeyboardAction.VolumeDown, () => playerStore.volumeDown(10));
+useKeyboardAction(KeyboardAction.VolumeUp, () => volumeUp(10));
+useKeyboardAction(KeyboardAction.VolumeDown, () => volumeDown(10));
 useKeyboardAction(KeyboardAction.ToggleFullscreen, toggleFullscreen);
 
 useVideoControllerActivity({
@@ -89,6 +103,23 @@ useEventListener(window, 'keydown', (e) => {
 	}
 	triggerKeyboardEvent(e);
 });
+
+useEventListener(
+	videoCoreRef,
+	'click',
+	(e) => {
+		const target = e.target as HTMLElement;
+		if (!target.closest) {
+			return;
+		}
+		const button = target.closest('button');
+		if (!button) {
+			return;
+		}
+		button.blur();
+	},
+	{ capture: true },
+);
 
 onBeforeUnmount(() => {
 	playToggleTimeout && clearTimeout(playToggleTimeout);
@@ -122,6 +153,27 @@ function close() {
 		document.exitFullscreen();
 	}
 	emit('close');
+}
+
+function volumeUp(step = 10) {
+	playerStore.setVolume(playerStore.volume + step);
+	showVolumeTip();
+}
+
+function volumeDown(step = 10) {
+	playerStore.setVolume(playerStore.volume - step);
+	showVolumeTip();
+}
+
+function showVolumeTip() {
+	if (volumeTipTimeout) {
+		clearTimeout(volumeTipTimeout);
+	}
+	status.onVolume();
+	volumeTipTimeout = setTimeout(() => {
+		volumeTipTimeout = void 0;
+		status.offVolume();
+	}, 1000);
 }
 </script>
 
@@ -221,5 +273,25 @@ function close() {
 		opacity: 0;
 		transition-delay: 160ms;
 	}
+}
+
+.volume-tip {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background-color: map.get(token.$theme, 'l-9');
+	color: map.get(token.$theme, 'd-9');
+	box-shadow: 0 0 5px map.get(token.$theme, 'l-6');
+	border-radius: 5px;
+	font-size: 1.2rem;
+	font-weight: 500;
+	padding: 10px 1rem;
+	z-index: 30;
 }
 </style>

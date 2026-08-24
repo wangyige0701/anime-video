@@ -130,7 +130,7 @@ watch(
 
 watch(
 	[() => playerStore.subtitleTrackId, () => playerStore.isSubtitleTrackUseable],
-	async ([id, useable]) => {
+	([id, useable]) => {
 		if (!useable) {
 			return;
 		}

@@ -16,14 +16,13 @@ import { createPromise } from '@wang-yige/utils';
 import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
 import { takeVideoShotToClipboard } from '@/utils/videoShot';
-import { isEditingElement } from '@/utils/is';
+import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
 
 const emit = defineEmits<{
 	(e: 'autoNext'): void;
 }>();
 
 let hls: Hls | null = null;
-let isInitialized = false;
 let isMetadataLoaded = false;
 let isSyncingCurrentTime = false;
 let pendingCurrentTime: number | undefined;
@@ -32,11 +31,13 @@ let playRequestVersion = 0;
 let activeHlsSourceVersion = 0;
 let activeHlsSourceUrl = '';
 let bufferSyncFrame: number | null = null;
-const END_THRESHOLD = 0.25;
 let endHandled = false;
+const END_THRESHOLD = 0.25;
 const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
+
+useKeyboardAction(KeyboardAction.Shot, shot);
 
 watch(
 	() => playerStore.videoPath,
@@ -148,17 +149,6 @@ watch(
 	{ immediate: true, flush: 'sync' },
 );
 
-useEventListener(window, 'keydown', (e) => {
-	if (!isInitialized) {
-		return;
-	}
-	if (e.code === 'Space' && !isEditingElement(e.target)) {
-		e.preventDefault();
-		e.stopPropagation();
-		playerStore.togglePlay();
-	}
-});
-
 function seek(currentTime: number) {
 	const time = normalizeCurrentTime(currentTime);
 	if (!isMetadataLoaded || !video.value) {
@@ -166,6 +156,17 @@ function seek(currentTime: number) {
 		return;
 	}
 	video.value.currentTime = time;
+}
+
+async function shot() {
+	try {
+		if (!video.value) {
+			throw new Error('播放器未就绪');
+		}
+		await takeVideoShotToClipboard(video.value);
+	} catch (error) {
+		ElMessage.error(error instanceof Error ? error.message : typeof error === 'string' ? error : '截图失败');
+	}
 }
 
 function applyPendingCurrentTime() {
@@ -400,7 +401,6 @@ onMounted(() => {
 		return;
 	}
 
-	isInitialized = true;
 	resolveInitialized();
 });
 
@@ -418,9 +418,7 @@ defineExpose({
 	get isPlay() {
 		return video.value ? !video.value.paused : false;
 	},
-	shot() {
-		return takeVideoShotToClipboard(video.value);
-	},
+	shot,
 });
 </script>
 

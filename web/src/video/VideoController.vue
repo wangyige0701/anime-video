@@ -112,6 +112,7 @@ import VideoVolume from './VideoVolume.vue';
 import VideoControllerSpace from './VideoControllerSpace.vue';
 import VideoEpisodes from './VideoEpisodes.vue';
 import VideoSubtitle from './VideoSubtitle.vue';
+import { KeyboardAction, useKeyboardAction } from '@/keyboard/action.ts';
 
 const emit = defineEmits<{
 	(e: 'toggleFullscreen'): void;
@@ -131,6 +132,11 @@ const startIcon = useTemplateRef('startIcon');
 const playbackRateIcon = useTemplateRef('playbackRateIcon');
 const episodesRef = useTemplateRef('episodesRef');
 const isTimelineDragging = ref(false);
+
+useKeyboardAction(KeyboardAction.BackToStart, () => timelineRef.value?.seek(0));
+useKeyboardAction(KeyboardAction.PlayPause, () => playerStore.togglePlay());
+useKeyboardAction(KeyboardAction.TogglePlaybackRate, () => playerStore.togglePlaybackRate());
+useKeyboardAction(KeyboardAction.ToggleAutoPlay, () => playerStore.setIsAutoPlay(!playerStore.isAutoPlay));
 
 useEventListener(document, 'fullscreenchange', () => {
 	playerStore.setIsFullScreen(document.fullscreenElement !== null);

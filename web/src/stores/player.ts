@@ -161,6 +161,14 @@ export const usePlayerStore = defineStore('player', () => {
 		VideoInfoStorage.set(VOLUME_STORAGE_KEY, volumePercent, true);
 	}
 
+	function volumeUp(step = 10) {
+		setVolume(volume.value + step);
+	}
+
+	function volumeDown(step = 10) {
+		setVolume(volume.value - step);
+	}
+
 	function togglePlaybackRate() {
 		const currentIndex = PLAYBACK_RATES.indexOf(playbackRate.value);
 		playbackRate.value = PLAYBACK_RATES[(currentIndex + 1) % PLAYBACK_RATES.length] ?? PLAYBACK_RATES[0];
@@ -338,6 +346,10 @@ export const usePlayerStore = defineStore('player', () => {
 		reset,
 		/** 设置音量 */
 		setVolume,
+		/** 音量增大 */
+		volumeUp,
+		/** 音量减小 */
+		volumeDown,
 		/** 切换播放速率 */
 		togglePlaybackRate,
 		/** 设置视频时长 */

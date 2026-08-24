@@ -57,6 +57,7 @@ import type { Season } from '@/data/season';
 import { unref } from 'vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { usePlayerStore } from '@/stores/player';
+import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
 
 const props = withDefaults(
 	defineProps<{
@@ -92,6 +93,9 @@ watch(
 	},
 	{ immediate: true, flush: 'sync' },
 );
+
+useKeyboardAction(KeyboardAction.Prev, prev);
+useKeyboardAction(KeyboardAction.Next, next);
 
 async function switchEpisode(season: Season, episode: Episode) {
 	if (playerStore.seasonId === season.id && playerStore.episodeId === episode.id) {

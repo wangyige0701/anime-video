@@ -1,7 +1,11 @@
 <template>
 	<div class="video-core" ref="videoCoreRef">
 		<div class="video-player">
-			<VideoPlayer ref="videoPlayerRef" @auto-next="videoControllerRef?.autoNext()" />
+			<VideoPlayer
+				ref="videoPlayerRef"
+				:container="videoCoreRef || void 0"
+				@auto-next="videoControllerRef?.autoNext()"
+			/>
 		</div>
 		<div
 			ref="videoMask"
@@ -51,6 +55,7 @@ import { useVideoControllerActivity } from '@/utils/useVideoControllerActivity';
 import { KeyboardAction, useKeyboardAction } from '@/keyboard/action.ts';
 import { useEventListener } from '@vueuse/core';
 import { isEditingElement } from '@/utils/is.ts';
+import { triggerKeyboardEvent } from '@/keyboard/trigger.ts';
 
 const emit = defineEmits<{
 	(e: 'close'): void;
@@ -82,6 +87,7 @@ useEventListener(window, 'keydown', (e) => {
 	if (isEditingElement(e.target)) {
 		return;
 	}
+	triggerKeyboardEvent(e);
 });
 
 onBeforeUnmount(() => {

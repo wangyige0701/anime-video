@@ -39,11 +39,12 @@ const bindKeyboardAction = mitt<BindKeyboardActionEvents>();
 const unBindKeyboardAction = mitt<UnBindKeyboardActionEvents>();
 
 for (const key in KeyboardAction) {
-	bindKeyboardAction.on(key as KeyboardAction, (fn) => {
-		bindingMap.set(key as KeyboardAction, fn);
+	const action = KeyboardAction[key as keyof typeof KeyboardAction];
+	bindKeyboardAction.on(action, (fn) => {
+		bindingMap.set(action, fn);
 	});
-	unBindKeyboardAction.on(key as KeyboardAction, () => {
-		bindingMap.delete(key as KeyboardAction);
+	unBindKeyboardAction.on(action, () => {
+		bindingMap.delete(action);
 	});
 }
 
@@ -52,4 +53,8 @@ export function useKeyboardAction(key: KeyboardAction, fn: Fn<[...any[]], any>) 
 	onBeforeUnmount(() => {
 		unBindKeyboardAction.emit(key);
 	});
+}
+
+export function getKeyboardAction(key: KeyboardAction) {
+	return bindingMap.get(key);
 }

@@ -18,6 +18,9 @@ import { getMasterM3u8Url } from '~routes/server';
 import { takeVideoShotToClipboard } from '@/utils/videoShot';
 import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
 
+const props = defineProps<{
+	container?: HTMLElement;
+}>();
 const emit = defineEmits<{
 	(e: 'autoNext'): void;
 }>();
@@ -164,8 +167,15 @@ async function shot() {
 			throw new Error('播放器未就绪');
 		}
 		await takeVideoShotToClipboard(video.value);
+		ElMessage.success({
+			message: '截图已复制到剪贴板',
+			appendTo: (playerStore.isFullScreen ? props.container : document.body) || document.body,
+		});
 	} catch (error) {
-		ElMessage.error(error instanceof Error ? error.message : typeof error === 'string' ? error : '截图失败');
+		ElMessage.error({
+			message: error instanceof Error ? error.message : typeof error === 'string' ? error : '截图失败',
+			appendTo: (playerStore.isFullScreen ? props.container : document.body) || document.body,
+		});
 	}
 }
 

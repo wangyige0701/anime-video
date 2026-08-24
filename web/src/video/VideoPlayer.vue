@@ -40,12 +40,13 @@ const video = useTemplateRef('video');
 watch(
 	() => playerStore.videoPath,
 	async (path) => {
-		endHandled = false;
 		const currentSourceVersion = ++sourceVersion;
+		endHandled = false;
 		isMetadataLoaded = false;
 		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
 		playerStore.resetBuffer();
 		playerStore.setLoading(Boolean(path));
+		playerStore.resetSubtitleTrackUseable();
 
 		if (video.value) {
 			video.value.pause();
@@ -128,11 +129,9 @@ watch(
 );
 
 watch(
-	() => playerStore.subtitleTrackId,
-	async (id) => {
-		try {
-			await initialized;
-		} catch (error) {
+	[() => playerStore.subtitleTrackId, () => playerStore.isSubtitleTrackUseable],
+	async ([id, useable]) => {
+		if (!useable) {
 			return;
 		}
 		if (playerStore.isSupportedHls) {

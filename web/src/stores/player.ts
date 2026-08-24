@@ -250,6 +250,10 @@ export const usePlayerStore = defineStore('player', () => {
 		isSubtitleTrackUseable.value = true;
 	}
 
+	function resetSubtitleTrackUseable() {
+		isSubtitleTrackUseable.value = false;
+	}
+
 	function reset() {
 		pause();
 		seriesId.value = '';
@@ -265,7 +269,7 @@ export const usePlayerStore = defineStore('player', () => {
 		resetBuffer();
 		clearControllerActiveTimeout(false);
 		subtitleTracks.value = [];
-		isSubtitleTrackUseable.value = false;
+		resetSubtitleTrackUseable();
 		lastSeasonId.value = '';
 		lastEpisodeId.value = '';
 	}
@@ -364,6 +368,8 @@ export const usePlayerStore = defineStore('player', () => {
 		getSeasonSubtitleTrack,
 		/** 设置字幕轨道列表 */
 		setSubtitleTracks,
+		/** 重置字幕轨道可用状态 */
+		resetSubtitleTrackUseable,
 	};
 });
 

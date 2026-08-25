@@ -40,7 +40,7 @@
 					<PlayToggleIcon :play="!playerStore.isPlaying" />
 				</el-icon>
 			</div>
-			<Transition name="fade">
+			<Transition name="volume-fade">
 				<div v-if="status.volume" class="volume-tip">
 					<el-icon class="video-icon">
 						<VolumeToggleIcon
@@ -293,5 +293,14 @@ function showVolumeTip() {
 	font-weight: 500;
 	padding: 10px 1rem;
 	z-index: 30;
+}
+
+.volume-fade-enter-active,
+.volume-fade-leave-active {
+	transition: opacity 0.3s ease;
+}
+.volume-fade-enter-from,
+.volume-fade-leave-to {
+	opacity: 0;
 }
 </style>

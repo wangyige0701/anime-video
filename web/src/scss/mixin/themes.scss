@@ -42,6 +42,7 @@ $theme: ();
 				rgba(color.mix(#000, $color, 10%), 0.5);
 			#{var.varName('loading', 'bg')}: rgba(color.mix(#000, $color, 80%), 0.3);
 			#{var.varName('season', 'bg')}: rgba(color.mix(#fff, $color, 10%), 0.3);
+			#{var.varName('detail', 'metadata', 'bg')}: rgba(color.mix(#000, $color, 35%), 0.85);
 
 			// 播放器样式
 			#{var.varName('video', 'mask', 'bg')}: rgba(color.mix(#000, $color, 80%), 0.76);
@@ -77,6 +78,7 @@ $theme: ();
 	$theme: map.set($theme, 'header-bg', var(--header-bg));
 	$theme: map.set($theme, 'loading-bg', var(--loading-bg));
 	$theme: map.set($theme, 'season-bg', var(--season-bg));
+	$theme: map.set($theme, 'detail-metadata-bg', var(--detail-metadata-bg));
 	$theme: map.set($theme, 'video-mask-bg', var(--video-mask-bg));
 	$theme: map.set($theme, 'video-bg', var(--video-bg));
 	$theme: map.set($theme, 'video-shadow', var(--video-shadow));

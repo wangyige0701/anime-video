@@ -1,0 +1,22 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+@mixin metadata-item {
+	width: 100%;
+}
+
+@mixin metadata-container {
+	cursor: pointer;
+	display: inline-flex;
+	max-width: 100%;
+	padding: 10px 0;
+}
+
+@mixin metadata-no-data {
+	font-size: 0.75rem;
+	color: map.get(token.$theme, 'l-6');
+	transition: color 0.3s ease;
+	&:hover {
+		color: map.get(token.$theme, 'l-4');
+	}
+}

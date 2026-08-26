@@ -4,14 +4,15 @@
 			<DetailImage :images="series.value.images" />
 			<div class="info">
 				<div class="title">{{ series.value.title }}</div>
-				<div class="types">
+				<DetailMetadata />
+				<!-- <div class="types">
 					<span v-for="type in series.value.types" :key="type">
 						{{ getSeriesTypeName(type) }}
 					</span>
 				</div>
 				<div class="status">
 					<span>{{ getSeriesStatusName(series.value.status) }}</span>
-				</div>
+				</div> -->
 				<DetailDescription :series="series.value" :disabled="status.waiting" />
 			</div>
 		</div>
@@ -126,11 +127,10 @@ onBeforeUnmount(() => {
 	flex-wrap: nowrap;
 	gap: 20px;
 	margin-bottom: 30px;
-
 	.info {
 		display: flex;
 		flex-direction: column;
-		gap: 10px;
+		gap: 15px;
 		flex: 1;
 		color: token.$text-color-secondary;
 		font-size: 1rem;

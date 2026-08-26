@@ -1,5 +1,6 @@
 <template>
 	<div class="description">
+		<span class="title">剧情简介</span>
 		<TextEditor
 			:value="props.series.description"
 			:loading="status.modifyDescription"
@@ -29,3 +30,19 @@ async function endEditDescription(value: string) {
 	status.offModifyDescription();
 }
 </script>
+
+<style scoped lang="scss">
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+.description {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	color: map.get(token.$theme, 'l-9');
+	.title {
+		color: map.get(token.$theme, 'l-8');
+		font-size: 0.75rem;
+	}
+}
+</style>

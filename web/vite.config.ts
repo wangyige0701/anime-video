@@ -5,7 +5,7 @@ import VueRouter from 'vue-router/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
-import { getPathAlias } from './vite/alias';
+import { getPathAlias } from './vite/alias.ts';
 import path from 'node:path';
 
 // https://vite.dev/config/

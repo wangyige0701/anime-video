@@ -1,6 +1,7 @@
 import type { Series as ISeries } from '~types/videos';
 import { createPromise, type Fn } from '@wang-yige/utils';
 import {
+	removeSeriesStatus,
 	getSeries,
 	getSeriesDetail,
 	refreshSeries,
@@ -11,6 +12,7 @@ import {
 	updateSeriesStatus,
 	updateSeriesTitle,
 	updateSeriesTypes,
+	removeSeriesDate,
 } from '@/api/series';
 import { getSeasons } from '@/api/season';
 import { Common } from './common';
@@ -324,6 +326,20 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	}
 	// endregion
 
+	// region 删除日期
+	public async removeDate() {
+		let oldValue = this._date.value;
+		this._date.value = [];
+		this.useStatus.onDate();
+		try {
+			await removeSeriesDate(this.id);
+		} catch (error) {
+			this._date.value = oldValue;
+		}
+		this.useStatus.offDate();
+	}
+	// endregion
+
 	// region 更新类型
 	public async addTypes(types: number[]) {
 		let oldValue = this._types.value;
@@ -407,6 +423,20 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		this.useStatus.onStatus();
 		try {
 			await updateSeriesStatus(this.id, status);
+		} catch (error) {
+			this._status.value = oldValue;
+		}
+		this.useStatus.offStatus();
+	}
+	// endregion
+
+	// region 删除状态
+	public async removeStatus() {
+		let oldValue = this._status.value;
+		this._status.value = 0;
+		this.useStatus.onStatus();
+		try {
+			await removeSeriesStatus(this.id);
 		} catch (error) {
 			this._status.value = oldValue;
 		}

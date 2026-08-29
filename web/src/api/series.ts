@@ -78,6 +78,14 @@ export function updateSeriesDate(seriesId: string, year: number, month: number) 
 	);
 }
 
+export function removeSeriesDate(seriesId: string) {
+	return API.delete<any, null>(`${ServerRoot.DATA}/series/${seriesId}/date`, {
+		single: {
+			type: AxiosRequest.Single.PREV,
+		},
+	});
+}
+
 export function updateSeriesStatus(seriesId: string, status: number) {
 	return API.put<any, null>(
 		`${ServerRoot.DATA}/series/${seriesId}/status`,
@@ -88,6 +96,14 @@ export function updateSeriesStatus(seriesId: string, status: number) {
 			},
 		},
 	);
+}
+
+export function removeSeriesStatus(seriesId: string) {
+	return API.delete<any, null>(`${ServerRoot.DATA}/series/${seriesId}/status`, {
+		single: {
+			type: AxiosRequest.Single.PREV,
+		},
+	});
 }
 
 export function updateSeriesTypes(type: 'add' | 'remove' | 'set', seriesId: string, types: number[]) {

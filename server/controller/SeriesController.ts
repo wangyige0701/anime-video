@@ -80,6 +80,15 @@ export class SeriesController {
 		return ctx.Success();
 	}
 
+	@HttpMethod.Delete('/series/:seriesId/date')
+	public async removeSeriesDate(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const series = await Series.getSeriesById(seriesId);
+		await series.removeDate();
+		await series.waitDataSave();
+		ctx.log.info({ event: 'series.date.deleted', seriesId }, 'Series date deleted');
+		return ctx.Success();
+	}
+
 	@HttpMethod.Put('/series/:seriesId/status')
 	@Validate((z) =>
 		z.object({
@@ -92,6 +101,15 @@ export class SeriesController {
 		await series.updateStatus(status);
 		await series.waitDataSave();
 		ctx.log.info({ event: 'series.status.updated', seriesId, status }, 'Series status updated');
+		return ctx.Success();
+	}
+
+	@HttpMethod.Delete('/series/:seriesId/status')
+	public async deleteSeriesStatus(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const series = await Series.getSeriesById(seriesId);
+		await series.updateStatus(0);
+		await series.waitDataSave();
+		ctx.log.info({ event: 'series.status.deleted', seriesId }, 'Series status deleted');
 		return ctx.Success();
 	}
 

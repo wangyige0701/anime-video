@@ -534,6 +534,12 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerDate();
 	}
 
+	public async removeDate() {
+		const config = await this.promise;
+		config.date = [];
+		this.registerDate();
+	}
+
 	public async updateTypes(types: number[]) {
 		const config = await this.promise;
 		config.types = types;

@@ -17,7 +17,7 @@
 				<div v-if="!statusName" class="placeholder">选择状态</div>
 				<div v-else class="status-container" :class="[statusClass(currentStatus), visible ? 'hover' : '']">
 					<span>{{ statusName }}</span>
-					<el-button text class="del-btn" @click.stop="removeStatus" title="删除">
+					<el-button v-if="!visible" text class="del-btn" @click.stop="removeStatus" title="删除">
 						<template #icon>
 							<el-icon size="1.1rem"><CircleCloseFilled /></el-icon>
 						</template>

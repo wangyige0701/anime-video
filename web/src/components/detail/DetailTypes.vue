@@ -1,5 +1,5 @@
 <template>
-	<div class="detail-types" :class="{ hover: visible }">
+	<div class="detail-types">
 		<el-popover
 			ref="popover"
 			placement="bottom-start"
@@ -16,7 +16,7 @@
 		>
 			<template #reference>
 				<div v-if="!selectedTypesNames.length" class="placeholder">选择类型</div>
-				<div v-else class="types-container">
+				<div v-else class="types-container" :class="{ hover: visible }">
 					<div v-for="name in selectedTypesNames" :key="name" class="type-selected-item">{{ name }}</div>
 				</div>
 			</template>

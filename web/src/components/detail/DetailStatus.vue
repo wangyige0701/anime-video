@@ -10,11 +10,18 @@
 			transition="popover-dropdown"
 			:show-after="0"
 			:hide-after="0"
+			:disabled="series.statusRef"
+			v-model:visible="visible"
 		>
 			<template #reference>
 				<div v-if="!statusName" class="placeholder">选择状态</div>
-				<div v-else class="status-container" :class="statusClass(currentStatus)">
-					{{ statusName }}
+				<div v-else class="status-container" :class="[statusClass(currentStatus), visible ? 'visible' : '']">
+					<span>{{ statusName }}</span>
+					<el-button text class="del-btn" @click.stop="removeStatus">
+						<template #icon>
+							<el-icon size="1.1rem"><CircleCloseFilled /></el-icon>
+						</template>
+					</el-button>
 				</div>
 			</template>
 
@@ -38,17 +45,12 @@
 import type { Series } from '@/data/series';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { seriesStatus } from '~config/seriesStatus';
-
-const props = defineProps<{
-	loading: boolean;
-}>();
-const emits = defineEmits<{
-	(e: 'update:loading', id: boolean): void;
-}>();
+import { CircleCloseFilled } from '@element-plus/icons-vue';
 
 const popover = useTemplateRef('popover');
 const detailStatuses = seriesStatus.filter((item) => item.id > 1);
 const series = inject<ComputedRef<Series>>(DETAIL_SERIES_DATA)!;
+const visible = ref(false);
 const currentStatus = ref(series.value.status);
 const statusName = computed(() => detailStatuses.find((item) => item.id === currentStatus.value)?.name);
 
@@ -68,15 +70,18 @@ async function updateStatus(value: number) {
 		return;
 	}
 	popover.value?.hide();
-	emits('update:loading', true);
-	const oldStatus = currentStatus.value;
+	currentStatus.value = value;
 	try {
-		currentStatus.value = value;
 		await series.value.updateStatus(value);
-	} catch (error) {
-		currentStatus.value = oldStatus;
-	}
-	emits('update:loading', false);
+	} catch (error) {}
+}
+
+async function removeStatus() {
+	popover.value?.hide();
+	currentStatus.value = 0;
+	try {
+		await series.value.removeStatus();
+	} catch (error) {}
 }
 </script>
 
@@ -124,6 +129,8 @@ $unaired-color: #f0bb72;
 	font-size: 0.875rem;
 	line-height: 1;
 	white-space: nowrap;
+	transition: background-color 0.3s ease;
+	position: relative;
 	&.status-id-2 {
 		--color: var(--ongoing-color);
 		--bg-color: var(--ongoing-bg-color);
@@ -138,6 +145,28 @@ $unaired-color: #f0bb72;
 		--color: var(--unaired-color);
 		--bg-color: var(--unaired-bg-color);
 		--border-color: var(--unaired-border-color);
+	}
+	&:hover,
+	&.visible {
+		background-color: var(--border-color);
+	}
+	.del-btn {
+		--el-fill-color-light: var(--border-color);
+		height: auto;
+		padding: 0;
+		position: absolute;
+		top: 0;
+		right: 0;
+		transform: translate(40%, -40%);
+		background-color: var(--border-color);
+		border-radius: 50%;
+		opacity: 0;
+		&:hover {
+			opacity: 0.8 !important;
+		}
+	}
+	&:hover .del-btn {
+		opacity: 1;
 	}
 }
 

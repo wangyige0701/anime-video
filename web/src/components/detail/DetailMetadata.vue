@@ -1,24 +1,25 @@
 <template>
 	<div class="detail-metadata">
-		<div class="types item" v-loading="typesLoading">
+		<div class="types item" v-loading="series.typesRef">
 			<div class="title">类型</div>
-			<DetailTypes v-model:loading="typesLoading" />
+			<DetailTypes />
 		</div>
-		<div class="status item" v-loading="statusLoading">
+		<div class="status item" v-loading="series.statusRef">
 			<div class="title">状态</div>
-			<DetailStatus v-model:loading="statusLoading" />
+			<DetailStatus />
 		</div>
-		<div class="date item" v-loading="dateLoading">
+		<div class="date item" v-loading="series.dateRef">
 			<div class="title">上线时间</div>
-			<DetailDate v-model:loading="dateLoading" />
+			<DetailDate />
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-const typesLoading = ref(false);
-const statusLoading = ref(false);
-const dateLoading = ref(false);
+import { DETAIL_SERIES_DATA } from '@/config/symbol';
+import { Series } from '@/data/series';
+
+const series = inject<ComputedRef<Series>>(DETAIL_SERIES_DATA)!;
 </script>
 
 <style scoped lang="scss">

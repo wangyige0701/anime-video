@@ -64,10 +64,10 @@ import VideoTitle from './VideoTitle.vue';
 import { CloseBold } from '@element-plus/icons-vue';
 import PlayToggleIcon from '@/components/icons/PlayToggleIcon.vue';
 import { useVideoControllerActivity } from '@/utils/useVideoControllerActivity';
-import { KeyboardAction, useKeyboardAction } from '@/keyboard/action.ts';
+import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
 import { useEventListener } from '@vueuse/core';
-import { isEditingElement } from '@/utils/is.ts';
-import { triggerKeyboardEvent } from '@/keyboard/trigger.ts';
+import { isEditingElement } from '@/utils/is';
+import { triggerKeyboardEvent } from '@/keyboard/trigger';
 
 const emit = defineEmits<{
 	(e: 'close'): void;

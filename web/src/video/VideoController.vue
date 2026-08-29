@@ -112,7 +112,7 @@ import VideoVolume from './VideoVolume.vue';
 import VideoControllerSpace from './VideoControllerSpace.vue';
 import VideoEpisodes from './VideoEpisodes.vue';
 import VideoSubtitle from './VideoSubtitle.vue';
-import { KeyboardAction, useKeyboardAction } from '@/keyboard/action.ts';
+import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
 
 const emit = defineEmits<{
 	(e: 'toggleFullscreen'): void;

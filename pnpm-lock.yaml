@@ -46,7 +46,7 @@ importers:
   server:
     dependencies:
       '@koa/router':
-        specifier: ^15.3.0
+        specifier: ^15.7.0
         version: 15.7.0(koa@3.2.1)
       koa:
         specifier: ^3.2.1
@@ -76,8 +76,8 @@ importers:
         specifier: ^2.0.2
         version: 2.0.2
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.5.2
+        version: 4.5.2
     devDependencies:
       '@types/koa':
         specifier: ^3.0.3
@@ -2386,8 +2386,8 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.5.2:
+    resolution: {integrity: sha512-XkYXCol10+ba/6F/cueWV+TezUeOqXW0hdeJt5CdXjTYeAgAQg5N03RQdJ80mhfFE72+pblvYMW4wy2Qp4Qbrg==}
 
 snapshots:
 
@@ -3720,7 +3720,7 @@ snapshots:
       co-body: 6.2.0
       formidable: 3.5.4
       type-fest: 5.8.0
-      zod: 4.4.3
+      zod: 4.5.2
 
   koa-compose@4.1.0: {}
 
@@ -4519,4 +4519,4 @@ snapshots:
   yaml@2.9.0:
     optional: true
 
-  zod@4.4.3: {}
+  zod@4.5.2: {}

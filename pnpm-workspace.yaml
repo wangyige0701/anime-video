@@ -23,3 +23,5 @@ overrides:
 peerDependencyRules:
     allowAny:
         - 'vue'
+
+minimumReleaseAge: 0

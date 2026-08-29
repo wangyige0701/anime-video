@@ -24,7 +24,7 @@
 		"tsx": "^4.21.0"
 	},
 	"dependencies": {
-		"@koa/router": "^15.3.0",
+		"@koa/router": "^15.7.0",
 		"koa": "^3.2.1",
 		"koa-body": "^7.0.1",
 		"koa-static": "^5.0.0",
@@ -34,6 +34,6 @@
 		"pino": "^10.3.1",
 		"reflect-metadata": "^0.2.2",
 		"statuses": "^2.0.2",
-		"zod": "^4.4.3"
+		"zod": "^4.5.2"
 	}
 }

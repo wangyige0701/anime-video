@@ -5,14 +5,6 @@
 			<div class="info">
 				<div class="title">{{ series.value.title }}</div>
 				<DetailMetadata />
-				<!-- <div class="types">
-					<span v-for="type in series.value.types" :key="type">
-						{{ getSeriesTypeName(type) }}
-					</span>
-				</div>
-				<div class="status">
-					<span>{{ getSeriesStatusName(series.value.status) }}</span>
-				</div> -->
 				<DetailDescription :series="series.value" :disabled="status.waiting" />
 			</div>
 		</div>
@@ -40,8 +32,6 @@ import { Series } from '@/data/series';
 import { useVideoStore } from '@/stores/video';
 import { WebRoute } from '~routes/web';
 import router from '@/router';
-import { getSeriesTypeName } from '~config/seriesTypes';
-import { getSeriesStatusName } from '~config/seriesStatus';
 import VideoBox from '@/components/detail/VideoBox.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { usePlayerStore } from '@/stores/player';

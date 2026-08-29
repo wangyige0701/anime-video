@@ -15,9 +15,9 @@
 		>
 			<template #reference>
 				<div v-if="!statusName" class="placeholder">选择状态</div>
-				<div v-else class="status-container" :class="[statusClass(currentStatus), visible ? 'visible' : '']">
+				<div v-else class="status-container" :class="[statusClass(currentStatus), visible ? 'hover' : '']">
 					<span>{{ statusName }}</span>
-					<el-button text class="del-btn" @click.stop="removeStatus">
+					<el-button text class="del-btn" @click.stop="removeStatus" title="删除">
 						<template #icon>
 							<el-icon size="1.1rem"><CircleCloseFilled /></el-icon>
 						</template>
@@ -148,18 +148,18 @@ $unaired-color: #f0bb72;
 		--border-color: var(--unaired-border-color);
 	}
 	&:hover,
-	&.visible {
+	&.hover {
 		background-color: var(--border-color);
 	}
 	.del-btn {
-		--el-fill-color-light: var(--border-color);
+		--el-fill-color-light: var(--bg-color);
 		height: auto;
 		padding: 0;
 		position: absolute;
 		top: 0;
 		right: 0;
-		transform: translate(40%, -40%);
-		background-color: var(--border-color);
+		transform: translate(35%, -35%);
+		background-color: var(--bg-color);
 		border-radius: 50%;
 		opacity: 0;
 		&:hover {

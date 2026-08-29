@@ -5,7 +5,6 @@
 	width: 100%;
 	min-width: 0;
 	border-radius: token.$radius-sm;
-	overflow: hidden;
 }
 
 @mixin metadata-container {
@@ -19,7 +18,6 @@
 	color: map.get(token.$theme, 'l-6');
 	@include metadata-container;
 	padding: 0;
-	padding-right: 20px;
 }
 
 @mixin metadata-content {

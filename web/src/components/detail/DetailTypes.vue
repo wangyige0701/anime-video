@@ -1,16 +1,16 @@
 <template>
-	<div class="detail-types" :class="{ visible: visible }">
+	<div class="detail-types" :class="{ hover: visible }">
 		<el-popover
 			ref="popover"
 			placement="bottom-start"
 			trigger="click"
 			:show-arrow="false"
-			popper-class="detail-metadata-popover"
+			popper-class="detail-metadata-popover detail-types-popover"
 			transition="popover-dropdown"
 			:show-after="0"
 			:hide-after="0"
 			:disabled="series.typesRef"
-			:width="300"
+			:width="350"
 			v-model:visible="visible"
 			@hide="updateTypes"
 		>
@@ -93,15 +93,7 @@ function isTypesSame() {
 	@include metadata-item;
 	@include metadata-content;
 	cursor: pointer;
-	padding-left: 5px;
-	border-radius: 5px;
-	border-radius: 5px;
-	transition: background-color 0.2s ease;
-
-	&:hover,
-	&.visible {
-		background-color: map.get(token.$theme, 'd-5');
-	}
+	padding: 0;
 }
 
 .placeholder {
@@ -110,11 +102,20 @@ function isTypesSame() {
 
 .types-container {
 	cursor: pointer;
-	max-width: 100%;
+	max-width: calc(100% + 10px);
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
 	gap: 10px;
+	padding: 10px;
+	border-radius: 5px;
+	transition: background-color 0.2s ease;
+	transform: translateX(-10px);
+
+	&:hover,
+	&.hover {
+		background-color: map.get(token.$theme, 'd-5');
+	}
 }
 
 .type-selected-item {

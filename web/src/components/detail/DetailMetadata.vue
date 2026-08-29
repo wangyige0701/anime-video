@@ -75,6 +75,9 @@ body .el-popover.el-popper.detail-metadata-popover {
 	background: map.get(token.$theme, 'd-5');
 	box-shadow: 0 0 10px map.get(token.$theme, 'd-4');
 	margin-left: -15px;
+	&.detail-types-popover {
+		margin-left: -5px;
+	}
 }
 
 @include popover-dropdown;

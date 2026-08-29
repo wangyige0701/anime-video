@@ -328,14 +328,11 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 
 	// region 删除日期
 	public async removeDate() {
-		let oldValue = this._date.value;
-		this._date.value = [];
 		this.useStatus.onDate();
 		try {
 			await removeSeriesDate(this.id);
-		} catch (error) {
-			this._date.value = oldValue;
-		}
+			this._date.value = [];
+		} catch (error) {}
 		this.useStatus.offDate();
 	}
 	// endregion

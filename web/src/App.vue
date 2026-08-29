@@ -1,5 +1,5 @@
 <template>
-	<el-config-provider>
+	<el-config-provider :locale="zhCn">
 		<el-container class="container" :class="useDeviceStore().className">
 			<el-header class="header">
 				<div class="header-left">
@@ -29,6 +29,7 @@
 
 <script setup lang="ts">
 import type { ScrollbarDirection } from 'element-plus';
+import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { WebRoute } from '~routes/web';
 import { useVideoStore } from './stores/video';

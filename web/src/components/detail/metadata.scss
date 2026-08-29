@@ -3,20 +3,46 @@
 
 @mixin metadata-item {
 	width: 100%;
+	min-width: 0;
+	border-radius: token.$radius-sm;
+	overflow: hidden;
 }
 
 @mixin metadata-container {
-	cursor: pointer;
 	display: inline-flex;
-	max-width: 100%;
-	padding: 10px 0;
+	cursor: pointer;
+	padding: 8px 0;
 }
 
-@mixin metadata-no-data {
+@mixin metadata-placeholder {
 	font-size: 0.75rem;
 	color: map.get(token.$theme, 'l-6');
-	transition: color 0.3s ease;
-	&:hover {
-		color: map.get(token.$theme, 'l-4');
+	@include metadata-container;
+	padding-right: 20px;
+}
+
+@mixin metadata-content {
+	padding: 8px 0;
+}
+
+@mixin popover-dropdown {
+	.popover-dropdown-enter-active,
+	.popover-dropdown-leave-active {
+		transition:
+			opacity 0.3s ease,
+			transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+		transform-origin: center top;
+	}
+
+	.popover-dropdown-enter-from,
+	.popover-dropdown-leave-to {
+		opacity: 0;
+		transform: scaleY(0.65);
+	}
+
+	.popover-dropdown-enter-to,
+	.popover-dropdown-leave-from {
+		opacity: 1;
+		transform: scaleY(1);
 	}
 }

@@ -1,21 +1,25 @@
 <template>
 	<div class="detail-metadata">
-		<div class="types item">
+		<div class="types item" v-loading="typesLoading">
 			<div class="title">类型</div>
-			<DetailTypes />
+			<DetailTypes v-model:loading="typesLoading" />
 		</div>
-		<div class="status item">
+		<div class="status item" v-loading="statusLoading">
 			<div class="title">状态</div>
-			<DetailStatus />
+			<DetailStatus v-model:loading="statusLoading" />
 		</div>
-		<div class="date item">
+		<div class="date item" v-loading="dateLoading">
 			<div class="title">上线时间</div>
-			<DetailDate />
+			<DetailDate v-model:loading="dateLoading" />
 		</div>
 	</div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+const typesLoading = ref(false);
+const statusLoading = ref(false);
+const dateLoading = ref(false);
+</script>
 
 <style scoped lang="scss">
 @use 'sass:map';
@@ -58,4 +62,19 @@
 		}
 	}
 }
+</style>
+<style lang="scss">
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+@use './metadata.scss' as *;
+
+body .el-popover.el-popper.detail-metadata-popover {
+	padding: 8px;
+	border-color: #{map.get(token.$theme, 'l-3')};
+	background: map.get(token.$theme, 'd-5');
+	box-shadow: 0 0 10px map.get(token.$theme, 'd-4');
+	margin-left: -20px;
+}
+
+@include popover-dropdown;
 </style>

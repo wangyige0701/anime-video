@@ -1,7 +1,6 @@
 import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
-import vueDevTools from 'vite-plugin-vue-devtools';
 import VueRouter from 'vue-router/vite';
 import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
@@ -25,7 +24,6 @@ export default defineConfig({
 		}),
 		vue(),
 		vueJsx(),
-		// vueDevTools(),
 		AutoImport({
 			resolvers: [ElementPlusResolver()],
 			imports: ['vue', 'vue-router', 'pinia', { 'status-ref/vue': ['useVueStatusRef'] }],

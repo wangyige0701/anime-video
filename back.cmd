@@ -2,8 +2,6 @@
 setlocal
 chcp 65001 >nul
 
-pushd "%~dp0\server" || exit /b
-call pnpm run %*
-popd
+call pnpm --dir "%~dp0." --filter server run %*
 
 endlocal

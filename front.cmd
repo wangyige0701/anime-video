@@ -1,8 +1,6 @@
 @echo off
 setlocal
 
-pushd "%~dp0\web" || exit /b
-call pnpm run %*
-popd
+call pnpm --dir "%~dp0." --filter web run %*
 
 endlocal

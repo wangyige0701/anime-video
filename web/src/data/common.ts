@@ -1,4 +1,5 @@
 import type { Fn } from '@wang-yige/utils';
+import { customRef } from 'vue';
 
 type RefCache<T> = { ref: Ref<T[]>; update: Fn<[T[]]>; track: Fn<[]> } | undefined;
 

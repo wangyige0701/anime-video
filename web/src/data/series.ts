@@ -1,4 +1,5 @@
 import type { Series as ISeries } from '~types/videos';
+import { ref, unref } from 'vue';
 import { createPromise, type Fn } from '@wang-yige/utils';
 import {
 	removeSeriesStatus,

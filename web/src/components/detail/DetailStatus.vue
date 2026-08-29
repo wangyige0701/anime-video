@@ -1,6 +1,7 @@
 <template>
 	<div class="detail-status">
 		<el-popover
+			ref="popover"
 			placement="bottom-start"
 			trigger="click"
 			:show-arrow="false"
@@ -12,7 +13,7 @@
 		>
 			<template #reference>
 				<div v-if="!statusName" class="placeholder">选择状态</div>
-				<div v-else class="status-container" :class="statusClass(status)">
+				<div v-else class="status-container" :class="statusClass(currentStatus)">
 					{{ statusName }}
 				</div>
 			</template>
@@ -21,8 +22,10 @@
 				<div
 					v-for="item in detailStatuses"
 					:key="item.id"
-					:class="[statusClass(item.id), status === item.id ? 'selected' : '']"
+					:class="statusClass(item.id)"
 					class="status-item"
+					:disabled="currentStatus === item.id"
+					@click.stop="updateStatus(item.id)"
 				>
 					{{ item.name }}
 				</div>
@@ -40,17 +43,40 @@ const props = defineProps<{
 	loading: boolean;
 }>();
 const emits = defineEmits<{
-	(e: 'update:loading', id: number): void;
+	(e: 'update:loading', id: boolean): void;
 }>();
 
+const popover = useTemplateRef('popover');
 const detailStatuses = seriesStatus.filter((item) => item.id > 1);
 const series = inject<ComputedRef<Series>>(DETAIL_SERIES_DATA)!;
-const status = computed(() => series.value.status);
-const statusName = computed(() => detailStatuses.find((item) => item.id === status.value)?.name);
-const currentStatus = ref(status.value);
+const currentStatus = ref(series.value.status);
+const statusName = computed(() => detailStatuses.find((item) => item.id === currentStatus.value)?.name);
+
+watch(
+	() => series.value.status,
+	(newStatus) => {
+		currentStatus.value = newStatus;
+	},
+);
 
 function statusClass(id?: number) {
 	return id ? `status-id-${id}` : '';
+}
+
+async function updateStatus(value: number) {
+	if (currentStatus.value === value) {
+		return;
+	}
+	popover.value?.hide();
+	emits('update:loading', true);
+	const oldStatus = currentStatus.value;
+	try {
+		currentStatus.value = value;
+		await series.value.updateStatus(value);
+	} catch (error) {
+		currentStatus.value = oldStatus;
+	}
+	emits('update:loading', false);
 }
 </script>
 
@@ -97,6 +123,7 @@ $unaired-color: #f0bb72;
 	color: var(--color);
 	font-size: 0.875rem;
 	line-height: 1;
+	white-space: nowrap;
 	&.status-id-2 {
 		--color: var(--ongoing-color);
 		--bg-color: var(--ongoing-bg-color);
@@ -126,7 +153,9 @@ $unaired-color: #f0bb72;
 	color: var(--color);
 	line-height: 1;
 	border-radius: 5px;
-	transition: background-color 0.3s ease;
+	transition:
+		background-color 0.3s ease,
+		opacity 0.3s ease;
 	&.status-id-2 {
 		--color: var(--ongoing-color);
 		--hover-color: var(--ongoing-color-hover);
@@ -151,11 +180,14 @@ $unaired-color: #f0bb72;
 		margin-right: 10px;
 		background-color: var(--color);
 	}
-	&:not(.selected):hover {
+	&:not([disabled='true']):hover {
 		background-color: var(--hover-color);
 	}
-	&.selected {
+	&[disabled='true'] {
 		cursor: not-allowed;
+		&:hover {
+			opacity: 0.6;
+		}
 	}
 }
 </style>

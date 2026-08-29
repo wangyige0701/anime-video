@@ -70,11 +70,11 @@ const series = inject<ComputedRef<Series>>(DETAIL_SERIES_DATA)!;
 @use './metadata.scss' as *;
 
 body .el-popover.el-popper.detail-metadata-popover {
-	padding: 8px;
+	padding: 10px;
 	border-color: #{map.get(token.$theme, 'l-3')};
 	background: map.get(token.$theme, 'd-5');
 	box-shadow: 0 0 10px map.get(token.$theme, 'd-4');
-	margin-left: -20px;
+	margin-left: -15px;
 }
 
 @include popover-dropdown;

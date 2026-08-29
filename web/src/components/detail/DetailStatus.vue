@@ -59,6 +59,7 @@ watch(
 	(newStatus) => {
 		currentStatus.value = newStatus;
 	},
+	{ flush: 'sync' },
 );
 
 function statusClass(id?: number) {
@@ -181,6 +182,7 @@ $unaired-color: #f0bb72;
 	align-items: center;
 	color: var(--color);
 	line-height: 1;
+	font-size: 0.875rem;
 	border-radius: 5px;
 	transition:
 		background-color 0.3s ease,

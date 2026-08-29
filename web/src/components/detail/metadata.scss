@@ -18,6 +18,7 @@
 	font-size: 0.75rem;
 	color: map.get(token.$theme, 'l-6');
 	@include metadata-container;
+	padding: 0;
 	padding-right: 20px;
 }
 

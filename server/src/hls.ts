@@ -25,10 +25,14 @@ export class HlsManage {
 
 	/** 缓存单个 Hls 实例中已生成的分片 */
 	private cache!: Array<Promise<Buffer> | undefined>;
+	/** 按索引缓存已生成或正在生成的预览图 */
+	private imageCache!: Array<Promise<Buffer> | undefined>;
 	/** 并行任务队列 */
 	private task = new ParallelTask(5);
 	/** 缓存单个 Hls 实例中已生成的分片的清除定时器 */
 	private waitToClear = new Map<number, NodeJS.Timeout>();
+	/** 预览图缓存清除定时器 */
+	private imageWaitToClear = new Map<number, NodeJS.Timeout>();
 	/** Hls 实例 */
 	private hls!: Hls;
 	/** Hls 实例分片数量 */
@@ -48,6 +52,7 @@ export class HlsManage {
 	/** Hls 实例清除延迟时间 */
 	private destroyDelay = 60 * 1000 * 5;
 	private destroyTsDelay = 30 * 1000 * 5;
+	private destroyImageDelay = 60 * 1000 * 30;
 
 	constructor(inputPath: string) {
 		const hashPath = crypto.createHash('sha256').update(path.normalize(inputPath)).digest('hex');
@@ -66,6 +71,7 @@ export class HlsManage {
 		this.getHls();
 		this.size = this.getHls().size();
 		this.cache = new Array(this.size);
+		this.imageCache = new Array(this.size);
 		this.hlsLogger.info({ segmentCount: this.size }, 'HLS instance created');
 	}
 
@@ -157,7 +163,43 @@ export class HlsManage {
 			return void 0 as unknown as Promise<Buffer>;
 		}
 		this.resetGc();
-		return this.getHls().image(index);
+
+		const cached = this.imageCache[index];
+		if (cached) {
+			this.log('debug', `从缓存中获取 ${index} 预览图`);
+			this.resetImageCacheClear(index);
+			return cached;
+		}
+
+		const image = this.getHls().image(index);
+		this.imageCache[index] = image;
+		this.resetImageCacheClear(index);
+		this.log('debug', `生成 ${index} 预览图`);
+		image.catch(() => {
+			// 失败结果不进入缓存，后续请求可以重新生成。
+			if (this.imageCache[index] === image) {
+				this.clearImageCache(index);
+			}
+		});
+		return image;
+	}
+
+	private resetImageCacheClear(index: number) {
+		const waitTime = this.imageWaitToClear.get(index);
+		if (waitTime) {
+			clearTimeout(waitTime);
+		}
+		this.imageWaitToClear.set(index, setTimeout(this.clearImageCache.bind(this, index), this.destroyImageDelay));
+	}
+
+	private clearImageCache(index: number) {
+		const waitTime = this.imageWaitToClear.get(index);
+		if (waitTime) {
+			clearTimeout(waitTime);
+		}
+		this.imageWaitToClear.delete(index);
+		this.imageCache[index] = undefined;
+		this.log('debug', `清除 ${index} 预览图缓存`);
 	}
 
 	private preloadTs(index: number) {
@@ -246,6 +288,9 @@ export class HlsManage {
 
 			this.cache = new Array(this.size);
 			this.waitToClear.clear();
+			this.imageWaitToClear.forEach(clearTimeout);
+			this.imageWaitToClear.clear();
+			this.imageCache = new Array(this.size);
 			HlsManage.hlsBucket.delete(this.hashPath);
 		}, this.destroyDelay);
 	}

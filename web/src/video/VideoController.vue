@@ -15,13 +15,22 @@
 				:tooltip-container="tooltipContainer"
 				:disabled="isTimelineDragging"
 			>
-				<el-button data-tooltip="上一个" text :disabled="!(episodesRef?.canPrev ?? false)" @click.stop="prev">
+				<el-button
+					:data-tooltip="`上一个${getKeyboradActionText(KeyboardAction.Prev)}`"
+					text
+					:disabled="!(episodesRef?.canPrev ?? false)"
+					@click.stop="prev"
+				>
 					<el-icon>
 						<PlayNextIcon ref="prevIcon" direction="prev" />
 					</el-icon>
 				</el-button>
 				<el-button
-					:data-tooltip="!playerStore.isPlaying ? '播放' : '暂停'"
+					:data-tooltip="
+						!playerStore.isPlaying
+							? `播放${getKeyboradActionText(KeyboardAction.PlayPause)}`
+							: `暂停${getKeyboradActionText(KeyboardAction.PlayPause)}`
+					"
 					text
 					@click.stop="playerStore.togglePlay()"
 				>
@@ -29,13 +38,18 @@
 						<PlayToggleIcon :play="!playerStore.isPlaying" />
 					</el-icon>
 				</el-button>
-				<el-button data-tooltip="下一个" text :disabled="!(episodesRef?.canNext ?? false)" @click.stop="next">
+				<el-button
+					:data-tooltip="`下一个${getKeyboradActionText(KeyboardAction.Next)}`"
+					text
+					:disabled="!(episodesRef?.canNext ?? false)"
+					@click.stop="next"
+				>
 					<el-icon>
 						<PlayNextIcon ref="nextIcon" direction="next" />
 					</el-icon>
 				</el-button>
 				<el-button
-					data-tooltip="回到开头"
+					:data-tooltip="`回到开头${getKeyboradActionText(KeyboardAction.BackToStart)}`"
 					text
 					:disabled="playerStore.currentTime < 1"
 					@click.stop="backToStart"
@@ -88,14 +102,18 @@
 					</el-icon>
 				</el-button>
 				<!-- 截图 -->
-				<el-button data-tooltip="截图" text @click.stop="shot">
+				<el-button :data-tooltip="`截图${getKeyboradActionText(KeyboardAction.Shot)}`" text @click.stop="shot">
 					<el-icon>
 						<ScreenShotIcon ref="shotIcon" />
 					</el-icon>
 				</el-button>
 				<!-- 全屏 -->
 				<el-button
-					:data-tooltip="playerStore.isFullScreen ? '退出全屏' : '全屏'"
+					:data-tooltip="
+						playerStore.isFullScreen
+							? `退出全屏${getKeyboradActionText(KeyboardAction.ToggleFullscreen)}`
+							: `全屏${getKeyboradActionText(KeyboardAction.ToggleFullscreen)}`
+					"
 					text
 					@click.stop="$emit('toggleFullscreen')"
 				>
@@ -120,6 +138,7 @@ import VideoControllerSpace from './VideoControllerSpace.vue';
 import VideoEpisodes from './VideoEpisodes.vue';
 import VideoSubtitle from './VideoSubtitle.vue';
 import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
+import { getKeyboradActionText } from '@/keyboard/info.ts';
 
 const props = defineProps<{
 	previewSrc?: string;

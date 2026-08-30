@@ -50,7 +50,7 @@ for (const key in KeyboardAction) {
 
 export function useKeyboardAction(key: KeyboardAction, fn: Fn<[...any[]], any>) {
 	bindKeyboardAction.emit(key, fn);
-	onBeforeUnmount(() => {
+	onScopeDispose(() => {
 		unBindKeyboardAction.emit(key);
 	});
 }

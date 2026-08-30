@@ -1,3 +1,7 @@
+import { isString } from '@wang-yige/utils';
+import type { KeyboardAction } from './action';
+import { KeyboardConfig } from './config';
+
 const keyboardKeyTextMap = new Map<string, string>([
 	// 主键盘区
 	['Backquote', '`'],
@@ -169,8 +173,24 @@ for (let index = 1; index <= 35; index += 1) {
 
 /**
  * 将 KeyboardEvent.code 或 KeyboardEvent.key 转为适合展示的按键文本。
+ * @param key 要转换的按键。
  */
-export function getKeyboardKeyText(key: string, template = '($key)') {
-	const keyText = keyboardKeyTextMap.get(key) ?? key;
-	return template.replaceAll('$key', keyText);
+export function getKeyboardKeyText(key: string | string[], template = ' ($key)', separator = '/') {
+	if (isString(key)) {
+		key = [key];
+	}
+	const keyTexts = key.map((k) => keyboardKeyTextMap.get(k) ?? k).filter(Boolean);
+	if (!keyTexts.length) {
+		return '';
+	}
+	return template.replaceAll('$key', keyTexts.join(separator));
+}
+
+/**
+ * 将 KeyboardAction 转为适合展示的按键文本。
+ * @param key 要转换的 KeyboardAction
+ */
+export function getKeyboradActionText(key: KeyboardAction) {
+	const actions = KeyboardConfig.find((k) => k.action === key);
+	return getKeyboardKeyText(actions?.keys.map((k) => k.key) || []);
 }

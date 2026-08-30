@@ -20,6 +20,10 @@ export function getSubtitleM3u8Url(videoName: string, streamIndex: number) {
 	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${streamIndex}/${M3u8Config.SUBTITLE_M3U8_NAME}.m3u8`;
 }
 
+export function getImageM3u8Url(videoName: string) {
+	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${M3u8Config.IMAGE_M3U8_NAME}.m3u8`;
+}
+
 export function getImageUrl(pathName: string) {
 	return `${SERVER_URL}${ServerRoot.IMAGE}/${encodeURIComponent(pathName)}`;
 }

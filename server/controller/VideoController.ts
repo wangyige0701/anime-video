@@ -26,6 +26,31 @@ export class VideoController {
 		return HlsManage.getHlsManage(path).media_m3u8();
 	}
 
+	@HttpMethod.Get(`/:path/${M3u8Config.IMAGE_M3U8_NAME}.m3u8`)
+	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
+	@ResponseHeader('Cache-Control', 'no-cache')
+	imageIndex(@Inject('path', checkDirectory) path: string) {
+		return HlsManage.getHlsManage(path).image_m3u8();
+	}
+
+	@HttpMethod.Get(`/:path/${M3u8Config.IMAGE_M3U8_NAME}_init.mp4`)
+	@ResponseHeader('Content-Type', 'video/mp4')
+	@ResponseHeader('Cache-Control', 'public, max-age=3600')
+	imageInit(@Inject('path', checkDirectory) path: string) {
+		return HlsManage.getHlsManage(path).image_init();
+	}
+
+	@HttpMethod.Get('/:path/:id.m4s')
+	@ResponseHeader('Content-Type', 'video/mp4')
+	@ResponseHeader('Cache-Control', 'public, max-age=3600')
+	async image(@Inject('path', checkDirectory) path: string, @Inject('id', nonNegativeInteger) id: number) {
+		const segment = await HlsManage.getHlsManage(path).image(id);
+		if (!segment) {
+			throw new NotFoundError('Not Found', `预览图不存在: ${id}`, 'text/plain');
+		}
+		return segment;
+	}
+
 	@HttpMethod.Get('/:path/:id.ts')
 	@ResponseHeader('Content-Type', 'video/mp2t')
 	@ResponseHeader('Cache-Control', 'public, max-age=3600')

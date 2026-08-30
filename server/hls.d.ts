@@ -19,6 +19,9 @@ declare module '~hls/hls.node' {
 				segmentMinDuration?: number;
 				mediaM3u8Name?: string;
 				subtitleM3u8Name?: string;
+				imageM3u8Name?: string;
+				/** 独立预览图工作线程的最大数量，默认 1 */
+				imageMaxConcurrency?: number;
 				onLog?: (level: 'info' | 'error' | 'debug' | 'warn', msg: string) => void;
 			},
 		);
@@ -51,6 +54,15 @@ declare module '~hls/hls.node' {
 		 * @param index 分片索引
 		 */
 		subtitle(streamIndex: number, index: number): Buffer;
+
+		/** 获取 JPEG I-frame 图片轨道 m3u8 */
+		image_m3u8(): Buffer;
+
+		/** 获取 JPEG I-frame fMP4 初始化段 */
+		image_init(): Buffer;
+
+		/** 按现有 HLS 分片序号生成单帧 JPEG fMP4 */
+		image(index: number): Promise<Buffer>;
 
 		/**
 		 * 获取 Hls 实例分片数量

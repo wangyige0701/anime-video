@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { ParallelTask } from '@wang-yige/utils';
-import { M3u8Config, CONTEXT_POOL_SIZE, SEGMENT_MIN_DURATION } from '~config/hls';
+import { M3u8Config, CONTEXT_POOL_SIZE, IMAGE_MAX_CONCURRENCY, SEGMENT_MIN_DURATION } from '~config/hls';
 import { createLogger, type LogLevel } from '~server/middlewares/logger';
 
 const require = createRequire(import.meta.url);
@@ -76,6 +76,8 @@ export class HlsManage {
 				segmentMinDuration: SEGMENT_MIN_DURATION,
 				mediaM3u8Name: M3u8Config.MEDIA_M3U8_NAME,
 				subtitleM3u8Name: M3u8Config.SUBTITLE_M3U8_NAME,
+				imageM3u8Name: M3u8Config.IMAGE_M3U8_NAME,
+				imageMaxConcurrency: IMAGE_MAX_CONCURRENCY,
 				onLog: (level, msg) => {
 					this.log(level, msg, 'hls-native');
 				},
@@ -138,6 +140,24 @@ export class HlsManage {
 
 	public subtitle(streamIndex: number, index: number) {
 		return this.getHls().subtitle(streamIndex, index);
+	}
+
+	public image_m3u8() {
+		this.resetGc();
+		return this.getHls().image_m3u8();
+	}
+
+	public image_init() {
+		this.resetGc();
+		return this.getHls().image_init();
+	}
+
+	public image(index: number) {
+		if (index < 0 || index >= this.size) {
+			return void 0 as unknown as Promise<Buffer>;
+		}
+		this.resetGc();
+		return this.getHls().image(index);
 	}
 
 	private preloadTs(index: number) {

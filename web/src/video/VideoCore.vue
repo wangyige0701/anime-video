@@ -20,8 +20,12 @@
 			<div ref="videoController" class="video-controller">
 				<VideoController
 					ref="videoControllerRef"
+					:preview-src="previewSrc"
+					:preview-loading="previewLoading"
 					@toggle-fullscreen="toggleFullscreen"
 					@shot="videoPlayerRef?.shot()"
+					@hover-time="handleHoverTime"
+					@hover-end="handleHoverEnd"
 				/>
 			</div>
 			<div ref="closeButton" class="close">
@@ -68,6 +72,7 @@ import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
 import { useEventListener } from '@vueuse/core';
 import { isEditingElement } from '@/utils/is';
 import { triggerKeyboardEvent } from '@/keyboard/trigger';
+import { useTimelinePreview } from './useTimelinePreview';
 
 const emit = defineEmits<{
 	(e: 'close'): void;
@@ -83,6 +88,10 @@ const videoControllerRef = useTemplateRef('videoControllerRef');
 const status = useVueStatusRef('volume');
 let playToggleTimeout: ReturnType<typeof setTimeout> | undefined;
 let volumeTipTimeout: ReturnType<typeof setTimeout> | undefined;
+const { previewSrc, previewLoading, handleHoverTime, handleHoverEnd } = useTimelinePreview({
+	getPreviewImage: () => videoPlayerRef.value?.getPreviewImage,
+	source: () => playerStore.videoPath,
+});
 
 useKeyboardAction(KeyboardAction.VolumeUp, () => volumeUp(10));
 useKeyboardAction(KeyboardAction.VolumeDown, () => volumeDown(10));

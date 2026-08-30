@@ -22,7 +22,6 @@
 			</div>
 			<el-tooltip
 				ref="tooltip"
-				:content="formatDuration(mouseTime)"
 				:show-arrow="false"
 				:append-to="videoTimelineRef || void 0"
 				placement="top"
@@ -33,7 +32,19 @@
 				:popper-options="tooltipPopperOptions"
 				:virtual-ref="virtualTrigger"
 				virtual-triggering
-			></el-tooltip>
+			>
+				<template #content>
+					<div class="timeline-tooltip">
+						<div v-if="previewLoading || previewSrc" class="timeline-tooltip__preview">
+							<img v-if="previewSrc && !previewLoading" :src="previewSrc" alt="" />
+							<el-icon v-else size="4rem">
+								<PlayerLoading />
+							</el-icon>
+						</div>
+						<div class="timeline-tooltip__time">{{ formatDuration(mouseTime) }}</div>
+					</div>
+				</template>
+			</el-tooltip>
 		</div>
 		<Transition name="pointer">
 			<div
@@ -59,8 +70,15 @@ import { usePlayerStore } from '@/stores/player';
 import { formatDuration } from '@/utils/duration';
 import { useDebounceFn, useEventListener } from '@vueuse/core';
 
+defineProps<{
+	previewSrc?: string;
+	previewLoading?: boolean;
+}>();
+
 const emit = defineEmits<{
 	(e: 'dragging', value: boolean): void;
+	(e: 'hoverTime', time: number): void;
+	(e: 'hoverEnd'): void;
 }>();
 
 let isSyncCurrentTime = true;
@@ -124,11 +142,14 @@ const setCurrentTimeDebounce = useDebounceFn(async (time: number) => {
 }, 500);
 
 const trackMouseEnterDebounce = useDebounceFn((event: MouseEvent) => {
-	getPointerTime(event);
+	updateHoverTime(event);
 	status.onMouseEnter();
 }, 100);
 const trackMouseLeaveDebounce = useDebounceFn(() => {
 	status.offMouseEnter();
+	if (!status.dragging) {
+		emit('hoverEnd');
+	}
 }, 100);
 
 function handleTrackMouseEnter(event: MouseEvent) {
@@ -196,7 +217,14 @@ function handleTrackMouseMove(event: MouseEvent) {
 	if (!status.mouseEnter && !status.dragging) {
 		return;
 	}
-	getPointerTime(event);
+	updateHoverTime(event);
+}
+
+function updateHoverTime(event: MouseEvent | PointerEvent) {
+	const time = getPointerTime(event);
+	if (time !== null) {
+		emit('hoverTime', time);
+	}
 }
 
 function handleTrackClick(event: MouseEvent) {
@@ -236,6 +264,9 @@ function stopDragging(event?: PointerEvent) {
 		updateDragging(event);
 	}
 	status.offDragging();
+	if (!status.mouseEnter) {
+		emit('hoverEnd');
+	}
 }
 </script>
 
@@ -390,6 +421,31 @@ function stopDragging(event?: PointerEvent) {
 .pointer-leave-active {
 	animation: pop-out 0.18s ease-in forwards;
 }
+
+.timeline-tooltip {
+	width: 160px;
+	&__preview {
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 6px;
+		background-color: map.get(token.$theme, 'video-timeline-bg');
+		border-radius: 4px;
+		overflow: hidden;
+		img {
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+		}
+	}
+	&__time {
+		text-align: center;
+		font-variant-numeric: tabular-nums;
+	}
+}
+
 @keyframes pop-in {
 	0% {
 		transform: scale(0.6);

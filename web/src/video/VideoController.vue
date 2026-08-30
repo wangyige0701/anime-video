@@ -1,6 +1,13 @@
 <template>
 	<div class="video-controller-container" @click.stop @dblclick.stop>
-		<VideoTimeline ref="timelineRef" @dragging="isTimelineDragging = $event" />
+		<VideoTimeline
+			ref="timelineRef"
+			:preview-src="props.previewSrc"
+			:preview-loading="props.previewLoading"
+			@dragging="isTimelineDragging = $event"
+			@hover-time="$emit('hoverTime', $event)"
+			@hover-end="$emit('hoverEnd')"
+		/>
 
 		<div class="video-menus">
 			<VideoControllerSpace
@@ -114,9 +121,16 @@ import VideoEpisodes from './VideoEpisodes.vue';
 import VideoSubtitle from './VideoSubtitle.vue';
 import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
 
+const props = defineProps<{
+	previewSrc?: string;
+	previewLoading?: boolean;
+}>();
+
 const emit = defineEmits<{
 	(e: 'toggleFullscreen'): void;
 	(e: 'shot'): void;
+	(e: 'hoverTime', time: number): void;
+	(e: 'hoverEnd'): void;
 }>();
 
 const ICON_SIZE = '1.5rem';

@@ -17,6 +17,7 @@ import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~routes/server';
 import { takeVideoShotToClipboard } from '@/utils/videoShot';
 import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
+import { useHlsImagePreview } from './useHlsImagePreview';
 
 const props = defineProps<{
 	container?: HTMLElement;
@@ -39,6 +40,12 @@ const END_THRESHOLD = 0.25;
 const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
+const { getPreviewImage, reset: resetPreviewPlayer } = useHlsImagePreview({
+	getHls: () => hls,
+	getDuration: () => video.value?.duration,
+	getSourceVersion: () => sourceVersion,
+	initialized,
+});
 
 useKeyboardAction(KeyboardAction.Shot, shot);
 
@@ -46,6 +53,7 @@ watch(
 	() => playerStore.videoPath,
 	async (path) => {
 		const currentSourceVersion = ++sourceVersion;
+		resetPreviewPlayer();
 		endHandled = false;
 		isMetadataLoaded = false;
 		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
@@ -378,6 +386,7 @@ onMounted(() => {
 			maxBufferSize: 1024 * 1024 * 60, // 10MB 最大缓存大小
 			lowLatencyMode: false,
 			enableWebVTT: true,
+			iframeCacheLimit: 10 * 1024 * 1024,
 		});
 
 		hls.attachMedia(el);
@@ -429,6 +438,7 @@ defineExpose({
 		return video.value ? !video.value.paused : false;
 	},
 	shot,
+	getPreviewImage,
 });
 </script>
 

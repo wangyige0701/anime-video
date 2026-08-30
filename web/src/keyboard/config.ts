@@ -1,6 +1,10 @@
+import type { KeyboardInfo } from './types';
 import { KeyboardAction } from './action';
 
-export const KeyboardConfig: Array<{ action: KeyboardAction; keys: { key: string }[] }> = [
+export const KeyboardConfig: Array<{
+	action: KeyboardAction;
+	keys: KeyboardInfo[];
+}> = [
 	{
 		action: KeyboardAction.PlayPause,
 		keys: [{ key: 'Space' }],

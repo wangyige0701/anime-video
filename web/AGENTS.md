@@ -239,6 +239,8 @@ tooltip 使用实现 `Measurable` 的 `virtualTrigger`，位置来源于鼠标�
 2. `keyboard/config.ts` 的 `KeyboardConfig` 只维护物理 `KeyboardEvent.code` 到语义动作的映射。
 3. `keyboard/trigger.ts` 把配置预编译为 code map。按键命中且动作已注册时才阻止默认行为和冒泡，然后调用处理函数。
 
+`keyboard/info.ts` 负责把常见 `KeyboardEvent.code`（同时兼容 `KeyboardEvent.key`）转换为面向用户的按键文本，并通过 `$key` 模板生成快捷键文案；未知按键保留原值。
+
 `VideoCore.vue` 是唯一的全局 `window.keydown` 入口。事件目标为输入框、编辑器等可编辑元素时必须通过 `isEditingElement()` 跳过，避免播放器快捷键干扰文字输入。
 
 当前物理按键映射为：`Space` 播放/暂停、`KeyS` 截图、`KeyF` 切换全屏、`ArrowUp` 增大音量、`ArrowDown` 减小音量。动作处理按职责注册：

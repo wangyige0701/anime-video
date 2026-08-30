@@ -11,11 +11,12 @@
 - master、media、subtitle、image playlist 名称统一由 `M3u8Config` 定义，当前图片 playlist 名称为 `image`。
 - `SEGMENT_MIN_DURATION` 当前为 4 秒，`CONTEXT_POOL_SIZE` 当前为 4。
 - `IMAGE_MAX_CONCURRENCY` 当前为 1，传给原生构造参数 `imageMaxConcurrency`，限制单个 Hls 实例的预览图工作线程数。
+- `IMAGE_OUTPUT_WIDTH`、`IMAGE_OUTPUT_HEIGHT` 当前为 320x180；`IMAGE_MAX_SEGMENT_BYTES`、`IMAGE_MAX_JPEG_BYTES`、`IMAGE_MAX_CACHE_BYTES` 当前分别为 50KiB、46KiB、8MiB，并传给同名 `image...` Node 构造配置。
 - `HlsConstructor.configure({ globalSegmentConcurrency: 2 })` 限制全局 TS 分片任务并发。
 
-`server/hls.d.ts` 声明原生扩展接口，必须和 C++ N-API 保持一致。当前图片接口包括 `image_m3u8()`、`image_init()` 和异步 `image(index)`；构造参数包括 `imageM3u8Name`、`imageMaxConcurrency` 与 `onLog`。修改任一端接口时，必须同时检查 C++ 导出、类型声明、`HlsManage`、配置和路由调用方。
+`server/hls.d.ts` 声明原生扩展接口，必须和 C++ N-API 保持一致。当前图片接口包括 `image_m3u8()`、`image_init()` 和异步 `image(index)`；构造参数包括 `imageM3u8Name`、`imageMaxConcurrency`、`imageOutputWidth`、`imageOutputHeight`、`imageMaxSegmentBytes`、`imageMaxJpegBytes`、`imageMaxCacheBytes` 与 `onLog`。修改任一端接口时，必须同时检查 C++ 导出、类型声明、`HlsManage`、配置和路由调用方。
 
-服务端依赖的原生图片契约为：复用视频 HLS 分片索引和时间范围，每段最多一张预览图；只有首次调用 `image(index)` 才懒创建独立图片线程，playlist 和 init 请求不能触发解码；输出为 320x180 的单 JPEG sample fMP4，完整 `.m4s` 不超过 50KB。原生层优先使用 GPU 解码/缩放并减少全尺寸 GPU 到 CPU 传输，硬件路径不可用时自动回退软件实现，任何图片路径都不得改变 TS 或字幕输出。
+服务端依赖的原生图片契约为：复用视频 HLS 分片索引和时间范围，每段最多一张预览图；只有首次调用 `image(index)` 才懒创建独立图片线程，playlist 和 init 请求不能触发解码；默认输出为 320x180 的单 JPEG sample fMP4，完整 `.m4s` 默认不超过 50KB。原生层优先使用 GPU 解码/缩放并减少全尺寸 GPU 到 CPU 传输，硬件路径不可用时自动回退软件实现，任何图片路径都不得改变 TS 或字幕输出。
 
 ### HTTP 路由
 

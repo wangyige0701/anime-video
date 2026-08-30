@@ -22,6 +22,16 @@ declare module '~hls/hls.node' {
 				imageM3u8Name?: string;
 				/** 独立预览图工作线程的最大数量，默认 1 */
 				imageMaxConcurrency?: number;
+				/** 预览图输出画布宽度，单位像素，必须是正偶数，默认 320 */
+				imageOutputWidth?: number;
+				/** 预览图输出画布高度，单位像素，必须是正偶数，默认 180 */
+				imageOutputHeight?: number;
+				/** 单个预览图 fMP4 分片最大字节数，默认 50 KiB */
+				imageMaxSegmentBytes?: number;
+				/** 单个预览图 JPEG payload 最大字节数，默认 46 KiB */
+				imageMaxJpegBytes?: number;
+				/** 原生预览图 LRU 缓存最大字节数，默认 8 MiB */
+				imageMaxCacheBytes?: number;
 				onLog?: (level: 'info' | 'error' | 'debug' | 'warn', msg: string) => void;
 			},
 		);

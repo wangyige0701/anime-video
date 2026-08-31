@@ -258,10 +258,10 @@ tooltip 使用实现 `Measurable` 的 `virtualTrigger`，位置来源于鼠标�
 
 时间轴预览图使用 hls.js 1.7 的 JPEG I-frame 图片轨道，现有调用链如下：
 
-1. `VideoTimeline.vue` 根据鼠标位置计算 `mouseTime`，通过 `hoverTime` 发出时间；离开时间轴后发出 `hoverEnd`。tooltip 同时承载时间、加载状态和预览图。
-2. `VideoController.vue` 只负责向上转发 `hoverTime`、`hoverEnd`，并把 `previewSrc`、`previewLoading` 传回时间轴，不在控制器内发起图片请求。
-3. `VideoCore.vue` 使用 `useTimelinePreview()` 统一处理 hover 防抖、请求排队、分片范围复用和加载状态，再将状态传给控制器。
-4. `VideoPlayer.vue` 通过 `defineExpose()` 暴露 `getPreviewImage(time)`；具体的 hls.js 图片播放器操作由 `useHlsImagePreview()` 承担。
+1. `VideoTimeline.vue` 根据鼠标位置计算 `mouseTime`，通过 `hoverTime` 发出时间；离开时间轴后发出 `hoverEnd`。tooltip 根据 `previewAvailable` 决定显示预览图与时间，还是只显示时间。
+2. `VideoController.vue` 只负责向上转发 `hoverTime`、`hoverEnd`，并把 `previewSrc`、`previewLoading`、`previewAvailable` 传回时间轴，不在控制器内发起图片请求。
+3. `VideoCore.vue` 使用 `useTimelinePreview()` 统一处理 hover 防抖、请求排队、分片范围复用和加载状态，在预览图流可用时才发起请求，再将状态传给控制器。
+4. `VideoPlayer.vue` 在当前主清单加载后根据带 `imageCodec` 的 I-frame 变体发出预览图流可用状态，并通过 `defineExpose()` 暴露 `getPreviewImage(time)`；具体的 hls.js 图片播放器操作由 `useHlsImagePreview()` 承担。
 5. `useHlsImagePreview.ts` 创建独立 `img` 元素，调用 `createImageIFramePlayer()`、`attachImage()` 和 `loadMediaAt(time)`，等待图片 `load` 后返回带有 `previewStartTime`、`previewEndTime` 的 `Promise<PreviewImage>`。
 
 ### 请求合并与缓存边界

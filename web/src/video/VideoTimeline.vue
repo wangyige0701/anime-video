@@ -34,9 +34,13 @@
 				virtual-triggering
 			>
 				<template #content>
-					<div class="timeline-tooltip">
-						<div v-if="previewLoading || previewSrc" class="timeline-tooltip__preview">
-							<img v-if="previewSrc && !previewLoading" :src="previewSrc" alt="" />
+					<div class="timeline-tooltip" :class="{ 'is-time-only': !props.previewAvailable }">
+						<div v-if="props.previewAvailable" class="timeline-tooltip__preview">
+							<img
+								v-if="props.previewSrc && !props.previewLoading"
+								:src="props.previewSrc"
+								alt=""
+							/>
 							<el-icon v-else size="4rem">
 								<PlayerLoading />
 							</el-icon>
@@ -70,9 +74,10 @@ import { usePlayerStore } from '@/stores/player';
 import { formatDuration } from '@/utils/duration';
 import { useDebounceFn, useEventListener } from '@vueuse/core';
 
-defineProps<{
+const props = defineProps<{
 	previewSrc?: string;
 	previewLoading?: boolean;
+	previewAvailable?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -427,6 +432,9 @@ function stopDragging(event?: PointerEvent) {
 
 .timeline-tooltip {
 	width: 160px;
+	&.is-time-only {
+		width: auto;
+	}
 	&__preview {
 		width: 100%;
 		aspect-ratio: 16 / 9;

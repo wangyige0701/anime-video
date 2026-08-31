@@ -5,6 +5,7 @@ import type { PreviewImage } from './useHlsImagePreview';
 type TimelinePreviewOptions = {
 	getPreviewImage: () => ((time: number) => Promise<PreviewImage>) | undefined;
 	source: MaybeRefOrGetter<unknown>;
+	enabled: MaybeRefOrGetter<boolean>;
 	debounce?: number;
 };
 
@@ -20,14 +21,14 @@ export function useTimelinePreview(options: TimelinePreviewOptions) {
 	const requestDebounced = useDebounceFn(queueRequest, options.debounce ?? 250);
 
 	watch(
-		() => toValue(options.source),
+		() => [toValue(options.source), toValue(options.enabled)],
 		() => reset(),
 		{ flush: 'sync' },
 	);
 	onScopeDispose(reset);
 
 	function handleHoverTime(time: number) {
-		if (!Number.isFinite(time) || time < 0) {
+		if (!toValue(options.enabled) || !Number.isFinite(time) || time < 0) {
 			return;
 		}
 		latestHoverTime = time;

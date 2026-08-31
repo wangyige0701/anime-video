@@ -24,6 +24,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
 	(e: 'autoNext'): void;
+	(e: 'previewAvailable', value: boolean): void;
 }>();
 
 let hls: Hls | null = null;
@@ -54,6 +55,7 @@ watch(
 	async (path) => {
 		const currentSourceVersion = ++sourceVersion;
 		resetPreviewPlayer();
+		emit('previewAvailable', false);
 		endHandled = false;
 		isMetadataLoaded = false;
 		pendingCurrentTime = normalizeCurrentTime(playerStore.currentTime);
@@ -403,6 +405,15 @@ onMounted(() => {
 				playerStore.pause();
 				ElMessage.error(data.details || '视频播放错误');
 			}
+		});
+		hls.on(Hls.Events.MANIFEST_LOADED, (_, data) => {
+			if (activeHlsSourceVersion !== sourceVersion || data.url !== activeHlsSourceUrl) {
+				return;
+			}
+			emit(
+				'previewAvailable',
+				data.iframeVariants.some((variant) => Boolean(variant.imageCodec)),
+			);
 		});
 		hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_, data) => {
 			playerStore.setSubtitleTracks(

@@ -4,6 +4,7 @@
 			ref="timelineRef"
 			:preview-src="props.previewSrc"
 			:preview-loading="props.previewLoading"
+			:preview-available="props.previewAvailable"
 			@dragging="isTimelineDragging = $event"
 			@hover-time="$emit('hoverTime', $event)"
 			@hover-end="$emit('hoverEnd')"
@@ -143,6 +144,7 @@ import { getKeyboradActionText } from '@/keyboard/info.ts';
 const props = defineProps<{
 	previewSrc?: string;
 	previewLoading?: boolean;
+	previewAvailable?: boolean;
 }>();
 
 const emit = defineEmits<{

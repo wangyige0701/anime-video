@@ -5,6 +5,7 @@
 				ref="videoPlayerRef"
 				:container="videoCoreRef || void 0"
 				@auto-next="videoControllerRef?.autoNext()"
+				@preview-available="previewAvailable = $event"
 			/>
 		</div>
 		<div
@@ -27,6 +28,7 @@
 					ref="videoControllerRef"
 					:preview-src="previewSrc"
 					:preview-loading="previewLoading"
+					:preview-available="previewAvailable"
 					@toggle-fullscreen="toggleFullscreen"
 					@shot="videoPlayerRef?.shot()"
 					@hover-time="handleHoverTime"
@@ -94,11 +96,13 @@ const videoController = useTemplateRef('videoController');
 const closeButton = useTemplateRef('closeButton');
 const videoControllerRef = useTemplateRef('videoControllerRef');
 const status = useVueStatusRef('volume');
+const previewAvailable = ref(false);
 let playToggleTimeout: ReturnType<typeof setTimeout> | undefined;
 let volumeTipTimeout: ReturnType<typeof setTimeout> | undefined;
 const { previewSrc, previewLoading, handleHoverTime, handleHoverEnd } = useTimelinePreview({
 	getPreviewImage: () => videoPlayerRef.value?.getPreviewImage,
 	source: () => playerStore.videoPath,
+	enabled: previewAvailable,
 });
 const {
 	handleWheel: handleMaskWheel,

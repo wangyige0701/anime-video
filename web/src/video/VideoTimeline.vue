@@ -103,7 +103,7 @@ const virtualTrigger: Measurable = {
 };
 const tooltipPopperOptions = {
 	strategy: 'fixed' as const,
-	modifiers: [{ name: 'preventOverflow', options: { mainAxis: false } }],
+	modifiers: [{ name: 'preventOverflow', options: { mainAxis: true } }],
 };
 const bufferRatios = computed(() => {
 	return playerStore.buffer.map(([startTime, endTime]) => [getRatio(startTime), getRatio(endTime)]);

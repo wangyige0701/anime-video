@@ -326,6 +326,7 @@ const videoRef = useTemplateRef('videoRef');
 - 组件样式默认使用现有 scoped SCSS、`@/scss/token.scss` 和 `sass:map` 访问主题值。
 - 视觉调整应延续现有布局、间距、圆角、加载反馈和 Element Plus 使用方式，避免为单一功能增加大面积装饰、复杂动画或过多层级。
 - 需要让某个模块随主题变化时，新增颜色必须先在 `src/scss/mixin/themes.scss` 的 `themes()` 中声明对应 CSS 变量，并同步加入 `$theme` 映射；组件内再通过 `map.get(token.$theme, '变量名')` 使用。
+- 播放器居中音量 HUD 的背景、边框和投影分别使用 `video-volume-tip-bg`、`video-volume-tip-border`、`video-volume-tip-shadow`，各主题根据主色生成对应的半透明层次。
 - 不得在组件中硬编码仅适配某一个主题的主色。新增或修改主题变量后，至少检查全部现有主题类下的可读性、对比度和切换效果。
 
 ## 兼容性与修改边界

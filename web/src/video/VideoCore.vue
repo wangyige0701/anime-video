@@ -58,7 +58,7 @@
 							@update:volume="playerStore.setVolume($event)"
 						/>
 					</el-icon>
-					<span>{{ playerStore.volume }}%</span>
+					<span class="volume-value">{{ playerStore.volume }}%</span>
 				</div>
 			</Transition>
 		</div>
@@ -308,27 +308,58 @@ function showVolumeTip() {
 	flex-direction: row;
 	align-items: center;
 	justify-content: center;
-	gap: 5px;
+	gap: 0.625rem;
+	min-width: 7rem;
+	min-height: 3.25rem;
 	position: absolute;
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	background-color: map.get(token.$theme, 'l-9');
-	color: map.get(token.$theme, 'd-9');
-	box-shadow: 0 0 5px map.get(token.$theme, 'l-6');
-	border-radius: 5px;
-	font-size: 1.2rem;
-	font-weight: 500;
-	padding: 10px 1rem;
+	pointer-events: none;
+	overflow: hidden;
+	background: map.get(token.$theme, 'video-volume-tip-bg');
+	color: map.get(token.$theme, 'l-9');
+	border: 1px solid map.get(token.$theme, 'video-volume-tip-border');
+	border-radius: token.$radius-base;
+	box-shadow: map.get(token.$theme, 'video-volume-tip-shadow');
+	backdrop-filter: blur(12px) saturate(1.15);
+	font-size: 1rem;
+	font-weight: 600;
+	padding: 0.75rem 1rem;
 	z-index: 30;
+	.video-icon {
+		font-size: 1.375rem;
+	}
+	.volume-value {
+		min-width: 3.5ch;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+	&::after {
+		content: '';
+		width: calc(v-bind('playerStore.volume') * 1%);
+		height: 3px;
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		background: map.get(token.$theme, 'video-timeline-runway-bg');
+		transition: width 0.16s ease-out;
+	}
 }
 
-.volume-fade-enter-active,
+.volume-fade-enter-active {
+	transition:
+		opacity 0.18s ease-out,
+		transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 .volume-fade-leave-active {
-	transition: opacity 0.3s ease;
+	transition:
+		opacity 0.16s ease-in,
+		transform 0.16s ease-in;
 }
 .volume-fade-enter-from,
 .volume-fade-leave-to {
 	opacity: 0;
+	transform: translate(-50%, calc(-50% + 8px)) scale(0.94);
 }
 </style>

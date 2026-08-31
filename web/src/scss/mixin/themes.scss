@@ -56,6 +56,11 @@ $theme: ();
 			#{var.varName('video', 'timeline', 'buffer', 'bg')}: rgba(color.mix(#fff, $color, 72%), 0.75);
 			#{var.varName('video', 'timeline', 'runway', 'bg')}: color.mix(#fff, $color, 4%);
 			#{var.varName('video', 'timeline', 'bar', 'color')}: #fff;
+			#{var.varName('video', 'volume', 'tip', 'bg')}: rgba(color.mix(#000, $color, 88%), 0.78);
+			#{var.varName('video', 'volume', 'tip', 'border')}: rgba(color.mix(#fff, $color, 55%), 0.38);
+			#{var.varName('video', 'volume', 'tip', 'shadow')}:
+				0 12px 32px rgba(#000, 0.34),
+				0 0 0 1px rgba($color, 0.08);
 
 			// 开关样式
 			#{var.varName('switch', 'off', 'bg')}: color.change(color.mix(#cfd3dc, $color, 90%), $alpha: 0.74);
@@ -87,6 +92,9 @@ $theme: ();
 	$theme: map.set($theme, 'video-timeline-buffer-bg', var(--video-timeline-buffer-bg));
 	$theme: map.set($theme, 'video-timeline-runway-bg', var(--video-timeline-runway-bg));
 	$theme: map.set($theme, 'video-timeline-bar-color', var(--video-timeline-bar-color));
+	$theme: map.set($theme, 'video-volume-tip-bg', var(--video-volume-tip-bg));
+	$theme: map.set($theme, 'video-volume-tip-border', var(--video-volume-tip-border));
+	$theme: map.set($theme, 'video-volume-tip-shadow', var(--video-volume-tip-shadow));
 	$theme: map.set($theme, 'switch-off-bg', var(--switch-off-bg));
 	$theme: map.set($theme, 'switch-off-thumb', var(--switch-off-thumb));
 	$theme: map.set($theme, 'switch-off-text', var(--switch-off-text));

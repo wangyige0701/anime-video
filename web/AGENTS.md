@@ -192,6 +192,8 @@
 
 遮罩单击会延迟 200ms 切换播放状态，用于等待是否发生双击；双击会取消待执行的单击并切换全屏。关闭播放器前先退出全屏，再向父组件发出 `close`。调整这段逻辑时必须保留单击/双击互斥，避免一次双击同时触发播放切换。
 
+`useVideoVolumeGesture.ts` 管理遮罩层的滚轮和单指纵向滑动手势，并把事件处理器交给 `VideoCore` 直接绑定到 `.video-mask`。向上滚动或超过阈值的上滑增加一格音量，反向操作减少一格；事件目标位于 `VideoController` 内时必须跳过，避免控制栏操作改变音量。
+
 `useVideoControllerActivity.ts` 集中管理控制器显隐：鼠标进入或移动时激活控制器，离开播放器时立即隐藏；鼠标位于控制器或关闭按钮等 persistent target 内时保持显示。它通过 `[data-volume-slider]` 和 `[data-timeline-slider]` 识别拖拽，在全局 `pointerup`、`pointercancel`、窗口失焦及作用域销毁时结束拖拽，防止控制器在拖动过程中隐藏。
 
 ### VideoPlayer 媒体层
@@ -274,6 +276,7 @@ tooltip 使用实现 `Measurable` 的 `virtualTrigger`，位置来源于鼠标�
 
 - `useTimelinePreview.ts` 在 source 变化和作用域销毁时执行 `reset()`：取消防抖任务、清空待请求时间和分片范围、使在途结果失效，并重置展示状态。
 - `useHlsImagePreview.ts` 在视频源变化和作用域销毁时执行 `reset()`：取消当前图片加载、移除图片及 hls.js 错误监听、调用 `detachImage()` 并释放图片播放器引用。
+- `useVideoVolumeGesture.ts` 不注册全局监听器；模板事件随组件卸载自动移除，hook 在作用域销毁时清空尚未结束的触摸手势状态。
 - `VideoPlayer.vue` 销毁时继续负责销毁主 Hls 实例、取消动画帧并重置播放器状态。新增异步任务、监听器、定时器、对象 URL 或第三方实例时，必须在 source 切换和组件/作用域销毁的正确节点清理。
 
 预览图功能不得改变主视频加载、TS 缓冲、字幕、播放进度、截图、快捷键或自动连播逻辑。图片轨道不可用或请求失败时只隐藏预览，不得中断主视频播放。

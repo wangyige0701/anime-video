@@ -13,6 +13,11 @@
 			:class="{ 'is-controller-active': playerStore.isControllerActive }"
 			@click.stop="handleMaskClick"
 			@dblclick="handleMaskDoubleClick"
+			@wheel="handleMaskWheel"
+			@touchstart="handleMaskTouchStart"
+			@touchmove="handleMaskTouchMove"
+			@touchend="handleMaskTouchEnd"
+			@touchcancel="resetVolumeTouch"
 		>
 			<div class="video-title">
 				<VideoTitle />
@@ -73,11 +78,14 @@ import { useEventListener } from '@vueuse/core';
 import { isEditingElement } from '@/utils/is';
 import { triggerKeyboardEvent } from '@/keyboard/trigger';
 import { useTimelinePreview } from './useTimelinePreview';
+import { useVideoVolumeGesture } from './useVideoVolumeGesture';
 
 const emit = defineEmits<{
 	(e: 'close'): void;
 }>();
 
+const KEYBOARD_VOLUME_STEP = 10;
+const GESTURE_VOLUME_STEP = 1;
 const playerStore = usePlayerStore();
 const videoCoreRef = useTemplateRef('videoCoreRef');
 const videoMask = useTemplateRef('videoMask');
@@ -92,9 +100,20 @@ const { previewSrc, previewLoading, handleHoverTime, handleHoverEnd } = useTimel
 	getPreviewImage: () => videoPlayerRef.value?.getPreviewImage,
 	source: () => playerStore.videoPath,
 });
+const {
+	handleWheel: handleMaskWheel,
+	handleTouchStart: handleMaskTouchStart,
+	handleTouchMove: handleMaskTouchMove,
+	handleTouchEnd: handleMaskTouchEnd,
+	resetTouch: resetVolumeTouch,
+} = useVideoVolumeGesture({
+	excludedTarget: videoController,
+	increase: () => volumeUp(GESTURE_VOLUME_STEP),
+	decrease: () => volumeDown(GESTURE_VOLUME_STEP),
+});
 
-useKeyboardAction(KeyboardAction.VolumeUp, () => volumeUp(10));
-useKeyboardAction(KeyboardAction.VolumeDown, () => volumeDown(10));
+useKeyboardAction(KeyboardAction.VolumeUp, () => volumeUp(KEYBOARD_VOLUME_STEP));
+useKeyboardAction(KeyboardAction.VolumeDown, () => volumeDown(KEYBOARD_VOLUME_STEP));
 useKeyboardAction(KeyboardAction.ToggleFullscreen, toggleFullscreen);
 
 useVideoControllerActivity({

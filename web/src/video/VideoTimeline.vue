@@ -82,6 +82,7 @@ const emit = defineEmits<{
 }>();
 
 let isSyncCurrentTime = true;
+let isMouseInTrack = false;
 let tooltipFrame: number | null = null;
 const videoTimelineRef = useTemplateRef('videoTimelineRef');
 const track = useTemplateRef('track');
@@ -153,11 +154,13 @@ const trackMouseLeaveDebounce = useDebounceFn(() => {
 }, 100);
 
 function handleTrackMouseEnter(event: MouseEvent) {
+	isMouseInTrack = true;
 	trackMouseLeaveDebounce.cancel();
 	trackMouseEnterDebounce(event);
 }
 
 function handleTrackMouseLeave() {
+	isMouseInTrack = false;
 	trackMouseEnterDebounce.cancel();
 	trackMouseLeaveDebounce();
 }
@@ -214,7 +217,7 @@ function updateTooltipPosition() {
 }
 
 function handleTrackMouseMove(event: MouseEvent) {
-	if (!status.mouseEnter && !status.dragging) {
+	if ((!status.mouseEnter || !isMouseInTrack) && !status.dragging) {
 		return;
 	}
 	updateHoverTime(event);

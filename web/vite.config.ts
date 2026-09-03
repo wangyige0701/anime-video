@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { defineConfig, searchForWorkspaceRoot } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
@@ -6,7 +7,7 @@ import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 import { getPathAlias } from './vite/alias.ts';
-import path from 'node:path';
+import config from '../shared/config-parser.ts';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -42,5 +43,8 @@ export default defineConfig({
 		fs: {
 			allow: [path.resolve(searchForWorkspaceRoot(process.cwd()), '..')],
 		},
+	},
+	define: {
+		__APP_CONFIG__: JSON.stringify(config),
 	},
 });

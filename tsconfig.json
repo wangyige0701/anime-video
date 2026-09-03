@@ -15,9 +15,10 @@
 			"~config/*": ["./config/*"],
 			"~routes/*": ["./routes/*"],
 			"~types/*": ["./types/*"],
-			"~common/*": ["./common/*"]
+			"~common/*": ["./common/*"],
+			"~shared/*": ["./shared/*"]
 		}
 	},
-	"include": ["server", "test", "dev", "test", "web", "config", "types", "routes"],
+	"include": ["server", "test", "dev", "test", "web", "config", "types", "routes", "shared"],
 	"exclude": ["node_modules"]
 }

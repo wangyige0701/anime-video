@@ -14,7 +14,6 @@ import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import { ServerRoot } from '~routes/server';
 import { ImageNotFoundError } from '~server/src/error/notFound';
-import { allowedImageExtensions } from '~config/server';
 import { Series } from '~server/data/series';
 
 @Singleton()
@@ -48,7 +47,7 @@ async function checkDirectory(pathName: string): Promise<string> {
 	if (!(await Series.isAllowedDirectory(imagePath))) {
 		throw new ImageNotFoundError('文件目录不允许访问', imagePath);
 	}
-	if (!allowedImageExtensions.includes(extension)) {
+	if (!__APP_CONFIG__.server.allowedImageExtensions.includes(extension)) {
 		throw new ImageNotFoundError('文件扩展名无效', imagePath);
 	}
 	try {

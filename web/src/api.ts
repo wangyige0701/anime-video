@@ -1,8 +1,9 @@
 import type { Response } from '~types/response';
+import { SERVER_URL } from '~routes/server';
 import { AxiosRequest, axios } from 'axios-useful';
 import { isBoolean, isNumber, isString } from '@wang-yige/utils';
 
-export const API = new AxiosRequest('http://localhost:3000');
+export const API = new AxiosRequest(SERVER_URL);
 
 API.interceptors.response.use(
 	(response) => {

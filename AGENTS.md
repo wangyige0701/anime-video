@@ -53,7 +53,7 @@ anime-video/
 - `web/dist/`：Vite 默认构建产物。
 - `hls/build/`：CMake 原生扩展构建产物。
 - `remux/`：被根 `.gitignore` 排除的独立本地目录，不能作为主仓库代码依赖。
-- 根目录 `www/` 当前不是 workspace 构建目标；服务端静态目录以 `config/web.ts` 和 `server/web/production.ts` 的实际解析结果为准。
+- 根目录 `www/` 当前不是 workspace 构建目标；服务端静态目录以 `config.yaml` 和 `server/web.ts` 的实际解析结果为准。
 
 ## pnpm Monorepo
 
@@ -160,10 +160,9 @@ pnpm --dir hls run build:q
 
 - API 服务入口是 `server/app.ts`，默认监听 `0.0.0.0:3000`。
 - Vite 开发服务由 `web` 的 `dev` 脚本启动，固定开发端口配置为 `5173`。
-- `server/web.ts` 根据 `NODE_ENV` 加载 Web 托管方式；`web-dev` 模式启动 `server/web/development.ts`，默认在 `3001` 反向代理 Vite 的 `5173`。
-- 非 development 模式由 `server/web/production.ts` 在 `3001` 提供静态资源与 history fallback。静态目录是相对于该模块解析的 `WEB_BUNDLE_DIR`，当前没有根脚本自动把 `web/dist` 部署到该位置，修改构建或部署流程时必须显式维护这一步。
+- `server/web.ts` 在 `3001` 提供静态资源与 history fallback。静态目录由 `config.yaml` 中的 `web.webBundleDir` 配置，当前没有根脚本自动把 `web/dist` 部署到该位置，修改构建或部署流程时必须显式维护这一步。
 
-开发时 API、Vite 和 Web 代理是相互独立的进程，不要假设启动其中一个会自动启动另外两个。端口和地址来自 `config/server.ts`、`config/web.ts`、`routes/server.ts`，调整时必须检查前端 URL、代理目标和测试。
+开发时 API、Vite 和 Web 服务是相互独立的进程，不要假设启动其中一个会自动启动另外两个。端口和地址来自 `config.yaml`、`routes/server.ts`，调整时必须检查前端 URL 和测试。
 
 ## 跨项目修改原则
 

@@ -2,38 +2,36 @@ import { Controller, HttpMethod, Inject, ResponseHeader, Singleton, Cors } from 
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { ServerRoot } from '~routes/server';
-import { M3u8Config } from '~config/hls';
 import { HlsManage } from '~server/src/hls';
 import { NotFoundError } from '~server/src/error/notFound';
-import { allowedVideoExtensions } from '~config/server';
 import { Series } from '~server/data/series';
 
 @Singleton()
 @Controller(ServerRoot.VIDEO)
 @Cors()
 export class VideoController {
-	@HttpMethod.Get(`/:path/${M3u8Config.MASTER_M3U8_NAME}.m3u8`)
+	@HttpMethod.Get(`/:path/${__APP_CONFIG__.hls.masterM3u8Name}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	master(@Inject('path', checkDirectory) path: string) {
 		return HlsManage.getHlsManage(path).master();
 	}
 
-	@HttpMethod.Get(`/:path/${M3u8Config.MEDIA_M3U8_NAME}.m3u8`)
+	@HttpMethod.Get(`/:path/${__APP_CONFIG__.hls.mediaM3u8Name}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	index(@Inject('path', checkDirectory) path: string) {
 		return HlsManage.getHlsManage(path).media_m3u8();
 	}
 
-	@HttpMethod.Get(`/:path/${M3u8Config.IMAGE_M3U8_NAME}.m3u8`)
+	@HttpMethod.Get(`/:path/${__APP_CONFIG__.hls.imageM3u8Name}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	imageIndex(@Inject('path', checkDirectory) path: string) {
 		return HlsManage.getHlsManage(path).image_m3u8();
 	}
 
-	@HttpMethod.Get(`/:path/${M3u8Config.IMAGE_M3U8_NAME}_init.mp4`)
+	@HttpMethod.Get(`/:path/${__APP_CONFIG__.hls.imageM3u8Name}_init.mp4`)
 	@ResponseHeader('Content-Type', 'video/mp4')
 	@ResponseHeader('Cache-Control', 'public, max-age=3600')
 	imageInit(@Inject('path', checkDirectory) path: string) {
@@ -62,7 +60,7 @@ export class VideoController {
 		return segment;
 	}
 
-	@HttpMethod.Get(`/:path/:stream/${M3u8Config.SUBTITLE_M3U8_NAME}.m3u8`)
+	@HttpMethod.Get(`/:path/:stream/${__APP_CONFIG__.hls.subtitleM3u8Name}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	subtitle(@Inject('path', checkDirectory) path: string, @Inject('stream', nonNegativeInteger) stream: number) {
@@ -105,7 +103,7 @@ async function checkDirectory(pathName: string) {
 	if (!(await Series.isAllowedDirectory(filePath))) {
 		throw new NotFoundError('Not Found', `文件目录 ${filePath} 不被允许`, 'text/plain');
 	}
-	if (!allowedVideoExtensions.includes(extension)) {
+	if (!__APP_CONFIG__.server.allowedVideoExtensions.includes(extension)) {
 		throw new NotFoundError('Not Found', `文件扩展名无效 ${filePath}`, 'text/plain');
 	}
 	try {

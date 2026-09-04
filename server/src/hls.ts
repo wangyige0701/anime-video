@@ -3,17 +3,6 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { ParallelTask } from '@wang-yige/utils';
-import {
-	M3u8Config,
-	CONTEXT_POOL_SIZE,
-	IMAGE_MAX_CACHE_BYTES,
-	IMAGE_MAX_CONCURRENCY,
-	IMAGE_MAX_JPEG_BYTES,
-	IMAGE_MAX_SEGMENT_BYTES,
-	IMAGE_OUTPUT_HEIGHT,
-	IMAGE_OUTPUT_WIDTH,
-	SEGMENT_MIN_DURATION,
-} from '~config/hls';
 import { createLogger, type LogLevel } from '~server/middlewares/logger';
 
 const require = createRequire(import.meta.url);
@@ -88,17 +77,17 @@ export class HlsManage {
 	private getHls(): Hls {
 		if (!this.hls) {
 			this.hls = new HlsConstructor(this.inputPath, {
-				contextPoolSize: CONTEXT_POOL_SIZE,
-				segmentMinDuration: SEGMENT_MIN_DURATION,
-				mediaM3u8Name: M3u8Config.MEDIA_M3U8_NAME,
-				subtitleM3u8Name: M3u8Config.SUBTITLE_M3U8_NAME,
-				imageM3u8Name: M3u8Config.IMAGE_M3U8_NAME,
-				imageMaxConcurrency: IMAGE_MAX_CONCURRENCY,
-				imageOutputWidth: IMAGE_OUTPUT_WIDTH,
-				imageOutputHeight: IMAGE_OUTPUT_HEIGHT,
-				imageMaxSegmentBytes: IMAGE_MAX_SEGMENT_BYTES,
-				imageMaxJpegBytes: IMAGE_MAX_JPEG_BYTES,
-				imageMaxCacheBytes: IMAGE_MAX_CACHE_BYTES,
+				contextPoolSize: __APP_CONFIG__.hls.contextPoolSize,
+				segmentMinDuration: __APP_CONFIG__.hls.segmentMinDuration,
+				mediaM3u8Name: __APP_CONFIG__.hls.mediaM3u8Name,
+				subtitleM3u8Name: __APP_CONFIG__.hls.subtitleM3u8Name,
+				imageM3u8Name: __APP_CONFIG__.hls.imageM3u8Name,
+				imageMaxConcurrency: __APP_CONFIG__.hls.imageMaxConcurrency,
+				imageOutputWidth: __APP_CONFIG__.hls.imageOutputWidth,
+				imageOutputHeight: __APP_CONFIG__.hls.imageOutputHeight,
+				imageMaxSegmentBytes: __APP_CONFIG__.hls.imageMaxSegmentBytes,
+				imageMaxJpegBytes: __APP_CONFIG__.hls.imageMaxJpegBytes,
+				imageMaxCacheBytes: __APP_CONFIG__.hls.imageMaxCacheBytes,
 				onLog: (level, msg) => {
 					this.log(level, msg, 'hls-native');
 				},

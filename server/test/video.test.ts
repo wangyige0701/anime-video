@@ -3,11 +3,12 @@ import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { Series } from '~server/data/series';
-import { DATA_FILE } from '~config/server';
 import { Season } from '~server/data/season';
 import { Episode } from '~server/data/episode';
 import { Data } from '~server/data/data';
 import { NotFoundError } from '~server/src/error/notFound';
+
+const DATA_FILE = (process.env.VIDEO_CONFIG_PREFIX || '') + __APP_CONFIG__.server.dataFile;
 
 describe('Video Data Config', () => {
 	const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), './videos');

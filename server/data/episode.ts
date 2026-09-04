@@ -2,7 +2,6 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Episode as IEpisode, ServerToPromise } from '~types/videos';
-import { allowedVideoExtensions } from '~config/server';
 import type { Season } from './season';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Common } from './common';
@@ -26,7 +25,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		for (const entry of await fs.readdir(season.getDirectory(), { withFileTypes: true })) {
 			const extension = path.extname(entry.name).toLowerCase();
 			// 只有普通文件且扩展名在服务端白名单中时，才会作为可播放剧集登记。
-			if (!entry.isFile() || !allowedVideoExtensions.includes(extension)) {
+			if (!entry.isFile() || !__APP_CONFIG__.server.allowedVideoExtensions.includes(extension)) {
 				continue;
 			}
 			const episode = new Episode(entry.name, season);

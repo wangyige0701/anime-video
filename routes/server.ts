@@ -1,27 +1,25 @@
-import { M3u8Config } from '~config/hls';
-
 export enum ServerRoot {
 	VIDEO = '/video',
 	DATA = '/data',
 	IMAGE = '/image',
 }
 
-export const SERVER_URL = 'http://localhost:3000';
+export const SERVER_URL = `${__APP_CONFIG__.server.protocol}://${__APP_CONFIG__.server.host}:${__APP_CONFIG__.server.port}`;
 
 export function getMasterM3u8Url(videoName: string) {
-	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${M3u8Config.MASTER_M3U8_NAME}.m3u8`;
+	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${__APP_CONFIG__.hls.masterM3u8Name}.m3u8`;
 }
 
 export function getMediaM3u8Url(videoName: string) {
-	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${M3u8Config.MEDIA_M3U8_NAME}.m3u8`;
+	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${__APP_CONFIG__.hls.mediaM3u8Name}.m3u8`;
 }
 
 export function getSubtitleM3u8Url(videoName: string, streamIndex: number) {
-	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${streamIndex}/${M3u8Config.SUBTITLE_M3U8_NAME}.m3u8`;
+	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${streamIndex}/${__APP_CONFIG__.hls.subtitleM3u8Name}.m3u8`;
 }
 
 export function getImageM3u8Url(videoName: string) {
-	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${M3u8Config.IMAGE_M3U8_NAME}.m3u8`;
+	return `${SERVER_URL}${ServerRoot.VIDEO}/${encodeURIComponent(videoName)}/${__APP_CONFIG__.hls.imageM3u8Name}.m3u8`;
 }
 
 export function getImageUrl(pathName: string) {

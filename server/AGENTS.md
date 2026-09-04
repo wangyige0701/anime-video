@@ -6,12 +6,12 @@
 
 ### 配置与原生接口
 
-`config/hls.ts` 是 Node 侧 HLS 配置入口：
+`config.yaml` 是 Node 侧 HLS 配置入口：
 
-- master、media、subtitle、image playlist 名称统一由 `M3u8Config` 定义，当前图片 playlist 名称为 `image`。
-- `SEGMENT_MIN_DURATION` 当前为 4 秒，`CONTEXT_POOL_SIZE` 当前为 4。
-- `IMAGE_MAX_CONCURRENCY` 当前为 1，传给原生构造参数 `imageMaxConcurrency`，限制单个 Hls 实例的预览图工作线程数。
-- `IMAGE_OUTPUT_WIDTH`、`IMAGE_OUTPUT_HEIGHT` 当前为 320x180；`IMAGE_MAX_SEGMENT_BYTES`、`IMAGE_MAX_JPEG_BYTES`、`IMAGE_MAX_CACHE_BYTES` 当前分别为 50KiB、46KiB、8MiB，并传给同名 `image...` Node 构造配置。
+- master、media、subtitle、image playlist 名称统一读取 `config.yaml` 的 `hls` 配置，当前图片 playlist 名称为 `image`。
+- `hls.segmentMinDuration` 当前为 4 秒，`hls.contextPoolSize` 当前为 4。
+- `hls.imageMaxConcurrency` 当前为 1，传给原生构造参数 `imageMaxConcurrency`，限制单个 Hls 实例的预览图工作线程数。
+- `hls.imageOutputWidth`、`hls.imageOutputHeight` 当前为 320x180；`hls.imageMaxSegmentBytes`、`hls.imageMaxJpegBytes`、`hls.imageMaxCacheBytes` 当前分别为 50KiB、46KiB、8MiB，并传给同名 `image...` Node 构造配置。
 - `HlsConstructor.configure({ globalSegmentConcurrency: 2 })` 限制全局 TS 分片任务并发。
 
 `server/hls.d.ts` 声明原生扩展接口，必须和 C++ N-API 保持一致。当前图片接口包括 `image_m3u8()`、`image_init()` 和异步 `image(index)`；构造参数包括 `imageM3u8Name`、`imageMaxConcurrency`、`imageOutputWidth`、`imageOutputHeight`、`imageMaxSegmentBytes`、`imageMaxJpegBytes`、`imageMaxCacheBytes` 与 `onLog`。修改任一端接口时，必须同时检查 C++ 导出、类型声明、`HlsManage`、配置和路由调用方。
@@ -33,7 +33,7 @@
 | `/:path/:stream/subtitle.m3u8` | 字幕 playlist | `application/vnd.apple.mpegurl` | `no-cache` |
 | `/:path/:stream/:id.vtt` | 字幕分片 | `text/vtt` | `public, max-age=3600` |
 
-playlist 名称必须引用 `M3u8Config`，不要在控制器中再写一份字符串。媒体接口直接返回原始 `Buffer`，不使用普通 JSON 接口的 `ctx.Success()` 包装，否则会破坏 hls.js 对二进制内容和 playlist 的解析。
+playlist 名称必须引用 `__APP_CONFIG__.hls`，不要在控制器中再写一份字符串。媒体接口直接返回原始 `Buffer`，不使用普通 JSON 接口的 `ctx.Success()` 包装，否则会破坏 hls.js 对二进制内容和 playlist 的解析。
 
 `path` 参数先安全执行 `decodeURIComponent()` 和 `path.resolve()`，再通过 `Series.isAllowedDirectory()`、视频扩展名白名单和 `fs.stat().isFile()` 校验。分片、图片和字幕索引使用严格的非负安全整数校验，不能用宽松的 `parseInt()`。无效路径、索引或不存在的资源统一抛出 `NotFoundError`，不要把 `undefined` 作为成功响应返回。
 
@@ -77,7 +77,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `src/hls.ts`：原生 HLS 实例、分片预加载、TS/图片缓存和生命周期管理。
 - `src/error/`：`ApiError`、`NotFoundError` 等 HTTP 错误类型。
 - `src/utils/`：文件系统和通用判断工具。
-- `web.ts`、`web/`：独立 Web 服务入口；开发环境代理 Vite，生产环境托管构建产物并提供 history fallback。
+- `web.ts`：独立 Web 服务入口，托管构建产物并提供 history fallback。
 - `test/`：Vitest 测试和媒体目录 fixture。
 - `*.d.ts`：Koa context 扩展和原生 HLS 类型声明。
 

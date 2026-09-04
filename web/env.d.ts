@@ -2,4 +2,8 @@
 
 import type { AppConfig } from '../shared/config.d';
 
-declare const __APP_CONFIG__: AppConfig;
+declare global {
+	const __APP_CONFIG__: AppConfig;
+}
+
+export {};

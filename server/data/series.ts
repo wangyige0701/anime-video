@@ -2,13 +2,14 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Series as ISeries, SeriesImagesStoreStruct, ServerToPromise } from '~types/videos';
-import { allowedImageExtensions, DATA_FILE } from '~config/server';
 import { NotFoundError } from '~server/src/error/notFound';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Data } from './data';
 import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
+
+const DATA_FILE = (process.env.VIDEO_CONFIG_PREFIX || '') + __APP_CONFIG__.server.dataFile;
 
 type SeriesStore = Omit<ISeries, 'images'> & { images: SeriesImagesStoreStruct };
 
@@ -450,7 +451,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				continue;
 			}
 			const extension = path.extname(imagePath);
-			if (!allowedImageExtensions.includes(extension)) {
+			if (!__APP_CONFIG__.server.allowedImageExtensions.includes(extension)) {
 				continue;
 			}
 			filterImages.push(image);
@@ -484,7 +485,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				continue;
 			}
 			const extension = path.extname(imagePath);
-			if (!allowedImageExtensions.includes(extension)) {
+			if (!__APP_CONFIG__.server.allowedImageExtensions.includes(extension)) {
 				continue;
 			}
 			filterImages.push(image);
@@ -704,7 +705,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				continue;
 			}
 			const extension = path.extname(filePath);
-			if (!allowedImageExtensions.includes(extension)) {
+			if (!__APP_CONFIG__.server.allowedImageExtensions.includes(extension)) {
 				continue;
 			}
 			images.push({ path: entry.name, sort: images.length + 1 });

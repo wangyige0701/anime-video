@@ -1,7 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
-import { DATA_FILE } from '~config/server';
 import { Data } from './data';
 import { RestElements } from '@wang-yige/utils';
 
@@ -46,7 +45,7 @@ export abstract class Common {
 	}
 
 	// 数据文件
-	private static __path = path.join(process.cwd(), DATA_FILE);
+	private static __path = path.join(process.cwd(), getDataFile());
 
 	/**
 	 * 获取所有视频系列根目录配置数据
@@ -141,4 +140,8 @@ export abstract class Common {
 			return prev;
 		}, {} as T) as OmitType<T, K>;
 	}
+}
+
+function getDataFile() {
+	return (process.env.VIDEO_CONFIG_PREFIX || '') + __APP_CONFIG__.server.dataFile;
 }

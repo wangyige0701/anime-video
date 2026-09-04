@@ -7,6 +7,10 @@ import { response } from '~server/middlewares/response';
 import { error } from '~server/middlewares/error';
 import { logger, requestLog } from '~server/middlewares/logger';
 import { getServerPort } from '~config/server';
+import config from '~shared/config-parser';
+
+// @ts-expect-error
+globalThis.__APP_CONFIG__ = config;
 
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), './controller');
 

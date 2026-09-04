@@ -7,12 +7,16 @@ export interface AppConfig {
 		host: string;
 		/** API 服务端口 */
 		port: number;
+		/** 配置文件名前缀 */
+		videoConfigPrefix: string;
 		/** 视频数据索引文件名 */
 		dataFile: string;
 		/** 允许作为系列图片的文件扩展名 */
 		allowedImageExtensions: string[];
 		/** 允许作为视频的文件扩展名 */
 		allowedVideoExtensions: string[];
+		/** 数据文件保存防抖延迟（毫秒） */
+		dataFileSaveDelay: number;
 	};
 
 	/** Web 静态文件及开发代理服务配置 */

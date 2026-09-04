@@ -8,7 +8,8 @@ import { Episode } from '~server/data/episode';
 import { Data } from '~server/data/data';
 import { NotFoundError } from '~server/src/error/notFound';
 
-const DATA_FILE = (process.env.VIDEO_CONFIG_PREFIX || '') + __APP_CONFIG__.server.dataFile;
+const SERVER = __APP_CONFIG__.server;
+const DATA_FILE = SERVER.videoConfigPrefix + SERVER.dataFile;
 
 describe('Video Data Config', () => {
 	const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), './videos');

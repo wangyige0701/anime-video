@@ -8,6 +8,8 @@ import config from '~shared/config-parser';
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
 
+const SERVER = __APP_CONFIG__.server;
+
 const [{ response }, { error }, { logger, requestLog }] = await Promise.all([
 	import('~server/middlewares/response'),
 	import('~server/middlewares/error'),
@@ -26,9 +28,7 @@ app.use(requestLog())
 	.use(decorator.middleware())
 	.use(decorator.allowedMethods());
 
-const serverPort = process.env.SERVER_PORT !== undefined && !isNaN(Number(process.env.SERVER_PORT))
-	? Number(process.env.SERVER_PORT)
-	: __APP_CONFIG__.server.port;
+const serverPort = SERVER.port;
 
 app.listen(serverPort, '0.0.0.0', () => {
 	logger.info({ port: serverPort }, 'Server is listening');

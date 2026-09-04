@@ -6,6 +6,8 @@ server:
   host: localhost
   # API 服务端口
   port: 3000
+  # 配置文件名前缀
+  videoConfigPrefix: ''
   # 视频数据索引文件名
   dataFile: .video.json
   # 允许作为系列图片的文件扩展名
@@ -25,6 +27,8 @@ server:
     - .mov
     - .webm
     - .wmv
+  # 数据文件保存防抖延迟（毫秒）
+  dataFileSaveDelay: 500
 
 # Web 静态文件及开发代理服务配置
 web:

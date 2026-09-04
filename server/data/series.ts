@@ -9,7 +9,8 @@ import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
 
-const DATA_FILE = (process.env.VIDEO_CONFIG_PREFIX || '') + __APP_CONFIG__.server.dataFile;
+const SERVER = __APP_CONFIG__.server;
+const DATA_FILE = SERVER.videoConfigPrefix + SERVER.dataFile;
 
 type SeriesStore = Omit<ISeries, 'images'> & { images: SeriesImagesStoreStruct };
 
@@ -451,7 +452,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				continue;
 			}
 			const extension = path.extname(imagePath);
-			if (!__APP_CONFIG__.server.allowedImageExtensions.includes(extension)) {
+			if (!SERVER.allowedImageExtensions.includes(extension)) {
 				continue;
 			}
 			filterImages.push(image);
@@ -485,7 +486,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				continue;
 			}
 			const extension = path.extname(imagePath);
-			if (!__APP_CONFIG__.server.allowedImageExtensions.includes(extension)) {
+			if (!SERVER.allowedImageExtensions.includes(extension)) {
 				continue;
 			}
 			filterImages.push(image);
@@ -705,7 +706,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 				continue;
 			}
 			const extension = path.extname(filePath);
-			if (!__APP_CONFIG__.server.allowedImageExtensions.includes(extension)) {
+			if (!SERVER.allowedImageExtensions.includes(extension)) {
 				continue;
 			}
 			images.push({ path: entry.name, sort: images.length + 1 });

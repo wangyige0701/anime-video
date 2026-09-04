@@ -6,8 +6,8 @@ export default defineConfig({
 		include: ['**/test/**/*.test.ts'],
 		exclude: ['dev/**', '**/node_modules/**'],
 		env: {
-			VIDEO_CONFIG_PREFIX: 'test',
-			DATA_FILE_SAVE_DELAY: '0',
+			SERVER_VIDEO_CONFIG_PREFIX: 'test',
+			SERVER_DATA_FILE_SAVE_DELAY: '0',
 		},
 	},
 	resolve: {

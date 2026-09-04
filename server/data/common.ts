@@ -4,6 +4,8 @@ import crypto from 'node:crypto';
 import { Data } from './data';
 import { RestElements } from '@wang-yige/utils';
 
+const SERVER = __APP_CONFIG__.server;
+
 type PickType<
 	T extends Record<string, any>,
 	K extends (keyof T)[],
@@ -143,5 +145,5 @@ export abstract class Common {
 }
 
 function getDataFile() {
-	return (process.env.VIDEO_CONFIG_PREFIX || '') + __APP_CONFIG__.server.dataFile;
+	return SERVER.videoConfigPrefix + SERVER.dataFile;
 }

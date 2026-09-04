@@ -122,7 +122,7 @@ pnpm exec tsc --noEmit -p server/tsconfig.json
 pnpm exec vitest run
 ```
 
-根 Vitest 配置发现 `**/test/**/*.test.ts`，排除 `dev/**`，并为数据层测试设置 `VIDEO_CONFIG_PREFIX=test` 和 `DATA_FILE_SAVE_DELAY=0`。`server/package.json` 当前没有可用的正式 `test` 脚本，不能把其中的占位失败脚本当作验证命令。
+根 Vitest 配置发现 `**/test/**/*.test.ts`，排除 `dev/**`，并为数据层测试设置 `SERVER_VIDEO_CONFIG_PREFIX=test` 和 `SERVER_DATA_FILE_SAVE_DELAY=0`。`server/package.json` 当前没有可用的正式 `test` 脚本，不能把其中的占位失败脚本当作验证命令。
 
 原生扩展使用自己的脚本和 CMake 环境：
 

@@ -10,17 +10,14 @@ export {};
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
 
-const staticDir = resolve(dirname(fileURLToPath(import.meta.url)), __APP_CONFIG__.web.webBundleDir);
-const webPort = isWebPortDefined() ? Number(process.env.WEB_PORT) : __APP_CONFIG__.web.port;
+const WEB = __APP_CONFIG__.web;
+const staticDir = resolve(dirname(fileURLToPath(import.meta.url)), WEB.webBundleDir);
+const webPort = WEB.port;
 
 const app = new Koa();
 
 app.use(historyApiFallback()).use(server(staticDir));
 
 app.listen(webPort, () => {
-	console.log(`web server is running on ${__APP_CONFIG__.web.protocol}://${__APP_CONFIG__.web.host}:${webPort}`);
+	console.log(`web server is running on ${WEB.protocol}://${WEB.host}:${webPort}`);
 });
-
-function isWebPortDefined() {
-	return process.env.WEB_PORT !== undefined && !isNaN(Number(process.env.WEB_PORT));
-}

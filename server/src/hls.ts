@@ -7,6 +7,7 @@ import { createLogger, type LogLevel } from '~server/middlewares/logger';
 
 const require = createRequire(import.meta.url);
 const HlsConstructor = (require('~hls/hls.node') as { Hls: typeof Hls }).Hls;
+const HLS = __APP_CONFIG__.hls;
 HlsConstructor.configure({
 	globalSegmentConcurrency: 2,
 });
@@ -77,17 +78,17 @@ export class HlsManage {
 	private getHls(): Hls {
 		if (!this.hls) {
 			this.hls = new HlsConstructor(this.inputPath, {
-				contextPoolSize: __APP_CONFIG__.hls.contextPoolSize,
-				segmentMinDuration: __APP_CONFIG__.hls.segmentMinDuration,
-				mediaM3u8Name: __APP_CONFIG__.hls.mediaM3u8Name,
-				subtitleM3u8Name: __APP_CONFIG__.hls.subtitleM3u8Name,
-				imageM3u8Name: __APP_CONFIG__.hls.imageM3u8Name,
-				imageMaxConcurrency: __APP_CONFIG__.hls.imageMaxConcurrency,
-				imageOutputWidth: __APP_CONFIG__.hls.imageOutputWidth,
-				imageOutputHeight: __APP_CONFIG__.hls.imageOutputHeight,
-				imageMaxSegmentBytes: __APP_CONFIG__.hls.imageMaxSegmentBytes,
-				imageMaxJpegBytes: __APP_CONFIG__.hls.imageMaxJpegBytes,
-				imageMaxCacheBytes: __APP_CONFIG__.hls.imageMaxCacheBytes,
+				contextPoolSize: HLS.contextPoolSize,
+				segmentMinDuration: HLS.segmentMinDuration,
+				mediaM3u8Name: HLS.mediaM3u8Name,
+				subtitleM3u8Name: HLS.subtitleM3u8Name,
+				imageM3u8Name: HLS.imageM3u8Name,
+				imageMaxConcurrency: HLS.imageMaxConcurrency,
+				imageOutputWidth: HLS.imageOutputWidth,
+				imageOutputHeight: HLS.imageOutputHeight,
+				imageMaxSegmentBytes: HLS.imageMaxSegmentBytes,
+				imageMaxJpegBytes: HLS.imageMaxJpegBytes,
+				imageMaxCacheBytes: HLS.imageMaxCacheBytes,
 				onLog: (level, msg) => {
 					this.log(level, msg, 'hls-native');
 				},

@@ -89,7 +89,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 
 ### 磁盘布局与配置归属
 
-`DATA_FILE` 由 `VIDEO_CONFIG_PREFIX + '.video.json'` 生成，默认文件名为 `.video.json`。同名文件有两种不同用途：
+`DATA_FILE` 由 `server.videoConfigPrefix + server.dataFile` 生成，默认文件名为 `.video.json`。对应环境变量为 `SERVER_VIDEO_CONFIG_PREFIX` 和 `SERVER_DATA_FILE`。同名文件有两种不同用途：
 
 - `path.join(process.cwd(), DATA_FILE)` 保存允许扫描的视频根目录数组。
 - 每个允许根目录下的 `DATA_FILE` 保存该根目录直接包含的所有 series 配置，内部继续嵌套 seasons 和 episodes 元数据。
@@ -125,7 +125,7 @@ Series 只扫描允许根目录的直接子目录；Season 只扫描 series 的�
 - 首次构造立即保存一个 `doRead()` Promise；`read()` 始终返回同一份代理数据。
 - 对象和数组通过递归 Proxy 包装，`push()`、属性赋值和删除等嵌套修改都会 `markDirty()`；`WeakMap` 确保同一原始对象只生成一个代理。
 - 新值与旧值 `isEqual()` 时不增加 revision，避免无意义写盘。
-- `DATA_FILE_SAVE_DELAY` 控制防抖时间，默认 500ms。连续修改重置 timer 并合并写盘。
+- `server.dataFileSaveDelay` 控制防抖时间，默认 500ms；对应环境变量为 `SERVER_DATA_FILE_SAVE_DELAY`。连续修改重置 timer 并合并写盘。
 
 实际写盘始终先把当前 JSON 快照写入同目录 `<DATA_FILE>.tmp`，再用 `rename()` 替换正式文件，避免进程中断留下半截 JSON。启动读取时如果存在临时文件：有效 JSON 会被提升为正式文件；损坏临时文件会被删除，并保留已有正式配置；两者都没有时写入调用方提供的默认值。
 

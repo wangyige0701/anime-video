@@ -6,32 +6,35 @@ import { HlsManage } from '~server/src/hls';
 import { NotFoundError } from '~server/src/error/notFound';
 import { Series } from '~server/data/series';
 
+const SERVER = __APP_CONFIG__.server;
+const HLS = __APP_CONFIG__.hls;
+
 @Singleton()
 @Controller(ServerRoot.VIDEO)
 @Cors()
 export class VideoController {
-	@HttpMethod.Get(`/:path/${__APP_CONFIG__.hls.masterM3u8Name}.m3u8`)
+	@HttpMethod.Get(`/:path/${HLS.masterM3u8Name}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	master(@Inject('path', checkDirectory) path: string) {
 		return HlsManage.getHlsManage(path).master();
 	}
 
-	@HttpMethod.Get(`/:path/${__APP_CONFIG__.hls.mediaM3u8Name}.m3u8`)
+	@HttpMethod.Get(`/:path/${HLS.mediaM3u8Name}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	index(@Inject('path', checkDirectory) path: string) {
 		return HlsManage.getHlsManage(path).media_m3u8();
 	}
 
-	@HttpMethod.Get(`/:path/${__APP_CONFIG__.hls.imageM3u8Name}.m3u8`)
+	@HttpMethod.Get(`/:path/${HLS.imageM3u8Name}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	imageIndex(@Inject('path', checkDirectory) path: string) {
 		return HlsManage.getHlsManage(path).image_m3u8();
 	}
 
-	@HttpMethod.Get(`/:path/${__APP_CONFIG__.hls.imageM3u8Name}_init.mp4`)
+	@HttpMethod.Get(`/:path/${HLS.imageM3u8Name}_init.mp4`)
 	@ResponseHeader('Content-Type', 'video/mp4')
 	@ResponseHeader('Cache-Control', 'public, max-age=3600')
 	imageInit(@Inject('path', checkDirectory) path: string) {
@@ -60,7 +63,7 @@ export class VideoController {
 		return segment;
 	}
 
-	@HttpMethod.Get(`/:path/:stream/${__APP_CONFIG__.hls.subtitleM3u8Name}.m3u8`)
+	@HttpMethod.Get(`/:path/:stream/${HLS.subtitleM3u8Name}.m3u8`)
 	@ResponseHeader('Content-Type', 'application/vnd.apple.mpegurl')
 	@ResponseHeader('Cache-Control', 'no-cache')
 	subtitle(@Inject('path', checkDirectory) path: string, @Inject('stream', nonNegativeInteger) stream: number) {
@@ -103,7 +106,7 @@ async function checkDirectory(pathName: string) {
 	if (!(await Series.isAllowedDirectory(filePath))) {
 		throw new NotFoundError('Not Found', `文件目录 ${filePath} 不被允许`, 'text/plain');
 	}
-	if (!__APP_CONFIG__.server.allowedVideoExtensions.includes(extension)) {
+	if (!SERVER.allowedVideoExtensions.includes(extension)) {
 		throw new NotFoundError('Not Found', `文件扩展名无效 ${filePath}`, 'text/plain');
 	}
 	try {

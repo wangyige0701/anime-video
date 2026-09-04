@@ -50,6 +50,8 @@ hls:
   mediaM3u8Name: media
   subtitleM3u8Name: subtitle
   imageM3u8Name: image
+  # 全局 HLS 分片任务并发数
+  globalSegmentConcurrency: 2
   # 视频分片的最短时长（秒）
   segmentMinDuration: 4
   # HLS 转码上下文池大小

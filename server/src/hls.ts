@@ -8,8 +8,9 @@ import { createLogger, type LogLevel } from '~server/middlewares/logger';
 const require = createRequire(import.meta.url);
 const HlsConstructor = (require('~hls/hls.node') as { Hls: typeof Hls }).Hls;
 const HLS = __APP_CONFIG__.hls;
+
 HlsConstructor.configure({
-	globalSegmentConcurrency: 2,
+	globalSegmentConcurrency: HLS.globalSegmentConcurrency,
 });
 
 /**

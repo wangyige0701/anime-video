@@ -40,6 +40,8 @@ export interface AppConfig {
 		mediaM3u8Name: string;
 		subtitleM3u8Name: string;
 		imageM3u8Name: string;
+		/** 全局 HLS 分片任务并发数 */
+		globalSegmentConcurrency: number;
 		/** 视频分片的最短时长（秒） */
 		segmentMinDuration: number;
 		/** HLS 转码上下文池大小 */

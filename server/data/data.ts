@@ -6,7 +6,7 @@ import { isEqual } from '~server/src/utils/is';
 
 /** 负责 JSON 配置文件的读取、代理修改和防抖持久化。 */
 export class Data<T extends object> {
-	private static delayTime = +__APP_CONFIG__.server.dataFileSaveDelay;
+	private static delayTime = __APP_CONFIG__.server.dataFileSaveDelay;
 	// 相同配置路径在进程内共享一个实例，避免多套保存队列同时写入同一文件。
 	private static cache: Map<string, Data<any>> = new Map();
 	// 代理会递归包装嵌套对象；用 WeakMap 保证同一原始对象只生成一次代理且可被回收。

@@ -38,6 +38,7 @@ anime-video/
 ├── hls/                    # Git 子模块；C++/FFmpeg Node 原生扩展
 ├── dev/                    # 开发期辅助脚本和实验性测试，不属于正式运行入口
 ├── ui/                     # 设计与界面参考图片
+├── docs/                   # 配置覆盖与开发文档
 ├── front.cmd               # Windows 下把参数转发给 web workspace 脚本
 ├── back.cmd                # Windows 下把参数转发给 server workspace 脚本
 ├── package.json            # workspace 根包和根级工具依赖

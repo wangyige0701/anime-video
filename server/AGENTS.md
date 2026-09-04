@@ -12,7 +12,7 @@
 - `hls.segmentMinDuration` 当前为 4 秒，`hls.contextPoolSize` 当前为 4。
 - `hls.imageMaxConcurrency` 当前为 1，传给原生构造参数 `imageMaxConcurrency`，限制单个 Hls 实例的预览图工作线程数。
 - `hls.imageOutputWidth`、`hls.imageOutputHeight` 当前为 320x180；`hls.imageMaxSegmentBytes`、`hls.imageMaxJpegBytes`、`hls.imageMaxCacheBytes` 当前分别为 50KiB、46KiB、8MiB，并传给同名 `image...` Node 构造配置。
-- `HlsConstructor.configure({ globalSegmentConcurrency: 2 })` 限制全局 TS 分片任务并发。
+- `HlsConstructor.configure({ globalSegmentConcurrency })` 使用 `hls.globalSegmentConcurrency` 限制全局 TS 分片任务并发。
 
 `server/hls.d.ts` 声明原生扩展接口，必须和 C++ N-API 保持一致。当前图片接口包括 `image_m3u8()`、`image_init()` 和异步 `image(index)`；构造参数包括 `imageM3u8Name`、`imageMaxConcurrency`、`imageOutputWidth`、`imageOutputHeight`、`imageMaxSegmentBytes`、`imageMaxJpegBytes`、`imageMaxCacheBytes` 与 `onLog`。修改任一端接口时，必须同时检查 C++ 导出、类型声明、`HlsManage`、配置和路由调用方。
 

@@ -43,6 +43,8 @@ playlist 名称必须引用 `__APP_CONFIG__.hls`，不要在控制器中再写�
 
 `resetGc()` 安排 5 分钟后的实例销毁，并在下一次调用时重新计时。复用已有 manager、media/image playlist、image init、TS 和图片请求会调用或触发该逻辑；`master()`、`subtitle_m3u8()`、`subtitle()` 当前不直接调用 `resetGc()`，首次只经过这些方法的新 manager 不应被文档误认为已经安排 GC。修改公开方法或生命周期时必须先验证这些现有调用差异。
 
+当前没有独立的原生 `warmup()` 接口。构造 Hls 时已经同步完成媒体探测、字幕解析和视频分片边界扫描；服务端 `src/hls.ts` 只在 TS 请求后预加载后续 TS，图片轨道仍按首次 `image(index)` 请求懒创建 decoder 和线程池。
+
 GC 会销毁原生实例、重建 TS/图片缓存、清理 timer map 并从 bucket 删除 manager；图片清理定时器会在清空 map 前逐个 `clearTimeout()`。新增定时器、后台任务或资源引用时必须增加对应释放逻辑，不能只从 bucket 删除对象。
 
 原生 `onLog` 回调转发到绑定 `{ component: 'hls', hlsId }` 的 Pino child logger，并标记 `source: 'hls-native'`；manager 自身日志使用 `source: 'hls-manager'`。后台 HLS 任务没有请求 ctx 时继续使用该模块 logger，不要伪造 `ctx.log`。

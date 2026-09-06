@@ -66,7 +66,6 @@ export const usePlayerStore = defineStore('player', () => {
 		seasonTitle.value = data.seasonTitle;
 		episodeTitle.value = data.episodeTitle;
 		videoPath.value = data.videoPath;
-		isSubtitleTrackUseable.value = true;
 		subtitleTrackId.value = (await getSeasonSubtitleTrack()) ?? -1;
 		if (seriesId.value && seasonId.value && episodeId.value) {
 			const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);

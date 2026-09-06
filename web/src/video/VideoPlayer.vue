@@ -41,6 +41,7 @@ const END_THRESHOLD = 0.25;
 const { promise: initialized, resolve: resolveInitialized, reject: rejectInitialized } = createPromise<void>();
 const playerStore = usePlayerStore();
 const video = useTemplateRef('video');
+const status = useVueStatusRef('canplay');
 const { getPreviewImage, reset: resetPreviewPlayer } = useHlsImagePreview({
 	getHls: () => hls,
 	getDuration: () => video.value?.duration,
@@ -55,6 +56,7 @@ watch(
 	async (path) => {
 		const currentSourceVersion = ++sourceVersion;
 		resetPreviewPlayer();
+		status.offCanplay();
 		emit('previewAvailable', false);
 		endHandled = false;
 		isMetadataLoaded = false;
@@ -144,16 +146,28 @@ watch(
 );
 
 watch(
-	[() => playerStore.subtitleTrackId, () => playerStore.isSubtitleTrackUseable],
-	([id, useable]) => {
-		if (!useable) {
+	[() => playerStore.subtitleTrackId, () => playerStore.isSubtitleTrackUseable, () => status.canplay],
+	([id, useable, canplay]) => {
+		if (!canplay) {
 			return;
 		}
 		if (playerStore.isSupportedHls) {
-			hls && (hls.subtitleTrack = id);
+			if (!hls) {
+				return;
+			}
+			if (!useable) {
+				hls.subtitleTrack = -1;
+			} else {
+				hls.subtitleTrack = id;
+			}
 		} else if (playerStore.isSupportedNative) {
-			if (video.value) {
-				for (const track of video.value.textTracks) {
+			if (!video.value) {
+				return;
+			}
+			for (const track of video.value.textTracks) {
+				if (!useable) {
+					track.mode = 'disabled';
+				} else {
 					track.mode = track.id === id.toString() ? 'showing' : 'disabled';
 				}
 			}
@@ -347,7 +361,10 @@ function autoNextVideo() {
 }
 
 useEventListener(video, 'timeupdate', handleTimeUpdate);
-useEventListener(video, 'loadedmetadata', handleLoadedMetadata);
+useEventListener(video, 'loadedmetadata', () => {
+	handleLoadedMetadata();
+	status.onCanplay();
+});
 useEventListener(video, 'progress', scheduleBufferedRangesSync);
 useEventListener(video, 'seeked', handleSeeked);
 useEventListener(video, 'emptied', () => playerStore.resetBuffer());

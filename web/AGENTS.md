@@ -25,11 +25,11 @@
 
 ### 数据模型与职责
 
-| 类 | 核心字段 | 子级关系 | 可编辑字段 |
-| --- | --- | --- | --- |
-| `Series` | `id`、`path`、`name`、`title`、`images`、`description`、`date`、`types`、`status` | `seasons: Season[]` | 标题、图片、描述、日期、类型、状态 |
-| `Season` | `id`、`sort`、`path`、`title` | `episodes: Episode[]` | 标题、排序 |
-| `Episode` | `id`、`sort`、`path`、`extension`、`title` | 无 | 标题、排序 |
+| 类        | 核心字段                                                                          | 子级关系              | 可编辑字段                         |
+| --------- | --------------------------------------------------------------------------------- | --------------------- | ---------------------------------- |
+| `Series`  | `id`、`path`、`name`、`title`、`images`、`description`、`date`、`types`、`status` | `seasons: Season[]`   | 标题、图片、描述、日期、类型、状态 |
+| `Season`  | `id`、`sort`、`path`、`title`                                                     | `episodes: Episode[]` | 标题、排序                         |
+| `Episode` | `id`、`sort`、`path`、`extension`、`title`                                        | 无                    | 标题、排序                         |
 
 三类对象的字段内部使用 Vue `ref()` 保存，对外通过 getter 暴露，因此组件读取 `series.title`、`season.episodes` 等普通属性时仍会建立响应式依赖。`id`、路径、目录名和扩展名当前没有前端更新方法，应视为服务端扫描结果和实体身份，不要在组件中直接改写。
 
@@ -120,15 +120,15 @@
 
 #### 状态分组
 
-| 分组 | 状态 | 作用 |
-| --- | --- | --- |
-| 媒体身份 | `seriesId`、`seasonId`、`episodeId`、对应 title、`videoPath` | 标识当前播放资源并驱动视频源切换 |
-| 播放进度 | `isPlaying`、`currentTime`、`duration`、`buffer`、`isLoading` | 同步播放意图、媒体时间、缓冲区间与加载状态 |
-| 播放设置 | `volume`、`playbackRate`、`isAutoPlay` | 控制音量、倍速和播放结束后的自动连播 |
-| 字幕 | `isSubtitleTrack`、`isSubtitleTrackUseable`、`subtitleTracks`、`subtitleTrackId` | 保存字幕偏好、可用状态、轨道列表与当前选择 |
-| 控制器 UI | `isControllerActive`、`isVolumeDragging`、`isFullScreen` | 协调遮罩显隐、音量拖动和全屏组件状态 |
-| 最近访问 | `lastSeriesId`、`lastSeasonId`、`lastEpisodeId` | 支持详情页恢复最近浏览位置 |
-| 播放能力 | `isSupportedHls`、`isSupportedNative` | 分别表示 hls.js/MSE 和浏览器原生 HLS 能力 |
+| 分组      | 状态                                                                             | 作用                                       |
+| --------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
+| 媒体身份  | `seriesId`、`seasonId`、`episodeId`、对应 title、`videoPath`                     | 标识当前播放资源并驱动视频源切换           |
+| 播放进度  | `isPlaying`、`currentTime`、`duration`、`buffer`、`isLoading`                    | 同步播放意图、媒体时间、缓冲区间与加载状态 |
+| 播放设置  | `volume`、`playbackRate`、`isAutoPlay`                                           | 控制音量、倍速和播放结束后的自动连播       |
+| 字幕      | `isSubtitleTrack`、`isSubtitleTrackUseable`、`subtitleTracks`、`subtitleTrackId` | 保存字幕偏好、可用状态、轨道列表与当前选择 |
+| 控制器 UI | `isControllerActive`、`isVolumeDragging`、`isFullScreen`                         | 协调遮罩显隐、音量拖动和全屏组件状态       |
+| 最近访问  | `lastSeriesId`、`lastSeasonId`、`lastEpisodeId`                                  | 支持详情页恢复最近浏览位置                 |
+| 播放能力  | `isSupportedHls`、`isSupportedNative`                                            | 分别表示 hls.js/MSE 和浏览器原生 HLS 能力  |
 
 播放能力在 store 创建时探测一次：`Hls.isSupported()` 判断 hls.js 路径，临时 video 元素的 `canPlayType('application/vnd.apple.mpegurl')` 判断原生 HLS 路径。组件只读取这两个结果，不应重复维护另一份能力状态。
 

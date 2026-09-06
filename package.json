@@ -4,7 +4,8 @@
 	"type": "module",
 	"scripts": {
 		"web": "front",
-		"server": "back"
+		"server": "back",
+		"build:log-transport": "pnpm exec tsc -p server/tsconfig.log-transport.json"
 	},
 	"keywords": [],
 	"author": "",

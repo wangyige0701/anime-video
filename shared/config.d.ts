@@ -19,6 +19,22 @@ export interface AppConfig {
 		dataFileSaveDelay: number;
 	};
 
+	/** 日志落盘与缓冲配置 */
+	logging: {
+		/** 日志根目录 */
+		directory: string;
+		/** 是否启用文件落盘 */
+		fileEnabled: boolean;
+		/** 单个日志文件最大字节数 */
+		fileMaxBytes: number;
+		/** 日志保留天数 */
+		retentionDays: number;
+		/** transport 内存缓冲大小 */
+		bufferBytes: number;
+		/** 缓冲最长等待时间（毫秒） */
+		flushIntervalMs: number;
+	};
+
 	/** Web 静态文件及开发代理服务配置 */
 	web: {
 		/** Web 服务协议 */

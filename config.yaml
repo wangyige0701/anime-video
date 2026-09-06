@@ -30,6 +30,21 @@ server:
   # 数据文件保存防抖延迟（毫秒）
   dataFileSaveDelay: 500
 
+# 日志落盘与缓冲配置
+logging:
+  # 日志根目录；相对路径基于进程当前工作目录
+  directory: logs
+  # 是否启用异步文件落盘
+  fileEnabled: true
+  # 单个日志文件最大字节数
+  fileMaxBytes: 52428800
+  # 按日期目录保留的天数
+  retentionDays: 30
+  # transport 内存批量缓冲大小
+  bufferBytes: 65536
+  # 缓冲最长等待时间（毫秒）
+  flushIntervalMs: 100
+
 # Web 静态文件及开发代理服务配置
 web:
   # Web 服务协议

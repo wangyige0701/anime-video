@@ -106,6 +106,12 @@ pnpm server dev
 pnpm server web-dev
 ```
 
+日志 transport 的 TypeScript 运行时文件需要在开发或构建前编译：
+
+```powershell
+pnpm build:log-transport
+```
+
 等价且更适合跨平台或自动化环境的写法是直接使用 filter：
 
 ```powershell

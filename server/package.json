@@ -4,8 +4,10 @@
 	"main": "app.ts",
 	"type": "module",
 	"scripts": {
-		"dev": "npx tsx watch --tsconfig tsconfig.json app.ts",
-		"web-dev": "cross-env NODE_ENV=development npx tsx web.ts",
+		"dev": "pnpm build:log-transport && npx tsx watch --tsconfig tsconfig.json app.ts",
+		"web-dev": "pnpm build:log-transport && cross-env NODE_ENV=development npx tsx web.ts",
+		"build": "pnpm build:log-transport",
+		"build:log-transport": "pnpm --dir .. run build:log-transport",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [],

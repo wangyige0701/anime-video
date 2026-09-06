@@ -280,3 +280,12 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 5. HLS 变更时至少请求 master/media/image playlist、image init、两个连续 TS 和两个图片分片，检查状态、响应头、缓存命中、失败重试及 GC 清理；涉及原生扩展时同时执行 `hls/AGENTS.md` 的构建与媒体验证。
 
 如果验证因本地依赖、原生模块占用或缺少媒体 fixture 无法执行，必须在交付说明中明确记录未验证项和环境原因。
+
+### 日志 transport
+
+API 和静态 Web 入口统一使用共享 Pino logger。文件输出由 Pino worker 线程中的
+`dist/log-transport.js` 负责，TypeScript 源码为 `src/log-transport.ts`，开发或正式启动前必须先编译。
+transport 会复用文件流，在内存中批量缓冲并异步刷盘，按日期切换目录、按大小轮转文件，并清理过期日期目录。
+路由只接受固定的 `component`（`app`、`http`、`web`、`hls`）；`source` 只作为受控文件名标识，不能使用 request ID、
+HLS ID、URL 或用户输入。静态 Web 正常资源请求不记录，只记录启动、错误、异常请求和关闭事件。关闭处理必须停止接收新连接，
+在超时边界内关闭长连接，完成 Pino flush 后再结束进程。

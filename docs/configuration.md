@@ -1,6 +1,6 @@
 # 配置覆盖说明
 
-应用默认配置位于根目录 `config.yaml`，包含 `server`、`web` 和 `hls` 三个一级类目。
+应用默认配置位于根目录 `config.yaml`，包含 `server`、`logging`、`web` 和 `hls` 四个一级类目。
 
 ## 覆盖优先级
 
@@ -28,50 +28,73 @@ hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 
 ## Server
 
-| 配置项 | 环境变量 | 启动参数 | 默认值 |
-| --- | --- | --- | --- |
-| `server.protocol` | `SERVER_PROTOCOL` | `--SERVER_PROTOCOL` | `http` |
-| `server.host` | `SERVER_HOST` | `--SERVER_HOST` | `localhost` |
-| `server.port` | `SERVER_PORT` | `--SERVER_PORT` | `3000` |
-| `server.videoConfigPrefix` | `SERVER_VIDEO_CONFIG_PREFIX` | `--SERVER_VIDEO_CONFIG_PREFIX` | 空字符串 |
-| `server.dataFile` | `SERVER_DATA_FILE` | `--SERVER_DATA_FILE` | `.video.json` |
-| `server.allowedImageExtensions` | `SERVER_ALLOWED_IMAGE_EXTENSIONS` | `--SERVER_ALLOWED_IMAGE_EXTENSIONS` | `.jpg`、`.jpeg`、`.png`、`.webp`、`.gif` |
+| 配置项                          | 环境变量                          | 启动参数                            | 默认值                                                          |
+| ------------------------------- | --------------------------------- | ----------------------------------- | --------------------------------------------------------------- |
+| `server.protocol`               | `SERVER_PROTOCOL`                 | `--SERVER_PROTOCOL`                 | `http`                                                          |
+| `server.host`                   | `SERVER_HOST`                     | `--SERVER_HOST`                     | `localhost`                                                     |
+| `server.port`                   | `SERVER_PORT`                     | `--SERVER_PORT`                     | `3000`                                                          |
+| `server.videoConfigPrefix`      | `SERVER_VIDEO_CONFIG_PREFIX`      | `--SERVER_VIDEO_CONFIG_PREFIX`      | 空字符串                                                        |
+| `server.dataFile`               | `SERVER_DATA_FILE`                | `--SERVER_DATA_FILE`                | `.video.json`                                                   |
+| `server.allowedImageExtensions` | `SERVER_ALLOWED_IMAGE_EXTENSIONS` | `--SERVER_ALLOWED_IMAGE_EXTENSIONS` | `.jpg`、`.jpeg`、`.png`、`.webp`、`.gif`                        |
 | `server.allowedVideoExtensions` | `SERVER_ALLOWED_VIDEO_EXTENSIONS` | `--SERVER_ALLOWED_VIDEO_EXTENSIONS` | `.mp4`、`.mkv`、`.avi`、`.flv`、`.m4v`、`.mov`、`.webm`、`.wmv` |
-| `server.dataFileSaveDelay` | `SERVER_DATA_FILE_SAVE_DELAY` | `--SERVER_DATA_FILE_SAVE_DELAY` | `500` |
+| `server.dataFileSaveDelay`      | `SERVER_DATA_FILE_SAVE_DELAY`     | `--SERVER_DATA_FILE_SAVE_DELAY`     | `500`                                                           |
 
 ## Web
 
-| 配置项 | 环境变量 | 启动参数 | 默认值 |
-| --- | --- | --- | --- |
-| `web.protocol` | `WEB_PROTOCOL` | `--WEB_PROTOCOL` | `http` |
-| `web.host` | `WEB_HOST` | `--WEB_HOST` | `localhost` |
-| `web.port` | `WEB_PORT` | `--WEB_PORT` | `3001` |
-| `web.devWebPort` | `WEB_DEV_WEB_PORT` | `--WEB_DEV_WEB_PORT` | `5173` |
-| `web.webBundleDir` | `WEB_WEB_BUNDLE_DIR` | `--WEB_WEB_BUNDLE_DIR` | `www` |
+| 配置项             | 环境变量             | 启动参数               | 默认值      |
+| ------------------ | -------------------- | ---------------------- | ----------- |
+| `web.protocol`     | `WEB_PROTOCOL`       | `--WEB_PROTOCOL`       | `http`      |
+| `web.host`         | `WEB_HOST`           | `--WEB_HOST`           | `localhost` |
+| `web.port`         | `WEB_PORT`           | `--WEB_PORT`           | `3001`      |
+| `web.devWebPort`   | `WEB_DEV_WEB_PORT`   | `--WEB_DEV_WEB_PORT`   | `5173`      |
+| `web.webBundleDir` | `WEB_WEB_BUNDLE_DIR` | `--WEB_WEB_BUNDLE_DIR` | `www`       |
+
+## Logging
+
+| 配置项                    | 环境变量                    | 启动参数                      | 默认值     |
+| ------------------------- | --------------------------- | ----------------------------- | ---------- |
+| `logging.directory`       | `LOGGING_DIRECTORY`         | `--LOGGING_DIRECTORY`         | `logs`     |
+| `logging.fileEnabled`     | `LOGGING_FILE_ENABLED`      | `--LOGGING_FILE_ENABLED`      | `true`     |
+| `logging.fileMaxBytes`    | `LOGGING_FILE_MAX_BYTES`    | `--LOGGING_FILE_MAX_BYTES`    | `52428800` |
+| `logging.retentionDays`   | `LOGGING_RETENTION_DAYS`    | `--LOGGING_RETENTION_DAYS`    | `30`       |
+| `logging.bufferBytes`     | `LOGGING_BUFFER_BYTES`      | `--LOGGING_BUFFER_BYTES`      | `65536`    |
+| `logging.flushIntervalMs` | `LOGGING_FLUSH_INTERVAL_MS` | `--LOGGING_FLUSH_INTERVAL_MS` | `100`      |
 
 ## HLS
 
-| 配置项 | 环境变量 | 启动参数 | 默认值 |
-| --- | --- | --- | --- |
-| `hls.masterM3u8Name` | `HLS_MASTER_M3U8_NAME` | `--HLS_MASTER_M3U8_NAME` | `master` |
-| `hls.mediaM3u8Name` | `HLS_MEDIA_M3U8_NAME` | `--HLS_MEDIA_M3U8_NAME` | `media` |
-| `hls.subtitleM3u8Name` | `HLS_SUBTITLE_M3U8_NAME` | `--HLS_SUBTITLE_M3U8_NAME` | `subtitle` |
-| `hls.imageM3u8Name` | `HLS_IMAGE_M3U8_NAME` | `--HLS_IMAGE_M3U8_NAME` | `image` |
-| `hls.globalSegmentConcurrency` | `HLS_GLOBAL_SEGMENT_CONCURRENCY` | `--HLS_GLOBAL_SEGMENT_CONCURRENCY` | `2` |
-| `hls.segmentMinDuration` | `HLS_SEGMENT_MIN_DURATION` | `--HLS_SEGMENT_MIN_DURATION` | `4` |
-| `hls.contextPoolSize` | `HLS_CONTEXT_POOL_SIZE` | `--HLS_CONTEXT_POOL_SIZE` | `4` |
-| `hls.imageMaxConcurrency` | `HLS_IMAGE_MAX_CONCURRENCY` | `--HLS_IMAGE_MAX_CONCURRENCY` | `1` |
-| `hls.imageOutputWidth` | `HLS_IMAGE_OUTPUT_WIDTH` | `--HLS_IMAGE_OUTPUT_WIDTH` | `320` |
-| `hls.imageOutputHeight` | `HLS_IMAGE_OUTPUT_HEIGHT` | `--HLS_IMAGE_OUTPUT_HEIGHT` | `180` |
-| `hls.imageMaxSegmentBytes` | `HLS_IMAGE_MAX_SEGMENT_BYTES` | `--HLS_IMAGE_MAX_SEGMENT_BYTES` | `51200` |
-| `hls.imageMaxJpegBytes` | `HLS_IMAGE_MAX_JPEG_BYTES` | `--HLS_IMAGE_MAX_JPEG_BYTES` | `47104` |
-| `hls.imageMaxCacheBytes` | `HLS_IMAGE_MAX_CACHE_BYTES` | `--HLS_IMAGE_MAX_CACHE_BYTES` | `8388608` |
+| 配置项                         | 环境变量                         | 启动参数                           | 默认值     |
+| ------------------------------ | -------------------------------- | ---------------------------------- | ---------- |
+| `hls.masterM3u8Name`           | `HLS_MASTER_M3U8_NAME`           | `--HLS_MASTER_M3U8_NAME`           | `master`   |
+| `hls.mediaM3u8Name`            | `HLS_MEDIA_M3U8_NAME`            | `--HLS_MEDIA_M3U8_NAME`            | `media`    |
+| `hls.subtitleM3u8Name`         | `HLS_SUBTITLE_M3U8_NAME`         | `--HLS_SUBTITLE_M3U8_NAME`         | `subtitle` |
+| `hls.imageM3u8Name`            | `HLS_IMAGE_M3U8_NAME`            | `--HLS_IMAGE_M3U8_NAME`            | `image`    |
+| `hls.globalSegmentConcurrency` | `HLS_GLOBAL_SEGMENT_CONCURRENCY` | `--HLS_GLOBAL_SEGMENT_CONCURRENCY` | `2`        |
+| `hls.segmentMinDuration`       | `HLS_SEGMENT_MIN_DURATION`       | `--HLS_SEGMENT_MIN_DURATION`       | `4`        |
+| `hls.contextPoolSize`          | `HLS_CONTEXT_POOL_SIZE`          | `--HLS_CONTEXT_POOL_SIZE`          | `4`        |
+| `hls.imageMaxConcurrency`      | `HLS_IMAGE_MAX_CONCURRENCY`      | `--HLS_IMAGE_MAX_CONCURRENCY`      | `1`        |
+| `hls.imageOutputWidth`         | `HLS_IMAGE_OUTPUT_WIDTH`         | `--HLS_IMAGE_OUTPUT_WIDTH`         | `320`      |
+| `hls.imageOutputHeight`        | `HLS_IMAGE_OUTPUT_HEIGHT`        | `--HLS_IMAGE_OUTPUT_HEIGHT`        | `180`      |
+| `hls.imageMaxSegmentBytes`     | `HLS_IMAGE_MAX_SEGMENT_BYTES`    | `--HLS_IMAGE_MAX_SEGMENT_BYTES`    | `51200`    |
+| `hls.imageMaxJpegBytes`        | `HLS_IMAGE_MAX_JPEG_BYTES`       | `--HLS_IMAGE_MAX_JPEG_BYTES`       | `47104`    |
+| `hls.imageMaxCacheBytes`       | `HLS_IMAGE_MAX_CACHE_BYTES`      | `--HLS_IMAGE_MAX_CACHE_BYTES`      | `8388608`  |
 
 ## 其他环境变量
 
 以下变量不是 `config.yaml` 的二级配置项，而是日志模块直接读取的运行环境变量：
 
-| 环境变量 | 作用 |
-| --- | --- |
-| `NODE_ENV` | 为 `production` 时关闭开发日志格式化输出 |
-| `LOG_LEVEL` | 设置 Pino 日志级别；未设置时生产环境为 `info`，其他环境为 `debug` |
+| 环境变量                | 作用                                                              |
+| ----------------------- | ----------------------------------------------------------------- |
+| `NODE_ENV`              | 为 `production` 时关闭开发日志格式化输出                          |
+| `LOG_LEVEL`             | 设置 Pino 日志级别；未设置时生产环境为 `info`，其他环境为 `debug` |
+
+日志文件按环境、component 和日期分目录，source 与进程号写入文件名；单文件超过上限时递增轮转序号：
+
+```text
+logs/production/http/2026-09-06/http.business.12345.0001.ndjson
+```
+
+`component` 目前包括 `app`、`http`、`web` 和 `hls`。HTTP 请求访问、业务和错误日志分别使用
+`access`、`business` 和 `error` source；HLS 的 native/manager source 保留在文件名中。文件内容为
+原始 NDJSON，开发环境仍同时输出 `pino-pretty`，正式环境仍输出标准输出。
+
+`logging.*` 配置项可通过现有配置注入规则使用 `LOGGING_*` 环境变量或命令行参数覆盖。

@@ -7,5 +7,7 @@ streamer/build
 
 ffmpeg
 remux
+logs
+server/dist/
 
 *.video.json

@@ -10,7 +10,8 @@ export default applyOverrides(defaultConfig);
 function applyOverrides(defaultConfig: AppConfig): AppConfig {
 	const config = structuredClone(defaultConfig);
 	const commandLineOverrides = getCommandLineOverrides();
-	for (const section of ['server', 'web', 'hls'] as const) {
+	// 遍历配置实际存在的字段，保证新增配置可以自动获得环境变量和命令行覆盖能力。
+	for (const section of ['server', 'logging', 'web', 'hls'] as const) {
 		const sectionConfig = config[section] as Record<string, unknown>;
 		for (const key of Object.keys(sectionConfig)) {
 			const envKey = `${section}_${toEnvKey(key)}`.toUpperCase();

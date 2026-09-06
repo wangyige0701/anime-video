@@ -10,7 +10,7 @@ globalThis.__APP_CONFIG__ = config;
 
 const SERVER = __APP_CONFIG__.server;
 
-const [{ response }, { error }, { logger, requestLog }] = await Promise.all([
+const [{ response }, { error }, { closeLogger, createLogger, logger, requestLog }] = await Promise.all([
 	import('~server/middlewares/response'),
 	import('~server/middlewares/error'),
 	import('~server/middlewares/logger'),
@@ -30,6 +30,32 @@ app.use(requestLog())
 
 const serverPort = SERVER.port;
 
-app.listen(serverPort, '0.0.0.0', () => {
-	logger.info({ port: serverPort }, 'Server is listening');
+const server = app.listen(serverPort, '0.0.0.0', () => {
+	logger.info({ component: 'app', source: 'startup', port: serverPort }, 'Server is listening');
 });
+
+let shuttingDown = false;
+async function shutdown(signal: NodeJS.Signals) {
+	if (shuttingDown) return;
+	shuttingDown = true;
+	const shutdownLogger = createLogger({ component: 'app', source: 'shutdown' });
+	shutdownLogger.info({ signal }, 'Server shutdown started');
+
+	// 先停止接收请求；SSE 等长连接最多等待 10 秒，避免进程无法退出。
+	await Promise.race([
+		new Promise<void>((resolve) => server.close(() => resolve())),
+		new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
+	]);
+	server.closeAllConnections();
+
+	try {
+		await Promise.race([closeLogger(), new Promise<void>((resolve) => setTimeout(resolve, 5_000))]);
+	} finally {
+		process.exitCode = 0;
+		process.exit();
+	}
+}
+
+// 显式处理容器和本地终止信号，避免默认退出路径跳过日志刷盘。
+process.once('SIGTERM', () => void shutdown('SIGTERM'));
+process.once('SIGINT', () => void shutdown('SIGINT'));

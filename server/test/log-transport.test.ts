@@ -18,10 +18,9 @@ describe('log transport', () => {
 		const directory = await createTemporaryDirectory();
 		const timestamp = Date.now();
 		const transport = createLogTransport({
+			...transportConfig,
 			logDir: directory,
-			environment: 'Test/Environment',
 			bufferBytes: 1024 * 1024,
-			pid: 1234,
 		});
 		const accessRecord = JSON.stringify({
 			component: 'http',
@@ -35,8 +34,8 @@ describe('log transport', () => {
 		await finish(transport);
 
 		const date = dateName(timestamp);
-		const accessPath = path.join(directory, 'test-environment', 'http', date, 'http.access.1234.0001.ndjson');
-		const fallbackPath = path.join(directory, 'test-environment', 'app', date, 'app.default.1234.0001.ndjson');
+		const accessPath = path.join(directory, 'http', date, 'access.0001.ndjson');
+		const fallbackPath = path.join(directory, 'app', date, 'default.0001.ndjson');
 		expect(await readFile(accessPath, 'utf8')).toBe(`${accessRecord}\n`);
 		expect(await readFile(fallbackPath, 'utf8')).toBe(`${fallbackRecord}\n`);
 	});
@@ -51,22 +50,18 @@ describe('log transport', () => {
 			message: 'x'.repeat(48),
 		})}\n`;
 		const transport = createLogTransport({
+			...transportConfig,
 			logDir: directory,
 			maxBytes: Buffer.byteLength(line) + 1,
 			bufferBytes: 1024 * 1024,
-			pid: 55,
 		});
 
 		await writeChunk(transport, line.repeat(3));
 		await finish(transport);
 
-		const dateDirectory = path.join(directory, 'development', 'app', dateName(timestamp));
+		const dateDirectory = path.join(directory, 'app', dateName(timestamp));
 		const names = (await readdir(dateDirectory)).sort();
-		expect(names).toEqual([
-			'app.business.55.0001.ndjson',
-			'app.business.55.0002.ndjson',
-			'app.business.55.0003.ndjson',
-		]);
+		expect(names).toEqual(['business.0001.ndjson', 'business.0002.ndjson', 'business.0003.ndjson']);
 		for (const name of names) {
 			expect((await readFile(path.join(dateDirectory, name), 'utf8')).split('\n').filter(Boolean)).toHaveLength(
 				1,
@@ -74,10 +69,38 @@ describe('log transport', () => {
 		}
 	});
 
+	it('uses configured HTTP event routes and keeps unmapped values in the default file', async () => {
+		const directory = await createTemporaryDirectory();
+		const timestamp = Date.now();
+		const transport = createLogTransport({
+			...transportConfig,
+			logDir: directory,
+			httpEventSource: {
+				'custom.event': 'business',
+				'unsafe.event': '../outside',
+			},
+			bufferBytes: 1024 * 1024,
+		});
+		const configuredRecord = JSON.stringify({ component: 'http', event: 'custom.event', time: timestamp });
+		const fallbackRecord = JSON.stringify({ component: 'http', event: 'unsafe.event', time: timestamp });
+
+		await writeChunk(transport, `${configuredRecord}\n${fallbackRecord}\n`);
+		await finish(transport);
+
+		const date = dateName(timestamp);
+		expect(await readFile(path.join(directory, 'http', date, 'business.0001.ndjson'), 'utf8')).toBe(
+			`${configuredRecord}\n`,
+		);
+		expect(await readFile(path.join(directory, 'http', date, 'default.0001.ndjson'), 'utf8')).toBe(
+			`${fallbackRecord}\n`,
+		);
+		expect(await exists(path.join(directory, 'outside'))).toBe(false);
+	});
+
 	it('resumes an unfinished file and flushes buffered data on close', async () => {
 		const directory = await createTemporaryDirectory();
 		const timestamp = Date.now();
-		const options = { logDir: directory, maxBytes: 1024, bufferBytes: 1024 * 1024, pid: 77 };
+		const options = { ...transportConfig, logDir: directory, maxBytes: 1024, bufferBytes: 1024 * 1024 };
 		const first = createLogTransport(options);
 		const firstRecord = JSON.stringify({ component: 'web', source: 'startup', time: timestamp, step: 1 });
 		await writeChunk(first, `${firstRecord}\n`);
@@ -88,25 +111,25 @@ describe('log transport', () => {
 		await writeChunk(second, `${secondRecord}\n`);
 		await finish(second);
 
-		const filePath = path.join(directory, 'development', 'web', dateName(timestamp), 'web.startup.77.0001.ndjson');
+		const filePath = path.join(directory, 'web', dateName(timestamp), 'startup.0001.ndjson');
 		expect(await readFile(filePath, 'utf8')).toBe(`${firstRecord}\n${secondRecord}\n`);
 	});
 
 	it('removes expired date directories during startup', async () => {
 		const directory = await createTemporaryDirectory();
-		const expired = path.join(directory, 'development', 'app', '2020-01-01');
+		const expired = path.join(directory, 'app', '2020-01-01');
 		await mkdir(expired, { recursive: true });
 		await writeFile(path.join(expired, 'old.ndjson'), 'old\n');
 
 		const transport = createLogTransport({
+			...transportConfig,
 			logDir: directory,
 			retentionDays: 1,
 			bufferBytes: 1024,
-			pid: 88,
 		});
 		await finish(transport);
 
-		expect(await exists(path.join(directory, 'development', 'app', '2020-01-01'))).toBe(false);
+		expect(await exists(path.join(directory, 'app', '2020-01-01'))).toBe(false);
 	});
 });
 
@@ -115,6 +138,32 @@ async function createTemporaryDirectory() {
 	temporaryDirectories.push(directory);
 	return directory;
 }
+
+const transportConfig = {
+	maxBytes: 50 * 1024 * 1024,
+	retentionDays: 30,
+	bufferBytes: 64 * 1024,
+	flushIntervalMs: 250,
+	components: ['app', 'http', 'web', 'hls'],
+	sources: [
+		'access',
+		'business',
+		'error',
+		'startup',
+		'shutdown',
+		'native',
+		'manager',
+		'request',
+		'transport',
+		'default',
+	],
+	httpEventSource: {
+		'http.request.completed': 'access',
+		'http.request.failed': 'error',
+		'http.request.rejected': 'error',
+	},
+	httpBusinessPrefixes: ['series.', 'season.', 'episode.', 'directories.', 'system.'],
+};
 
 function writeChunk(transport: Writable, chunk: string) {
 	return new Promise<void>((resolve, reject) => {

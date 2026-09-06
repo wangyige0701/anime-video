@@ -51,14 +51,18 @@ hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 
 ## Logging
 
-| 配置项                    | 环境变量                    | 启动参数                      | 默认值     |
-| ------------------------- | --------------------------- | ----------------------------- | ---------- |
-| `logging.directory`       | `LOGGING_DIRECTORY`         | `--LOGGING_DIRECTORY`         | `logs`     |
-| `logging.fileEnabled`     | `LOGGING_FILE_ENABLED`      | `--LOGGING_FILE_ENABLED`      | `true`     |
-| `logging.fileMaxBytes`    | `LOGGING_FILE_MAX_BYTES`    | `--LOGGING_FILE_MAX_BYTES`    | `52428800` |
-| `logging.retentionDays`   | `LOGGING_RETENTION_DAYS`    | `--LOGGING_RETENTION_DAYS`    | `30`       |
-| `logging.bufferBytes`     | `LOGGING_BUFFER_BYTES`      | `--LOGGING_BUFFER_BYTES`      | `65536`    |
-| `logging.flushIntervalMs` | `LOGGING_FLUSH_INTERVAL_MS` | `--LOGGING_FLUSH_INTERVAL_MS` | `100`      |
+| 配置项                         | 环境变量                         | 启动参数                           | 默认值                      |
+| ------------------------------ | -------------------------------- | ---------------------------------- | --------------------------- |
+| `logging.directory`            | `LOGGING_DIRECTORY`              | `--LOGGING_DIRECTORY`              | `logs`                      |
+| `logging.fileEnabled`          | `LOGGING_FILE_ENABLED`           | `--LOGGING_FILE_ENABLED`           | `true`                      |
+| `logging.components`           | `LOGGING_COMPONENTS`             | `--LOGGING_COMPONENTS`             | `app,http,web,hls`          |
+| `logging.sources`              | `LOGGING_SOURCES`                | `--LOGGING_SOURCES`                | `access,business,error,...` |
+| `logging.httpEventSource`      | `LOGGING_HTTP_EVENT_SOURCE`      | `--LOGGING_HTTP_EVENT_SOURCE`      | 事件映射                    |
+| `logging.httpBusinessPrefixes` | `LOGGING_HTTP_BUSINESS_PREFIXES` | `--LOGGING_HTTP_BUSINESS_PREFIXES` | `series.,season.,...`       |
+| `logging.fileMaxBytes`         | `LOGGING_FILE_MAX_BYTES`         | `--LOGGING_FILE_MAX_BYTES`         | `52428800`                  |
+| `logging.retentionDays`        | `LOGGING_RETENTION_DAYS`         | `--LOGGING_RETENTION_DAYS`         | `30`                        |
+| `logging.bufferBytes`          | `LOGGING_BUFFER_BYTES`           | `--LOGGING_BUFFER_BYTES`           | `65536`                     |
+| `logging.flushIntervalMs`      | `LOGGING_FLUSH_INTERVAL_MS`      | `--LOGGING_FLUSH_INTERVAL_MS`      | `250`                       |
 
 ## HLS
 
@@ -82,15 +86,15 @@ hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 
 以下变量不是 `config.yaml` 的二级配置项，而是日志模块直接读取的运行环境变量：
 
-| 环境变量                | 作用                                                              |
-| ----------------------- | ----------------------------------------------------------------- |
-| `NODE_ENV`              | 为 `production` 时关闭开发日志格式化输出                          |
-| `LOG_LEVEL`             | 设置 Pino 日志级别；未设置时生产环境为 `info`，其他环境为 `debug` |
+| 环境变量    | 作用                                                              |
+| ----------- | ----------------------------------------------------------------- |
+| `NODE_ENV`  | 为 `production` 时关闭开发日志格式化输出                          |
+| `LOG_LEVEL` | 设置 Pino 日志级别；未设置时生产环境为 `info`，其他环境为 `debug` |
 
-日志文件按环境、component 和日期分目录，source 与进程号写入文件名；单文件超过上限时递增轮转序号：
+日志文件按 component 和日期分目录，source 写入文件名；单文件超过上限时递增轮转序号：
 
 ```text
-logs/production/http/2026-09-06/http.business.12345.0001.ndjson
+logs/http/2026-09-06/business.0001.ndjson
 ```
 
 `component` 目前包括 `app`、`http`、`web` 和 `hls`。HTTP 请求访问、业务和错误日志分别使用

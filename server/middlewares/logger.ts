@@ -50,12 +50,14 @@ const transportTargets: TransportMultiOptions['targets'] = [
 					target: logTransport,
 					options: {
 						logDir,
-						environment: process.env.NODE_ENV || 'development',
 						maxBytes: logging.fileMaxBytes,
 						retentionDays: logging.retentionDays,
 						bufferBytes: logging.bufferBytes,
 						flushIntervalMs: logging.flushIntervalMs,
-						pid: process.pid,
+						components: logging.components,
+						sources: logging.sources,
+						httpEventSource: logging.httpEventSource,
+						httpBusinessPrefixes: logging.httpBusinessPrefixes,
 					},
 					level: logLevel,
 				},
@@ -73,7 +75,9 @@ export const logger = pino(
 	transport,
 );
 
-/** 为模块或后台任务创建带固定上下文的日志实例。 */
+/**
+ * 为模块或后台任务创建带固定上下文的日志实例。
+ */
 export function createLogger(bindings: Bindings = {}): Logger {
 	return logger.child(bindings);
 }
@@ -114,7 +118,9 @@ function getAccessLogLevel(ctx: Pick<Context, 'path'>): LogLevel {
 	return 'info';
 }
 
-/** 为请求挂载独立日志实例，并在请求完成后记录摘要。 */
+/**
+ * 为请求挂载独立日志实例，并在请求完成后记录摘要。
+ */
 export function requestLog(): Middleware {
 	return async (ctx, next) => {
 		const startedAt = performance.now();

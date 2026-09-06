@@ -1,84 +1,95 @@
 # Koa API 服务配置
 server:
-  # 服务协议
-  protocol: http
-  # 监听地址及对外访问主机名
-  host: localhost
-  # API 服务端口
-  port: 3000
-  # 配置文件名前缀
-  videoConfigPrefix: ''
-  # 视频数据索引文件名
-  dataFile: .video.json
-  # 允许作为系列图片的文件扩展名
-  allowedImageExtensions:
-    - .jpg
-    - .jpeg
-    - .png
-    - .webp
-    - .gif
-  # 允许作为视频的文件扩展名
-  allowedVideoExtensions:
-    - .mp4
-    - .mkv
-    - .avi
-    - .flv
-    - .m4v
-    - .mov
-    - .webm
-    - .wmv
-  # 数据文件保存防抖延迟（毫秒）
-  dataFileSaveDelay: 500
+    # 服务协议
+    protocol: http
+    # 监听地址及对外访问主机名
+    host: localhost
+    # API 服务端口
+    port: 3000
+    # 配置文件名前缀
+    videoConfigPrefix: ''
+    # 视频数据索引文件名
+    dataFile: .video.json
+    # 允许作为系列图片的文件扩展名
+    allowedImageExtensions:
+        - .jpg
+        - .jpeg
+        - .png
+        - .webp
+        - .gif
+    # 允许作为视频的文件扩展名
+    allowedVideoExtensions:
+        - .mp4
+        - .mkv
+        - .avi
+        - .flv
+        - .m4v
+        - .mov
+        - .webm
+        - .wmv
+    # 数据文件保存防抖延迟（毫秒）
+    dataFileSaveDelay: 500
 
 # 日志落盘与缓冲配置
 logging:
-  # 日志根目录；相对路径基于进程当前工作目录
-  directory: logs
-  # 是否启用异步文件落盘
-  fileEnabled: true
-  # 单个日志文件最大字节数
-  fileMaxBytes: 52428800
-  # 按日期目录保留的天数
-  retentionDays: 30
-  # transport 内存批量缓冲大小
-  bufferBytes: 65536
-  # 缓冲最长等待时间（毫秒）
-  flushIntervalMs: 100
+    # 日志根目录；相对路径基于进程当前工作目录
+    directory: logs
+    # 是否启用异步文件落盘
+    fileEnabled: true
+    # transport 允许的 component 目录
+    components: [app, http, web, hls]
+    # transport 允许的 source 文件名
+    sources: [access, business, error, startup, shutdown, native, manager, request, transport, default]
+    # HTTP 事件到 source 的精确映射
+    httpEventSource:
+        http.request.completed: access
+        http.request.failed: error
+        http.request.rejected: error
+    # HTTP 业务事件前缀
+    httpBusinessPrefixes: [series., season., episode., directories., system.]
+    # 单个日志文件最大字节数
+    fileMaxBytes: 52428800
+    # 按日期目录保留的天数
+    retentionDays: 30
+    # transport 内存批量缓冲大小
+    bufferBytes: 65536
+    # 缓冲最长等待时间（毫秒）
+    flushIntervalMs: 250
 
 # Web 静态文件及开发代理服务配置
 web:
-  # Web 服务协议
-  protocol: http
-  # Web 服务主机名
-  host: localhost
-  # Web 服务端口
-  port: 3001
-  # Vite 开发服务器端口
-  devWebPort: 5173
-  # Web 静态资源目录
-  webBundleDir: www
+    # Web 服务协议
+    protocol: http
+    # Web 服务主机名
+    host: localhost
+    # Web 服务端口
+    port: 3001
+    # Vite 开发服务器端口
+    devWebPort: 5173
+    # Web 静态资源目录
+    webBundleDir: www
 
 # HLS 播放列表、分片及预览图配置
 hls:
-  # 各类 m3u8 播放列表的文件名（不含扩展名）
-  masterM3u8Name: master
-  mediaM3u8Name: media
-  subtitleM3u8Name: subtitle
-  imageM3u8Name: image
-  # 全局 HLS 分片任务并发数
-  globalSegmentConcurrency: 2
-  # 视频分片的最短时长（秒）
-  segmentMinDuration: 4
-  # HLS 转码上下文池大小
-  contextPoolSize: 4
-  # 预览图生成的最大并发数
-  imageMaxConcurrency: 1
-  # 预览图输出尺寸（像素）
-  imageOutputWidth: 320
-  imageOutputHeight: 180
-  # 单个预览图分片的最大大小（字节）
-  imageMaxSegmentBytes: 51200
-  # 单张 JPEG 预览图的最大大小（字节）
-  imageMaxJpegBytes: 47104
-  # 预览图缓存的最大总大小（字节）
-  imageMaxCacheBytes: 8388608
+    # 各类 m3u8 播放列表的文件名（不含扩展名）
+    masterM3u8Name: master
+    mediaM3u8Name: media
+    subtitleM3u8Name: subtitle
+    imageM3u8Name: image
+    # 全局 HLS 分片任务并发数
+    globalSegmentConcurrency: 2
+    # 视频分片的最短时长（秒）
+    segmentMinDuration: 4
+    # HLS 转码上下文池大小
+    contextPoolSize: 4
+    # 预览图生成的最大并发数
+    imageMaxConcurrency: 1
+    # 预览图输出尺寸（像素）
+    imageOutputWidth: 320
+    imageOutputHeight: 180
+    # 单个预览图分片的最大大小（字节）
+    imageMaxSegmentBytes: 51200
+    # 单张 JPEG 预览图的最大大小（字节）
+    imageMaxJpegBytes: 47104
+    # 预览图缓存的最大总大小（字节）
+    imageMaxCacheBytes: 8388608

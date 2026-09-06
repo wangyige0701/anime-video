@@ -22,16 +22,16 @@
 
 `VideoController` 挂载在 `ServerRoot.VIDEO`，当前资源映射为：
 
-| 路径 | 返回内容 | Content-Type | Cache-Control |
-| --- | --- | --- | --- |
-| `/:path/master.m3u8` | master playlist | `application/vnd.apple.mpegurl` | `no-cache` |
-| `/:path/media.m3u8` | 视频 playlist | `application/vnd.apple.mpegurl` | `no-cache` |
-| `/:path/image.m3u8` | JPEG I-frame 图片 playlist | `application/vnd.apple.mpegurl` | `no-cache` |
-| `/:path/image_init.mp4` | 图片 fMP4 初始化段 | `video/mp4` | `public, max-age=3600` |
-| `/:path/:id.m4s` | 指定分片的单帧 JPEG fMP4 | `video/mp4` | `public, max-age=3600` |
-| `/:path/:id.ts` | 视频 TS 分片 | `video/mp2t` | `public, max-age=3600` |
-| `/:path/:stream/subtitle.m3u8` | 字幕 playlist | `application/vnd.apple.mpegurl` | `no-cache` |
-| `/:path/:stream/:id.vtt` | 字幕分片 | `text/vtt` | `public, max-age=3600` |
+| 路径                           | 返回内容                   | Content-Type                    | Cache-Control          |
+| ------------------------------ | -------------------------- | ------------------------------- | ---------------------- |
+| `/:path/master.m3u8`           | master playlist            | `application/vnd.apple.mpegurl` | `no-cache`             |
+| `/:path/media.m3u8`            | 视频 playlist              | `application/vnd.apple.mpegurl` | `no-cache`             |
+| `/:path/image.m3u8`            | JPEG I-frame 图片 playlist | `application/vnd.apple.mpegurl` | `no-cache`             |
+| `/:path/image_init.mp4`        | 图片 fMP4 初始化段         | `video/mp4`                     | `public, max-age=3600` |
+| `/:path/:id.m4s`               | 指定分片的单帧 JPEG fMP4   | `video/mp4`                     | `public, max-age=3600` |
+| `/:path/:id.ts`                | 视频 TS 分片               | `video/mp2t`                    | `public, max-age=3600` |
+| `/:path/:stream/subtitle.m3u8` | 字幕 playlist              | `application/vnd.apple.mpegurl` | `no-cache`             |
+| `/:path/:stream/:id.vtt`       | 字幕分片                   | `text/vtt`                      | `public, max-age=3600` |
 
 playlist 名称必须引用 `__APP_CONFIG__.hls`，不要在控制器中再写一份字符串。媒体接口直接返回原始 `Buffer`，不使用普通 JSON 接口的 `ctx.Success()` 包装，否则会破坏 hls.js 对二进制内容和 playlist 的解析。
 
@@ -285,7 +285,7 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 API 和静态 Web 入口统一使用共享 Pino logger。文件输出由 Pino worker 线程中的
 `dist/log-transport.js` 负责，TypeScript 源码为 `src/log-transport.ts`，开发或正式启动前必须先编译。
-transport 会复用文件流，在内存中批量缓冲并异步刷盘，按日期切换目录、按大小轮转文件，并清理过期日期目录。
+transport 会复用文件流，在内存中批量缓冲并异步刷盘，按 component/日期切换目录、按大小轮转文件，并清理过期日期目录。
 路由只接受固定的 `component`（`app`、`http`、`web`、`hls`）；`source` 只作为受控文件名标识，不能使用 request ID、
 HLS ID、URL 或用户输入。静态 Web 正常资源请求不记录，只记录启动、错误、异常请求和关闭事件。关闭处理必须停止接收新连接，
 在超时边界内关闭长连接，完成 Pino flush 后再结束进程。

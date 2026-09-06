@@ -69,5 +69,14 @@ function parseValue(value: string, defaultValue: unknown) {
 			return value.split(',').map((item) => item.trim());
 		}
 	}
+	if (defaultValue && typeof defaultValue === 'object') {
+		// 对象配置（例如 HTTP 事件映射）使用 YAML 解析，支持环境变量和命令行覆盖。
+		try {
+			const parsed = YAML.parse(value);
+			return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : defaultValue;
+		} catch {
+			return defaultValue;
+		}
+	}
 	return value;
 }

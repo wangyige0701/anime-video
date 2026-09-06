@@ -1,7 +1,7 @@
 # Pino 日志落盘 Transport
 
 `log-transport.ts` 是 Pino 自定义 transport。它运行在 `pino.transport()` 创建的 worker
-线程中，把主线程传来的 NDJSON 日志写入按环境、组件、日期组织的文件，同时负责批量刷盘、
+线程中，把主线程传来的 NDJSON 日志写入按组件、日期组织的文件，同时负责批量刷盘、
 文件轮转和过期目录清理。主线程只负责构造 logger 和发送日志，不直接执行日志文件 I/O。
 
 ## 运行链路
@@ -12,7 +12,7 @@ logger.child(...)
     -> LogTransport._write(chunk)
     -> 按换行拆分 NDJSON
     -> component/source 路由
-    -> LogFileWriter.append(date, line)
+    -> LogFileWriter.appendBatch(date, data, bytes)
     -> 内存缓冲 -> fs.WriteStream -> .ndjson
 ```
 
@@ -28,8 +28,8 @@ TypeScript 源码通过根脚本 `pnpm build:log-transport` 编译为
 
 ### 参数和启动
 
-构造函数把目录、环境、单文件大小、保留天数、缓冲大小、刷盘间隔和进程号规范化。环境名
-通过 `safeToken()` 限制为安全的文件名字符；目录本身由 logger 在主线程中解析为绝对路径。
+构造函数把目录、单文件大小、保留天数、缓冲大小、刷盘间隔和路由配置规范化；目录本身由
+logger 在主线程中解析为绝对路径。
 构造时异步启动一次 `cleanupOldLogs()`，并把 Promise 放入 `ready` 链，保证首次写入在清理
 任务完成后开始。
 
@@ -51,19 +51,24 @@ Pino 传给 Writable 的 chunk 不保证恰好对应一条记录，因此 `pendi
 
 ## `LogFileWriter` 的写入策略
 
-每个 `component/source` 组合对应一个 writer，并通过 `operation` Promise 串行化写入。这样
+每个 `component/source` 组合对应一个 writer，并通过 `operation` Promise 串行化写入。transport
+会先把同一 chunk 中连续的相同分类记录合并为一个 batch，再提交给 writer。这样
 日期切换、轮转和关闭不会与同一来源的追加操作交叉；不同来源仍可在 transport 中独立维护
 缓冲区。
 
 目录和流采用延迟创建，只有收到该分类的第一条日志时才建立：
 
 ```text
-<logDir>/<environment>/<component>/<YYYY-MM-DD>/
-    <component>.<source>.<pid>.<index>.ndjson
+<logDir>/<component>/<YYYY-MM-DD>/
+    <source>.<index>.ndjson
 ```
 
-索引从 `0001` 开始。首次打开某个日期目录时扫描当前进程和来源的已有文件，重启后继续使用
-最高序号的未满文件；文件已达到 `maxBytes` 时从下一个序号继续。
+索引从 `0001` 开始。首次打开某个日期目录时扫描来源的已有文件，重启后继续使用最高序号的
+未满文件；文件已达到 `maxBytes` 时从下一个序号继续。因此服务重启不会仅因进程号变化而创建
+新文件，只有达到大小上限才会轮转。
+
+不再使用 PID 作为文件名隔离标识后，同一个 `logDir` 应由一个服务进程写入；多进程部署应为
+每个进程配置独立的日志根目录，避免多个 writer 同时追加同一文件。
 
 写入先累积到 `pending` 字符串：达到 `bufferBytes` 立即刷盘，否则由
 `flushIntervalMs` 定时器兜底。刷盘使用 `WriteStream.write()`，返回 `false` 时等待 `drain`
@@ -75,7 +80,7 @@ Pino 传给 Writable 的 chunk 不保证恰好对应一条记录，因此 `pendi
 
 ## 过期清理
 
-`cleanupOldLogs()` 只遍历当前环境下的组件目录和形如 `YYYY-MM-DD` 的子目录，删除早于
+`cleanupOldLogs()` 只遍历日志根目录下的组件目录和形如 `YYYY-MM-DD` 的子目录，删除早于
 `retentionDays` 截止日期的目录。清理在 transport worker 中执行，失败被忽略，不阻断新日志
 写入；当前日期目录不会被删除。
 
@@ -84,7 +89,7 @@ Pino 传给 Writable 的 chunk 不保证恰好对应一条记录，因此 `pendi
 当前实现已经覆盖落盘功能的主要可靠性要求，暂时没有必须立即修改的结构性问题：
 
 - worker 隔离文件 I/O，API 请求线程不会等待磁盘操作；
-- 每个来源串行化，轮转和日期切换顺序明确；
+- 每个来源串行化，轮转和日期切换顺序明确；服务重启会续写同一日期下未满的文件；
 - 缓冲阈值、时间兜底和 stream 背压同时存在，兼顾吞吐与内存上限；
 - 重启续写、优雅关闭和保留期清理均有明确路径；
 - 文件名中的可变字段经过白名单或 `safeToken()` 处理，不能由日志内容构造路径。

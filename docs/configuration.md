@@ -61,6 +61,7 @@ hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 | `logging.httpBusinessPrefixes` | `LOGGING_HTTP_BUSINESS_PREFIXES` | `--LOGGING_HTTP_BUSINESS_PREFIXES` | `series.,season.,...`       |
 | `logging.fileMaxBytes`         | `LOGGING_FILE_MAX_BYTES`         | `--LOGGING_FILE_MAX_BYTES`         | `52428800`                  |
 | `logging.retentionDays`        | `LOGGING_RETENTION_DAYS`         | `--LOGGING_RETENTION_DAYS`         | `30`                        |
+| `logging.maxQueueBytes`        | `LOGGING_MAX_QUEUE_BYTES`        | `--LOGGING_MAX_QUEUE_BYTES`        | `4194304`                   |
 | `logging.bufferBytes`          | `LOGGING_BUFFER_BYTES`           | `--LOGGING_BUFFER_BYTES`           | `65536`                     |
 | `logging.flushIntervalMs`      | `LOGGING_FLUSH_INTERVAL_MS`      | `--LOGGING_FLUSH_INTERVAL_MS`      | `250`                       |
 
@@ -100,5 +101,13 @@ logs/http/2026-09-06/business.0001.ndjson
 `component` 目前包括 `app`、`http`、`web` 和 `hls`。HTTP 请求访问、业务和错误日志分别使用
 `access`、`business` 和 `error` source；HLS 的 native/manager source 保留在文件名中。文件内容为
 原始 NDJSON，开发环境仍同时输出 `pino-pretty`，正式环境仍输出标准输出。
+
+控制台和文件在同一个 worker 中写入，`fileEnabled: false` 仅关闭文件输出，仍需先编译 transport。
+`maxQueueBytes` 限制主线程待写及在途日志的 UTF-8 字节数，默认 4MiB；超过上限丢弃新记录并向 stderr
+报告数量，单条超大记录也受该限制。它不是进程总内存上限。
+
+`retentionDays: 0` 禁用过期清理；其他非负整数在启动及每天午夜清理早于“当天减 N 天”的日期目录，
+边界当天保留。`flushIntervalMs` 是低流量缓冲的定时提交间隔，不包含排队和磁盘耗时。
+文件写入等待回调，但未调用 fsync，不承诺断电持久化。关闭超过 5 秒会终止日志 worker 并返回失败。
 
 `logging.*` 配置项可通过现有配置注入规则使用 `LOGGING_*` 环境变量或命令行参数覆盖。

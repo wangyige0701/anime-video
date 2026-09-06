@@ -106,11 +106,14 @@ pnpm server dev
 pnpm server web-dev
 ```
 
-日志 transport 的 TypeScript 运行时文件需要在开发或构建前编译：
+日志 transport 的 TypeScript 运行时文件需要在开发或构建前编译；控制台与文件输出共用一个 worker，关闭文件输出时也需要编译：
 
 ```powershell
 pnpm build:log-transport
 ```
+
+主线程待写及在途日志由 `logging.maxQueueBytes` 限制，默认 4MiB，过载丢弃新记录并向 stderr 告警。
+该配置同时维护在 `config.yaml`、`shared/config.d.ts` 和 `docs/configuration.md`；日志关闭和资源释放约定见 `server/AGENTS.md`。
 
 等价且更适合跨平台或自动化环境的写法是直接使用 filter：
 

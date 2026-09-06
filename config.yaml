@@ -49,11 +49,13 @@ logging:
     httpBusinessPrefixes: [series., season., episode., directories., system.]
     # 单个日志文件最大字节数
     fileMaxBytes: 52428800
-    # 按日期目录保留的天数
+    # 按日期目录保留的天数；0 禁用过期清理
     retentionDays: 30
+    # 主线程待写及在途日志的字节上限；过载时丢弃新记录并向 stderr 告警
+    maxQueueBytes: 4194304
     # transport 内存批量缓冲大小
     bufferBytes: 65536
-    # 缓冲最长等待时间（毫秒）
+    # 低流量缓冲的定时提交间隔（毫秒），不包含排队和磁盘耗时
     flushIntervalMs: 250
 
 # Web 静态文件及开发代理服务配置

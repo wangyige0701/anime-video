@@ -70,15 +70,19 @@ export interface AppConfig {
 		 */
 		fileMaxBytes: number;
 		/**
-		 * 日志保留天数。
+		 * 日志保留天数；0 禁用过期清理。
 		 */
 		retentionDays: number;
+		/**
+		 * 主线程待写及在途日志的字节上限，过载时丢弃新记录并告警。
+		 */
+		maxQueueBytes: number;
 		/**
 		 * transport 内存缓冲大小。
 		 */
 		bufferBytes: number;
 		/**
-		 * 缓冲最长等待时间（毫秒）。
+		 * 低流量缓冲的定时提交间隔（毫秒），不包含排队和磁盘耗时。
 		 */
 		flushIntervalMs: number;
 	};

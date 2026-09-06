@@ -3,76 +3,52 @@ import { existsSync } from 'node:fs';
 import type { Context, Middleware } from 'koa';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import pino, { type Bindings, type Logger, type TransportMultiOptions } from 'pino';
+import pino, { type Bindings, type Logger } from 'pino';
 import { ServerRoot } from '~routes/server';
+import { LogDestination } from '~server/src/log-destination';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const isProduction = process.env.NODE_ENV === 'production';
 const logLevel = process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug');
-const logging = __APP_CONFIG__.logging;
-const fileLoggingEnabled = logging.fileEnabled;
-const logDir = resolve(process.cwd(), logging.directory);
+const LOGGING = __APP_CONFIG__.logging;
+const logDir = resolve(process.cwd(), LOGGING.directory);
 const moduleDir = fileURLToPath(new URL('.', import.meta.url));
 const sourceTransport = resolve(moduleDir, '../dist/log-transport.js');
 const compiledTransport = resolve(moduleDir, '../log-transport.js');
-const logTransport = fileLoggingEnabled
-	? existsSync(sourceTransport)
-		? sourceTransport
-		: existsSync(compiledTransport)
-			? compiledTransport
-			: undefined
-	: undefined;
+const logTransport = [sourceTransport, compiledTransport].find((candidate) => existsSync(candidate));
 
-// 文件落盘开启时必须有编译产物，否则提前失败比运行中静默丢日志更安全。
-if (fileLoggingEnabled && !logTransport) {
+// 控制台和文件统一走同一个 worker，启动前必须有编译产物。
+if (!logTransport) {
 	throw new Error('日志落盘 transport 尚未编译，请先执行 pnpm build:log-transport');
 }
 
-// 控制台格式化和文件落盘都交给 worker，避免在请求线程执行文件 I/O。
-const transportTargets: TransportMultiOptions['targets'] = [
-	...(isProduction
-		? [{ target: 'pino/file', options: { destination: 1 }, level: logLevel }]
-		: [
-				{
-					target: 'pino-pretty',
-					options: {
-						colorize: true,
-						ignore: 'pid,hostname',
-						translateTime: 'SYS:standard',
-					},
-					level: logLevel,
-				},
-			]),
-	...(logTransport
-		? [
-				{
-					target: logTransport,
-					options: {
-						logDir,
-						maxBytes: logging.fileMaxBytes,
-						retentionDays: logging.retentionDays,
-						bufferBytes: logging.bufferBytes,
-						flushIntervalMs: logging.flushIntervalMs,
-						components: logging.components,
-						sources: logging.sources,
-						httpEventSource: logging.httpEventSource,
-						httpBusinessPrefixes: logging.httpBusinessPrefixes,
-					},
-					level: logLevel,
-				},
-			]
-		: []),
-];
-
-const transport = pino.transport({ targets: transportTargets });
+const transport = pino.transport({
+	target: logTransport,
+	// 由 closeLogger/beforeExit 异步排空，关闭 Pino 默认的同步退出处理。
+	worker: { autoEnd: false },
+	options: {
+		logDir,
+		fileEnabled: LOGGING.fileEnabled,
+		consoleFormat: isProduction ? 'json' : 'pretty',
+		maxBytes: LOGGING.fileMaxBytes,
+		retentionDays: LOGGING.retentionDays,
+		bufferBytes: LOGGING.bufferBytes,
+		flushIntervalMs: LOGGING.flushIntervalMs,
+		components: LOGGING.components,
+		sources: LOGGING.sources,
+		httpEventSource: LOGGING.httpEventSource,
+		httpBusinessPrefixes: LOGGING.httpBusinessPrefixes,
+	},
+});
+const destination = new LogDestination(transport, LOGGING.maxQueueBytes);
 
 export const logger = pino(
 	{
 		base: { service: 'anime-video' },
 		level: logLevel,
 	},
-	transport,
+	destination,
 );
 
 /**
@@ -82,19 +58,16 @@ export function createLogger(bindings: Bindings = {}): Logger {
 	return logger.child(bindings);
 }
 
-let closePromise: Promise<void> | undefined;
-
 export function closeLogger() {
-	// 结束 transport 会等待 worker 内的批量缓冲和所有文件流完成写入。
-	if (!closePromise) {
-		closePromise = new Promise<void>((resolve, reject) => {
-			(transport as { end: (callback: (error?: Error) => void) => void }).end((error) =>
-				error ? reject(error) : resolve(),
-			);
-		});
-	}
-	return closePromise;
+	return destination.close();
 }
+
+process.once('beforeExit', () => {
+	void closeLogger().catch((error: unknown) => {
+		process.stderr.write(`[logger] Failed to close logs: ${String(error)}\n`);
+		process.exitCode = 1;
+	});
+});
 
 function getRoute(ctx: Pick<Context, 'path'>) {
 	const matchedRoute = (ctx as { _matchedRoute?: string })._matchedRoute;
@@ -133,19 +106,20 @@ export function requestLog(): Middleware {
 		try {
 			await next();
 		} finally {
-			const durationMs = Math.round(performance.now() - startedAt);
 			// 异常详情和 5xx 堆栈由 error 中间件单独记录，避免访问日志重复报错。
 			const level = getAccessLogLevel(ctx);
-			log[level](
-				{
-					event: 'http.request.completed',
-					method: ctx.method,
-					route: getRoute(ctx),
-					status: ctx.status,
-					durationMs,
-				},
-				'HTTP request completed',
-			);
+			if (log.isLevelEnabled(level)) {
+				log[level](
+					{
+						event: 'http.request.completed',
+						method: ctx.method,
+						route: getRoute(ctx),
+						status: ctx.status,
+						durationMs: Math.round(performance.now() - startedAt),
+					},
+					'HTTP request completed',
+				);
+			}
 		}
 	};
 }

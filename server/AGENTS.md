@@ -283,9 +283,19 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 ### 日志 transport
 
-API 和静态 Web 入口统一使用共享 Pino logger。文件输出由 Pino worker 线程中的
-`dist/log-transport.js` 负责，TypeScript 源码为 `src/log-transport.ts`，开发或正式启动前必须先编译。
-transport 会复用文件流，在内存中批量缓冲并异步刷盘，按 component/日期切换目录、按大小轮转文件，并清理过期日期目录。
+API 和静态 Web 入口统一使用共享 Pino logger。控制台与文件输出由同一个 Pino worker 线程中的
+`dist/log-transport.js` 负责，TypeScript 源码为 `src/log-transport.ts`；即使关闭文件输出，启动前也必须编译。
+开发模式使用 `pino-pretty.prettyFactory()`，生产模式向 stdout 写入 NDJSON，两种模式都等待输出回调并保留背压。
+主线程的 `src/log-destination.ts` 按 `logging.maxQueueBytes` 限制待写及在途记录，默认 4MiB；超过上限丢弃新记录并
+向 stderr 报告丢弃数量。不要改回无背压的多 target 分发，也不要把队列字节上限描述为进程 RSS 上限。
+transport 复用文件流，合并 `_writev()` 输入，在内存中批量缓冲；文件计数仅在写入回调成功后更新。
+日期切换和大小轮转保持每个来源的顺序，重启续写只查询一次最高序号文件的大小。
+清理在启动和每日午夜后台执行，`retentionDays: 0` 禁用清理；目录引用和删除任务协调历史记录的写入，首次正常写入不等待清理。
+所有文件流常驻监听错误，定时提交和追加失败统一销毁 transport，并确保其他 writer 也释放资源。清理失败仅通过 stderr 告警。
 路由只接受固定的 `component`（`app`、`http`、`web`、`hls`）；`source` 只作为受控文件名标识，不能使用 request ID、
 HLS ID、URL 或用户输入。静态 Web 正常资源请求不记录，只记录启动、错误、异常请求和关闭事件。关闭处理必须停止接收新连接，
-在超时边界内关闭长连接，完成 Pino flush 后再结束进程。
+在超时边界内关闭长连接，再调用幂等的 `closeLogger()`。主线程异步排空队列后，通过 `src/log-protocol.ts` 消息让 worker
+关闭 Writable，并监听 transport 的 close/error；不要调用同步等待的 `ThreadStream.end()` 或假设它支持 end 回调。
+关闭超过 5 秒会终止 worker 并返回失败，API/Web 以非零状态退出；正常自然退出通过 beforeExit 使用相同的异步关闭路径。
+flush 不包含 fsync，不承诺断电持久化。内部日志实现、详细生命周期和验证方法见 `src/logging-internals.md`。
+修改日志链路后执行两个日志测试文件；`test/log-destination.test.ts` 会编译当前源码并验证实际 Pino worker 和子进程退出。

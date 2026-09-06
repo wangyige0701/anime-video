@@ -61,7 +61,9 @@ const httpServer = app.listen(webPort, () => {
 
 let shuttingDown = false;
 async function shutdown(signal: NodeJS.Signals) {
-	if (shuttingDown) return;
+	if (shuttingDown) {
+		return;
+	}
 	shuttingDown = true;
 	logger.info({ source: 'shutdown', signal }, 'Web server shutdown started');
 	// history fallback 和静态文件请求共享同一关闭流程。
@@ -71,9 +73,11 @@ async function shutdown(signal: NodeJS.Signals) {
 	]);
 	httpServer.closeAllConnections();
 	try {
-		await Promise.race([closeLogger(), new Promise<void>((resolve) => setTimeout(resolve, 5_000))]);
+		await closeLogger();
+	} catch (error) {
+		process.stderr.write(`Failed to close logs: ${String(error)}\n`);
+		process.exitCode = 1;
 	} finally {
-		process.exitCode = 0;
 		process.exit();
 	}
 }

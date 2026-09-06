@@ -36,7 +36,9 @@ const server = app.listen(serverPort, '0.0.0.0', () => {
 
 let shuttingDown = false;
 async function shutdown(signal: NodeJS.Signals) {
-	if (shuttingDown) return;
+	if (shuttingDown) {
+		return;
+	}
 	shuttingDown = true;
 	const shutdownLogger = createLogger({ component: 'app', source: 'shutdown' });
 	shutdownLogger.info({ signal }, 'Server shutdown started');
@@ -49,9 +51,11 @@ async function shutdown(signal: NodeJS.Signals) {
 	server.closeAllConnections();
 
 	try {
-		await Promise.race([closeLogger(), new Promise<void>((resolve) => setTimeout(resolve, 5_000))]);
+		await closeLogger();
+	} catch (error) {
+		process.stderr.write(`Failed to close logs: ${String(error)}\n`);
+		process.exitCode = 1;
 	} finally {
-		process.exitCode = 0;
 		process.exit();
 	}
 }

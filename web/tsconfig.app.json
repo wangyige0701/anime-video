@@ -4,7 +4,6 @@
 		"env.d.ts",
 		"src/**/*",
 		"src/**/*.vue",
-		"../config",
 		"../types",
 		"../routes",
 		"auto-imports.d.ts",
@@ -18,7 +17,7 @@
 
 		"paths": {
 			"@/*": ["./src/*"],
-			"~config/*": ["../config/*"],
+			"~shared/*": ["../shared/*"],
 			"~routes/*": ["../routes/*"],
 			"~types/*": ["../types/*"]
 		}

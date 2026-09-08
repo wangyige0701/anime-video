@@ -17,7 +17,7 @@
 - `src/views/`：由 `vue-router/vite` 生成路由的页面组件。
 - `src/scss/` 与 `src/assets/`：主题变量、设计 token、全局样式及组件样式基础。
 
-路径别名沿用现有配置：`@/` 指向 `src/`，`~config/`、`~routes/`、`~types/` 分别指向仓库根目录的共享模块。Vue、Vue Router、Pinia、Element Plus 的常用 API 已由 Vite 自动导入，新代码应先遵循当前导入方式，不要重复建立另一套入口。
+路径别名沿用现有配置：`@/` 指向 `src/`，`~shared/`、`~routes/`、`~types/` 分别指向仓库根目录的共享模块。系列状态和类型枚举通过 `~shared/series-status`、`~shared/series-types` 导入；`shared/config-parser.ts` 依赖 Node，不能导入浏览器运行时代码。Vue、Vue Router、Pinia、Element Plus 的常用 API 已由 Vite 自动导入，新代码应先遵循当前导入方式，不要重复建立另一套入口。
 
 ## 系列、季、集数据方案
 

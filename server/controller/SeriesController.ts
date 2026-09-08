@@ -3,8 +3,8 @@ import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-us
 import { ServerRoot } from '~routes/server';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
-import { seriesStatus } from '~config/seriesStatus';
-import { seriesTypes } from '~config/seriesTypes';
+import { seriesStatus } from '~shared/series-status';
+import { seriesTypes } from '~shared/series-types';
 import { ApiError } from '~server/src/error';
 
 const minSeriesStatus = seriesStatus[0].id;

@@ -83,7 +83,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `test/`：Vitest 测试和媒体目录 fixture。
 - `*.d.ts`：Koa context 扩展和原生 HLS 类型声明。
 
-共享配置、路由和类型位于仓库根目录的 `config/`、`routes/`、`types/`、`common/`，通过 `~config`、`~routes`、`~types`、`~common` 使用。新增共享契约应放回对应共享目录，不要在 controller 内复制常量或响应类型。
+共享配置、路由和类型位于仓库根目录的 `shared/`、`routes/`、`types/`、`common/`，通过 `~shared`、`~routes`、`~types`、`~common` 使用。系列状态和类型枚举分别位于 `shared/series-status.ts`、`shared/series-types.ts`，由控制器与前端共用。新增共享契约应放回对应共享目录，不要在 controller 内复制常量或响应类型。
 
 ## 系列、季、集数据层
 

@@ -39,7 +39,7 @@
 <script setup lang="ts">
 import type { Series } from '@/data/series';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
-import { seriesTypes } from '~config/seriesTypes';
+import { seriesTypes } from '~shared/series-types';
 
 const popover = useTemplateRef('popover');
 const series = inject<ComputedRef<Series>>(DETAIL_SERIES_DATA)!;

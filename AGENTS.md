@@ -23,14 +23,14 @@ hls (C++ + FFmpeg)
   -> 本地视频文件
 ```
 
-`web` 和 `server` 是 pnpm workspace 包；`hls` 是 Git 子模块和独立 pnpm/CMake 项目。根目录的 `config/`、`routes/`、`types/`、`common/` 是源码级共享模块，不是独立 workspace 包。
+`web` 和 `server` 是 pnpm workspace 包；`hls` 是 Git 子模块和独立 pnpm/CMake 项目。根目录的 `shared/`、`routes/`、`types/`、`common/` 是源码级共享模块，不是独立 workspace 包。
 
 ## 根目录结构
 
 ```text
 anime-video/
 ├── common/                 # 通用状态等服务端共享源码
-├── config/                 # HLS、服务端、Web 和系列枚举配置
+├── shared/                 # 配置解析、配置类型和系列枚举共享源码
 ├── routes/                 # 前后端共用的服务端 URL 与前端路由定义
 ├── types/                  # API 响应及 Series/Season/Episode 共享类型
 ├── server/                 # Koa API、数据层、HLS Node 封装和 Web 托管入口
@@ -149,17 +149,17 @@ pnpm --dir hls run build:q
 
 - `~server/*` -> `server/*`
 - `~web/*` -> `web/*`
-- `~config/*` -> `config/*`
+- `~shared/*` -> `config/*`
 - `~routes/*` -> `routes/*`
 - `~types/*` -> `types/*`
 - `~common/*` -> `common/*`
 - `~hls/*` -> `hls/build/*`
 
-`server/tsconfig.json` 继承根配置，并把服务端、`config/`、`common/`、`routes/`、`types/` 纳入编译。`web/tsconfig.app.json` 单独提供 `@/* -> web/src/*`，并允许前端读取 `~config/*`、`~routes/*`、`~types/*`；Vite 的 `web/vite/alias.ts` 从该配置生成运行时 alias，因此修改前端别名时必须同时保证 TypeScript 和 Vite 能解析。
+`server/tsconfig.json` 继承根配置，并把服务端、`shared/`、`common/`、`routes/`、`types/` 纳入编译。`web/tsconfig.app.json` 单独提供 `@/* -> web/src/*`，并允许前端读取 `~shared/*`、`~routes/*`、`~types/*`；共享系列枚举随前端导入纳入编译。Vite 的 `web/vite/alias.ts` 从该配置生成运行时 alias，因此修改前端别名时必须同时保证 TypeScript 和 Vite 能解析。
 
 共享目录职责如下：
 
-- `config/` 保存两端确实需要复用或服务端全局使用的稳定配置，不保存组件局部状态。
+- `shared/` 保存配置解析、配置类型及 `series-status.ts`、`series-types.ts` 系列枚举，不保存组件局部状态。系列枚举供两端复用；`config-parser.ts` 依赖 Node，只供服务端和构建工具使用，不能导入浏览器运行时代码。
 - `routes/server.ts` 保存 API 根路径、URL 生成函数和服务端地址；`routes/web.ts` 保存前端路由名称。
 - `types/` 保存网络 DTO 与跨端类型，不能依赖浏览器或 Node 专属实现。
 - `common/` 当前主要供服务端与根级测试使用；前端没有配置 `~common/*` alias，不应假设所有根模块都能被两端导入。
@@ -181,7 +181,7 @@ pnpm --dir hls run build:q
 
 ## 跨项目修改原则
 
-1. 修改共享契约时先确定唯一归属，优先更新根目录的 `config/`、`routes/` 或 `types/`，不要在 `web` 和 `server` 各维护一份常量。
+1. 修改共享契约时先确定唯一归属，优先更新根目录的 `shared/`、`routes/` 或 `types/`，不要在 `web` 和 `server` 各维护一份常量。
 2. 修改原生 HLS 接口时同步检查 C++ N-API 导出、`server/hls.d.ts`、`server/src/hls.ts`、HTTP controller 和前端 hls.js 调用方。
 3. 新增依赖时放入实际使用它的 importer；只有跨项目工具或根配置直接使用的依赖才放根 `package.json`。
 4. 所有修改保持现有功能与接口兼容，验证范围按受影响项目扩大；跨端修改至少分别执行对应类型检查或构建。

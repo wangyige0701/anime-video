@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import type { Series } from '@/data/series';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
-import { seriesStatus } from '~config/seriesStatus';
+import { seriesStatus } from '~shared/series-status';
 import { CircleCloseFilled } from '@element-plus/icons-vue';
 
 const popover = useTemplateRef('popover');

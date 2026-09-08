@@ -1,6 +1,6 @@
 import { createMiddlewareDecorator } from 'koa-use-decorator-router';
 import z from 'zod';
-import { Status } from '~common/status';
+import { Status } from '~shared/http-status';
 import { Response } from '~server/middlewares/response';
 import { ApiError } from '~server/src/error';
 

@@ -2,7 +2,7 @@ import type Koa from 'koa';
 import { Context, Controller, Cors, HttpMethod, Singleton } from 'koa-use-decorator-router';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { Status } from '~common/status';
+import { Status } from '~shared/http-status';
 import { ServerRoot } from '~routes/server';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';

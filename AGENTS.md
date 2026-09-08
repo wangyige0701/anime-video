@@ -23,14 +23,13 @@ hls (C++ + FFmpeg)
   -> 本地视频文件
 ```
 
-`web` 和 `server` 是 pnpm workspace 包；`hls` 是 Git 子模块和独立 pnpm/CMake 项目。根目录的 `shared/`、`routes/`、`types/`、`common/` 是源码级共享模块，不是独立 workspace 包。
+`web` 和 `server` 是 pnpm workspace 包；`hls` 是 Git 子模块和独立 pnpm/CMake 项目。根目录的 `shared/`、`routes/`、`types/` 是源码级共享模块，不是独立 workspace 包。
 
 ## 根目录结构
 
 ```text
 anime-video/
-├── common/                 # 通用状态等服务端共享源码
-├── shared/                 # 配置解析、配置类型和系列枚举共享源码
+├── shared/                 # 配置解析、配置类型、系列枚举和 HTTP 状态码
 ├── routes/                 # 前后端共用的服务端 URL 与前端路由定义
 ├── types/                  # API 响应及 Series/Season/Episode 共享类型
 ├── server/                 # Koa API、数据层、HLS Node 封装和 Web 托管入口
@@ -152,17 +151,15 @@ pnpm --dir hls run build:q
 - `~shared/*` -> `config/*`
 - `~routes/*` -> `routes/*`
 - `~types/*` -> `types/*`
-- `~common/*` -> `common/*`
 - `~hls/*` -> `hls/build/*`
 
-`server/tsconfig.json` 继承根配置，并把服务端、`shared/`、`common/`、`routes/`、`types/` 纳入编译。`web/tsconfig.app.json` 单独提供 `@/* -> web/src/*`，并允许前端读取 `~shared/*`、`~routes/*`、`~types/*`；共享系列枚举随前端导入纳入编译。Vite 的 `web/vite/alias.ts` 从该配置生成运行时 alias，因此修改前端别名时必须同时保证 TypeScript 和 Vite 能解析。
+`server/tsconfig.json` 继承根配置，并把服务端、`shared/`、`routes/`、`types/` 纳入编译。`web/tsconfig.app.json` 单独提供 `@/* -> web/src/*`，并允许前端读取 `~shared/*`、`~routes/*`、`~types/*`；共享系列枚举随前端导入纳入编译。Vite 的 `web/vite/alias.ts` 从该配置生成运行时 alias，因此修改前端别名时必须同时保证 TypeScript 和 Vite 能解析。
 
 共享目录职责如下：
 
-- `shared/` 保存配置解析、配置类型及 `series-status.ts`、`series-types.ts` 系列枚举，不保存组件局部状态。系列枚举供两端复用；`config-parser.ts` 依赖 Node，只供服务端和构建工具使用，不能导入浏览器运行时代码。
+- `shared/` 保存配置解析、配置类型及 `series-status.ts`、`series-types.ts` 系列枚举，以及 `http-status.ts` HTTP 请求响应状态码，不保存组件局部状态。系列枚举供两端复用；`config-parser.ts` 依赖 Node，只供服务端和构建工具使用，不能导入浏览器运行时代码。
 - `routes/server.ts` 保存 API 根路径、URL 生成函数和服务端地址；`routes/web.ts` 保存前端路由名称。
 - `types/` 保存网络 DTO 与跨端类型，不能依赖浏览器或 Node 专属实现。
-- `common/` 当前主要供服务端与根级测试使用；前端没有配置 `~common/*` alias，不应假设所有根模块都能被两端导入。
 
 共享类型、路由或配置发生变化时，要同时检查服务端生产者、前端消费者、测试和两个子项目的 `AGENTS.md`，保证契约描述与实现一致。
 

@@ -1,4 +1,4 @@
-import { Status } from '~common/status';
+import { Status } from '~shared/http-status';
 import { ApiError } from '.';
 
 export class NotFoundError extends ApiError {

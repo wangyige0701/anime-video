@@ -1,6 +1,6 @@
 import type { Middleware } from 'koa';
 import type { Response as ResponseImpl } from '~types/response';
-import { Status } from '~common/status';
+import { Status } from '~shared/http-status';
 import Statuses from 'statuses';
 
 export class Response<T extends any> implements ResponseImpl<T> {

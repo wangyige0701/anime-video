@@ -6,6 +6,6 @@
 		"rootDir": "..",
 		"types": ["node"]
 	},
-	"include": ["./**/*.ts", "../shared/**/*.ts", "../common/**/*.ts", "../routes/**/*.ts", "../types/**/*.d.ts"],
+	"include": ["./**/*.ts", "../shared/**/*.ts", "../routes/**/*.ts", "../types/**/*.d.ts"],
 	"exclude": ["./test", "../node_modules", "../web", "../dev", "../test"]
 }

@@ -1,4 +1,4 @@
-import { Status } from '~common/status';
+import { Status } from '~shared/http-status';
 import { Response } from '~server/middlewares/response';
 
 export class ApiError extends Error {

@@ -14,7 +14,6 @@
 			"~web/*": ["./web/*"],
 			"~routes/*": ["./routes/*"],
 			"~types/*": ["./types/*"],
-			"~common/*": ["./common/*"],
 			"~shared/*": ["./shared/*"]
 		}
 	},

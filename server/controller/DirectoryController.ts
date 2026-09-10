@@ -1,5 +1,5 @@
 import type Koa from 'koa';
-import { Context, Controller, Cors, HttpMethod, Singleton } from 'koa-use-decorator-router';
+import { Context, Controller, Cors, HttpMethod, IF, Singleton } from 'koa-use-decorator-router';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { Status } from '~shared/http-status';
@@ -11,7 +11,7 @@ import { ApiError } from '~server/src/error';
 import { isDirectory } from '~server/src/utils/fs';
 
 @Singleton()
-@Controller(ServerRoot.DATA)
+@(IF(false, Controller(ServerRoot.DATA)).ENDIF()) // 关闭目录管理接口，转为启动脚本管理
 @Cors()
 export class DataController {
 	@HttpMethod.Get('/directories')

@@ -4,8 +4,7 @@ import Koa from 'koa';
 import server from 'koa-static';
 import { historyApiFallback } from 'koa2-connect-history-api-fallback';
 import { fileURLToPath } from 'node:url';
-
-export {};
+import { createShutdownHandler } from './shutdown';
 
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
@@ -59,29 +58,18 @@ const httpServer = app.listen(webPort, () => {
 	logger.info({ source: 'startup', host: WEB.host, port: webPort, staticDir }, 'Web server is listening');
 });
 
-let shuttingDown = false;
-async function shutdown(signal: NodeJS.Signals) {
-	if (shuttingDown) {
-		return;
-	}
-	shuttingDown = true;
-	logger.info({ source: 'shutdown', signal }, 'Web server shutdown started');
-	// history fallback 和静态文件请求共享同一关闭流程。
-	await Promise.race([
-		new Promise<void>((resolve) => httpServer.close(() => resolve())),
-		new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
-	]);
-	httpServer.closeAllConnections();
-	try {
-		await closeLogger();
-	} catch (error) {
-		process.stderr.write(`Failed to close logs: ${String(error)}\n`);
-		process.exitCode = 1;
-	} finally {
-		process.exit();
-	}
-}
-
-// Web 入口与 API 入口保持一致，确保开发和正式环境都能完成优雅退出。
-process.once('SIGTERM', () => void shutdown('SIGTERM'));
-process.once('SIGINT', () => void shutdown('SIGINT'));
+createShutdownHandler(httpServer, {
+	onBefore: async (signal) => {
+		logger.info({ source: 'shutdown', signal }, 'Web server shutdown started');
+	},
+	onAfter: async () => {
+		try {
+			await closeLogger();
+		} catch (error) {
+			process.stderr.write(`Failed to close logs: ${String(error)}\n`);
+			process.exitCode = 1;
+		} finally {
+			process.exit();
+		}
+	},
+});

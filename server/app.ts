@@ -4,6 +4,7 @@ import Decorator from 'koa-use-decorator-router';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import config from '~shared/config-parser';
+import { createShutdownHandler } from './shutdown';
 
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
@@ -34,32 +35,19 @@ const server = app.listen(serverPort, '0.0.0.0', () => {
 	logger.info({ component: 'app', source: 'startup', port: serverPort }, 'Server is listening');
 });
 
-let shuttingDown = false;
-async function shutdown(signal: NodeJS.Signals) {
-	if (shuttingDown) {
-		return;
-	}
-	shuttingDown = true;
-	const shutdownLogger = createLogger({ component: 'app', source: 'shutdown' });
-	shutdownLogger.info({ signal }, 'Server shutdown started');
-
-	// 先停止接收请求；SSE 等长连接最多等待 10 秒，避免进程无法退出。
-	await Promise.race([
-		new Promise<void>((resolve) => server.close(() => resolve())),
-		new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
-	]);
-	server.closeAllConnections();
-
-	try {
-		await closeLogger();
-	} catch (error) {
-		process.stderr.write(`Failed to close logs: ${String(error)}\n`);
-		process.exitCode = 1;
-	} finally {
-		process.exit();
-	}
-}
-
-// 显式处理容器和本地终止信号，避免默认退出路径跳过日志刷盘。
-process.once('SIGTERM', () => void shutdown('SIGTERM'));
-process.once('SIGINT', () => void shutdown('SIGINT'));
+createShutdownHandler(server, {
+	onBefore: async (signal) => {
+		const shutdownLogger = createLogger({ component: 'app', source: 'shutdown' });
+		shutdownLogger.info({ signal }, 'App server shutdown started');
+	},
+	onAfter: async () => {
+		try {
+			await closeLogger();
+		} catch (error) {
+			process.stderr.write(`Failed to close logs: ${String(error)}\n`);
+			process.exitCode = 1;
+		} finally {
+			process.exit();
+		}
+	},
+});

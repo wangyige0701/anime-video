@@ -33,13 +33,15 @@ describe('configuration overrides', () => {
 		const config = await loadConfig([], {
 			SERVER_PORT: '4100',
 			LOGGING_FILE_ENABLED: 'false',
-			LOGGING_COMPONENTS: 'app,web',
+			LOGGING_COMPONENTS: '[app, web]',
+			LOGGING_HTTP_EVENT_SOURCE: '{"http.request.completed": "business"}',
 			HLS_IMAGE_OUTPUT_WIDTH: '640',
 		});
 
 		expect(config.server.port).toBe(4100);
 		expect(config.logging.fileEnabled).toBe(false);
 		expect(config.logging.components).toEqual(['app', 'web']);
+		expect(config.logging.httpEventSource).toEqual({ 'http.request.completed': 'business' });
 		expect(config.hls.imageOutputWidth).toBe(640);
 	});
 
@@ -58,11 +60,16 @@ describe('configuration overrides', () => {
 			'--SERVER-DATA-FILE-SAVE-DELAY',
 			'125',
 			'--logging-file-enabled=false',
+			'--logging-components',
+			'[app, hls]',
+			'--logging-http-event-source={"http.request.failed":"business"}',
 			'--HLS-IMAGE-OUTPUT-WIDTH=640',
 		]);
 
 		expect(config.server.dataFileSaveDelay).toBe(125);
 		expect(config.logging.fileEnabled).toBe(false);
+		expect(config.logging.components).toEqual(['app', 'hls']);
+		expect(config.logging.httpEventSource).toEqual({ 'http.request.failed': 'business' });
 		expect(config.hls.imageOutputWidth).toBe(640);
 	});
 

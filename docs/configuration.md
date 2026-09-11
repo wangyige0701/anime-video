@@ -10,18 +10,18 @@
 2. 环境变量
 3. `config.yaml` 中的默认值
 
-环境变量和启动参数名称都由二级类目、下划线和配置字段组成。字段名中的驼峰字母会转换为下划线并全部大写。例如：
+环境变量使用二级字段、下划线和配置字段组成；启动参数使用一级字段和字段名组成的 `--a-b-c` 格式，字符统一归一为小写，并兼容大写字符。字段名中的驼峰字母会转换为连字符。环境变量依然使用大写下划线格式，例如：
 
 ```text
 server.dataFileSaveDelay -> SERVER_DATA_FILE_SAVE_DELAY
 hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 ```
 
-启动参数支持以下两种写法，也兼容一个连字符：
+启动参数支持等号和空格两种写法：
 
 ```text
---SERVER_PORT=4000
---SERVER_PORT 4000
+--server-port=4000
+--server-port 4000
 ```
 
 数字配置按数字解析，布尔配置接受 `true` 或 `false`（不合法时保留默认值），数组配置可使用 YAML/JSON 数组或逗号分隔字符串。
@@ -30,58 +30,58 @@ hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 
 | 配置项                          | 环境变量                          | 启动参数                            | 默认值                                                          |
 | ------------------------------- | --------------------------------- | ----------------------------------- | --------------------------------------------------------------- |
-| `server.protocol`               | `SERVER_PROTOCOL`                 | `--SERVER_PROTOCOL`                 | `http`                                                          |
-| `server.host`                   | `SERVER_HOST`                     | `--SERVER_HOST`                     | `localhost`                                                     |
-| `server.port`                   | `SERVER_PORT`                     | `--SERVER_PORT`                     | `3000`                                                          |
-| `server.videoConfigPrefix`      | `SERVER_VIDEO_CONFIG_PREFIX`      | `--SERVER_VIDEO_CONFIG_PREFIX`      | 空字符串                                                        |
-| `server.dataFile`               | `SERVER_DATA_FILE`                | `--SERVER_DATA_FILE`                | `.video.json`                                                   |
-| `server.allowedImageExtensions` | `SERVER_ALLOWED_IMAGE_EXTENSIONS` | `--SERVER_ALLOWED_IMAGE_EXTENSIONS` | `.jpg`、`.jpeg`、`.png`、`.webp`、`.gif`                        |
-| `server.allowedVideoExtensions` | `SERVER_ALLOWED_VIDEO_EXTENSIONS` | `--SERVER_ALLOWED_VIDEO_EXTENSIONS` | `.mp4`、`.mkv`、`.avi`、`.flv`、`.m4v`、`.mov`、`.webm`、`.wmv` |
-| `server.dataFileSaveDelay`      | `SERVER_DATA_FILE_SAVE_DELAY`     | `--SERVER_DATA_FILE_SAVE_DELAY`     | `500`                                                           |
+| `server.protocol`               | `SERVER_PROTOCOL`                 | `--server-protocol`                 | `http`                                                          |
+| `server.host`                   | `SERVER_HOST`                     | `--server-host`                     | `localhost`                                                     |
+| `server.port`                   | `SERVER_PORT`                     | `--server-port`                     | `3000`                                                          |
+| `server.videoConfigPrefix`      | `SERVER_VIDEO_CONFIG_PREFIX`      | `--server-video-config-prefix`      | 空字符串                                                        |
+| `server.dataFile`               | `SERVER_DATA_FILE`                | `--server-data-file`                | `.video.json`                                                   |
+| `server.allowedImageExtensions` | `SERVER_ALLOWED_IMAGE_EXTENSIONS` | `--server-allowed-image-extensions` | `.jpg`、`.jpeg`、`.png`、`.webp`、`.gif`                        |
+| `server.allowedVideoExtensions` | `SERVER_ALLOWED_VIDEO_EXTENSIONS` | `--server-allowed-video-extensions` | `.mp4`、`.mkv`、`.avi`、`.flv`、`.m4v`、`.mov`、`.webm`、`.wmv` |
+| `server.dataFileSaveDelay`      | `SERVER_DATA_FILE_SAVE_DELAY`     | `--server-data-file-save-delay`     | `500`                                                           |
 
 ## Web
 
 | 配置项             | 环境变量             | 启动参数               | 默认值      |
 | ------------------ | -------------------- | ---------------------- | ----------- |
-| `web.protocol`     | `WEB_PROTOCOL`       | `--WEB_PROTOCOL`       | `http`      |
-| `web.host`         | `WEB_HOST`           | `--WEB_HOST`           | `localhost` |
-| `web.port`         | `WEB_PORT`           | `--WEB_PORT`           | `3001`      |
-| `web.devWebPort`   | `WEB_DEV_WEB_PORT`   | `--WEB_DEV_WEB_PORT`   | `5173`      |
-| `web.webBundleDir` | `WEB_WEB_BUNDLE_DIR` | `--WEB_WEB_BUNDLE_DIR` | `www`       |
+| `web.protocol`     | `WEB_PROTOCOL`       | `--web-protocol`       | `http`      |
+| `web.host`         | `WEB_HOST`           | `--web-host`           | `localhost` |
+| `web.port`         | `WEB_PORT`           | `--web-port`           | `3001`      |
+| `web.devWebPort`   | `WEB_DEV_WEB_PORT`   | `--web-dev-web-port`   | `5173`      |
+| `web.webBundleDir` | `WEB_WEB_BUNDLE_DIR` | `--web-web-bundle-dir` | `www`       |
 
 ## Logging
 
 | 配置项                         | 环境变量                         | 启动参数                           | 默认值                      |
 | ------------------------------ | -------------------------------- | ---------------------------------- | --------------------------- |
-| `logging.directory`            | `LOGGING_DIRECTORY`              | `--LOGGING_DIRECTORY`              | `logs`                      |
-| `logging.fileEnabled`          | `LOGGING_FILE_ENABLED`           | `--LOGGING_FILE_ENABLED`           | `true`                      |
-| `logging.components`           | `LOGGING_COMPONENTS`             | `--LOGGING_COMPONENTS`             | `app,http,web,hls`          |
-| `logging.sources`              | `LOGGING_SOURCES`                | `--LOGGING_SOURCES`                | `access,business,error,...` |
-| `logging.httpEventSource`      | `LOGGING_HTTP_EVENT_SOURCE`      | `--LOGGING_HTTP_EVENT_SOURCE`      | 事件映射                    |
-| `logging.httpBusinessPrefixes` | `LOGGING_HTTP_BUSINESS_PREFIXES` | `--LOGGING_HTTP_BUSINESS_PREFIXES` | `series.,season.,...`       |
-| `logging.fileMaxBytes`         | `LOGGING_FILE_MAX_BYTES`         | `--LOGGING_FILE_MAX_BYTES`         | `52428800`                  |
-| `logging.retentionDays`        | `LOGGING_RETENTION_DAYS`         | `--LOGGING_RETENTION_DAYS`         | `30`                        |
-| `logging.maxQueueBytes`        | `LOGGING_MAX_QUEUE_BYTES`        | `--LOGGING_MAX_QUEUE_BYTES`        | `4194304`                   |
-| `logging.bufferBytes`          | `LOGGING_BUFFER_BYTES`           | `--LOGGING_BUFFER_BYTES`           | `65536`                     |
-| `logging.flushIntervalMs`      | `LOGGING_FLUSH_INTERVAL_MS`      | `--LOGGING_FLUSH_INTERVAL_MS`      | `250`                       |
+| `logging.directory`            | `LOGGING_DIRECTORY`              | `--logging-directory`              | `logs`                      |
+| `logging.fileEnabled`          | `LOGGING_FILE_ENABLED`           | `--logging-file-enabled`           | `true`                      |
+| `logging.components`           | `LOGGING_COMPONENTS`             | `--logging-components`             | `app,http,web,hls`          |
+| `logging.sources`              | `LOGGING_SOURCES`                | `--logging-sources`                | `access,business,error,...` |
+| `logging.httpEventSource`      | `LOGGING_HTTP_EVENT_SOURCE`      | `--logging-http-event-source`      | 事件映射                    |
+| `logging.httpBusinessPrefixes` | `LOGGING_HTTP_BUSINESS_PREFIXES` | `--logging-http-business-prefixes` | `series.,season.,...`       |
+| `logging.fileMaxBytes`         | `LOGGING_FILE_MAX_BYTES`         | `--logging-file-max-bytes`         | `52428800`                  |
+| `logging.retentionDays`        | `LOGGING_RETENTION_DAYS`         | `--logging-retention-days`         | `30`                        |
+| `logging.maxQueueBytes`        | `LOGGING_MAX_QUEUE_BYTES`        | `--logging-max-queue-bytes`        | `4194304`                   |
+| `logging.bufferBytes`          | `LOGGING_BUFFER_BYTES`           | `--logging-buffer-bytes`           | `65536`                     |
+| `logging.flushIntervalMs`      | `LOGGING_FLUSH_INTERVAL_MS`      | `--logging-flush-interval-ms`      | `250`                       |
 
 ## HLS
 
 | 配置项                         | 环境变量                         | 启动参数                           | 默认值     |
 | ------------------------------ | -------------------------------- | ---------------------------------- | ---------- |
-| `hls.masterM3u8Name`           | `HLS_MASTER_M3U8_NAME`           | `--HLS_MASTER_M3U8_NAME`           | `master`   |
-| `hls.mediaM3u8Name`            | `HLS_MEDIA_M3U8_NAME`            | `--HLS_MEDIA_M3U8_NAME`            | `media`    |
-| `hls.subtitleM3u8Name`         | `HLS_SUBTITLE_M3U8_NAME`         | `--HLS_SUBTITLE_M3U8_NAME`         | `subtitle` |
-| `hls.imageM3u8Name`            | `HLS_IMAGE_M3U8_NAME`            | `--HLS_IMAGE_M3U8_NAME`            | `image`    |
-| `hls.globalSegmentConcurrency` | `HLS_GLOBAL_SEGMENT_CONCURRENCY` | `--HLS_GLOBAL_SEGMENT_CONCURRENCY` | `2`        |
-| `hls.segmentMinDuration`       | `HLS_SEGMENT_MIN_DURATION`       | `--HLS_SEGMENT_MIN_DURATION`       | `4`        |
-| `hls.contextPoolSize`          | `HLS_CONTEXT_POOL_SIZE`          | `--HLS_CONTEXT_POOL_SIZE`          | `4`        |
-| `hls.imageMaxConcurrency`      | `HLS_IMAGE_MAX_CONCURRENCY`      | `--HLS_IMAGE_MAX_CONCURRENCY`      | `1`        |
-| `hls.imageOutputWidth`         | `HLS_IMAGE_OUTPUT_WIDTH`         | `--HLS_IMAGE_OUTPUT_WIDTH`         | `320`      |
-| `hls.imageOutputHeight`        | `HLS_IMAGE_OUTPUT_HEIGHT`        | `--HLS_IMAGE_OUTPUT_HEIGHT`        | `180`      |
-| `hls.imageMaxSegmentBytes`     | `HLS_IMAGE_MAX_SEGMENT_BYTES`    | `--HLS_IMAGE_MAX_SEGMENT_BYTES`    | `51200`    |
-| `hls.imageMaxJpegBytes`        | `HLS_IMAGE_MAX_JPEG_BYTES`       | `--HLS_IMAGE_MAX_JPEG_BYTES`       | `47104`    |
-| `hls.imageMaxCacheBytes`       | `HLS_IMAGE_MAX_CACHE_BYTES`      | `--HLS_IMAGE_MAX_CACHE_BYTES`      | `8388608`  |
+| `hls.masterM3u8Name`           | `HLS_MASTER_M3U8_NAME`           | `--hls-master-m3u8-name`           | `master`   |
+| `hls.mediaM3u8Name`            | `HLS_MEDIA_M3U8_NAME`            | `--hls-media-m3u8-name`            | `media`    |
+| `hls.subtitleM3u8Name`         | `HLS_SUBTITLE_M3U8_NAME`         | `--hls-subtitle-m3u8-name`         | `subtitle` |
+| `hls.imageM3u8Name`            | `HLS_IMAGE_M3U8_NAME`            | `--hls-image-m3u8-name`            | `image`    |
+| `hls.globalSegmentConcurrency` | `HLS_GLOBAL_SEGMENT_CONCURRENCY` | `--hls-global-segment-concurrency` | `2`        |
+| `hls.segmentMinDuration`       | `HLS_SEGMENT_MIN_DURATION`       | `--hls-segment-min-duration`       | `4`        |
+| `hls.contextPoolSize`          | `HLS_CONTEXT_POOL_SIZE`          | `--hls-context-pool-size`          | `4`        |
+| `hls.imageMaxConcurrency`      | `HLS_IMAGE_MAX_CONCURRENCY`      | `--hls-image-max-concurrency`      | `1`        |
+| `hls.imageOutputWidth`         | `HLS_IMAGE_OUTPUT_WIDTH`         | `--hls-image-output-width`         | `320`      |
+| `hls.imageOutputHeight`        | `HLS_IMAGE_OUTPUT_HEIGHT`        | `--hls-image-output-height`        | `180`      |
+| `hls.imageMaxSegmentBytes`     | `HLS_IMAGE_MAX_SEGMENT_BYTES`    | `--hls-image-max-segment-bytes`    | `51200`    |
+| `hls.imageMaxJpegBytes`        | `HLS_IMAGE_MAX_JPEG_BYTES`       | `--hls-image-max-jpeg-bytes`       | `47104`    |
+| `hls.imageMaxCacheBytes`       | `HLS_IMAGE_MAX_CACHE_BYTES`      | `--hls-image-max-cache-bytes`      | `8388608`  |
 
 ## 其他环境变量
 

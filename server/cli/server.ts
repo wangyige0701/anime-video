@@ -18,7 +18,7 @@ const [{ response }, { error }, { closeLogger, createLogger, logger, requestLog 
 ]);
 
 const SERVER = __APP_CONFIG__.server;
-const dir = resolve(dirname(fileURLToPath(import.meta.url)), './controller');
+const dir = resolve(dirname(fileURLToPath(import.meta.url)), '../controller');
 const serverPort = SERVER.port;
 const app = new Koa();
 const decorator = new Decorator(dir);

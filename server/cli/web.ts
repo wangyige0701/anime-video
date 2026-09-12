@@ -1,10 +1,12 @@
-import config from '~shared/config-parser';
+import type { Server } from 'node:http';
 import { resolve, dirname } from 'node:path';
 import Koa from 'koa';
 import server from 'koa-static';
 import { historyApiFallback } from 'koa2-connect-history-api-fallback';
 import { fileURLToPath } from 'node:url';
+import config from '~shared/config-parser';
 import { createShutdownHandler } from './shutdown';
+import { createPromise } from '@wang-yige/utils';
 
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
@@ -15,9 +17,9 @@ const { closeLogger, createLogger } = await import('~server/middlewares/logger')
 const WEB = __APP_CONFIG__.web;
 const staticDir = resolve(dirname(fileURLToPath(import.meta.url)), WEB.webBundleDir);
 const webPort = WEB.port;
-
 const app = new Koa();
 const logger = createLogger({ component: 'web' });
+let lastServer: Server | null = null;
 
 app.on('error', (error, ctx) => {
 	logger.error({ source: 'error', event: 'web.request.failed', err: error, path: ctx?.path }, 'Web request failed');
@@ -54,11 +56,7 @@ app.use(async (ctx, next) => {
 
 app.use(historyApiFallback()).use(server(staticDir));
 
-const httpServer = app.listen(webPort, () => {
-	logger.info({ source: 'startup', host: WEB.host, port: webPort, staticDir }, 'Web server is listening');
-});
-
-createShutdownHandler(httpServer, {
+createShutdownHandler(() => lastServer, {
 	onBefore: async (signal) => {
 		logger.info({ source: 'shutdown', signal }, 'Web server shutdown started');
 	},
@@ -73,3 +71,49 @@ createShutdownHandler(httpServer, {
 		}
 	},
 });
+
+export function start() {
+	if (lastServer) {
+		throw new Error('Web Server is already running');
+	}
+
+	const { promise, resolve, reject } = createPromise<void>();
+	const server = app.listen(webPort, () => {
+		logger.info({ source: 'startup', host: WEB.host, port: webPort, staticDir }, 'Web server is listening');
+		resolve();
+	});
+	lastServer = server;
+
+	server.once('error', (error) => {
+		if (lastServer === server) {
+			lastServer = null;
+		}
+		logger.error({ source: 'error', event: 'web.server.error', err: error });
+		reject(error);
+	});
+
+	return promise;
+}
+
+export function stop() {
+	const { promise, resolve, reject } = createPromise<void>();
+	const server = lastServer;
+	if (server) {
+		server.close((err) => {
+			if (err) {
+				reject(err);
+				return;
+			}
+			lastServer = null;
+			resolve();
+		});
+	} else {
+		resolve();
+	}
+	return promise;
+}
+
+export async function restart() {
+	await stop();
+	await start();
+}

@@ -2,7 +2,7 @@ import { Fn } from '@wang-yige/utils';
 import type { Server } from 'node:http';
 
 export function createShutdownHandler(
-	server: Server,
+	getServer: () => Server | null,
 	options: { onBefore: Fn<[signal: NodeJS.Signals], any>; onAfter: Fn<[], any> },
 ) {
 	let shuttingDown = false;
@@ -14,11 +14,14 @@ export function createShutdownHandler(
 
 		await options.onBefore(signal);
 
-		await Promise.race([
-			new Promise<void>((resolve) => server.close(() => resolve())),
-			new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
-		]);
-		server.closeAllConnections();
+		const server = getServer();
+		if (server) {
+			await Promise.race([
+				new Promise<void>((resolve) => server.close(() => resolve())),
+				new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
+			]);
+			server.closeAllConnections();
+		}
 
 		await options.onAfter();
 	}

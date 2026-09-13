@@ -20,76 +20,87 @@ const [{ response }, { error }, { closeLogger, createLogger, logger, requestLog 
 const SERVER = __APP_CONFIG__.server;
 const dir = resolve(dirname(fileURLToPath(import.meta.url)), '../controller');
 const serverPort = SERVER.port;
-const app = new Koa();
-const decorator = new Decorator(dir);
-let lastServer: Server | null = null;
+let instance: { start: () => Promise<void>; stop: () => Promise<void>; restart: () => Promise<void> } | null = null;
 
-app.use(requestLog())
-	.use(error())
-	.use(body())
-	.use(response())
-	.use(decorator.middleware())
-	.use(decorator.allowedMethods());
-
-createShutdownHandler(() => lastServer, {
-	onBefore: async (signal) => {
-		const shutdownLogger = createLogger({ component: 'app', source: 'shutdown' });
-		shutdownLogger.info({ signal }, 'App server shutdown started');
-	},
-	onAfter: async () => {
-		try {
-			await closeLogger();
-		} catch (error) {
-			process.stderr.write(`Failed to close logs: ${String(error)}\n`);
-			process.exitCode = 1;
-		} finally {
-			process.exit();
-		}
-	},
-});
-
-export function start() {
-	if (lastServer) {
-		throw new Error('Server is already running');
+export default function getInstance() {
+	if (instance) {
+		return instance;
 	}
 
-	const { promise, resolve, reject } = createPromise<void>();
-	const server = app.listen(serverPort, '0.0.0.0', () => {
-		logger.info({ component: 'app', source: 'startup', port: serverPort }, 'Server is listening');
-		resolve();
-	});
-	lastServer = server;
+	const app = new Koa();
+	const decorator = new Decorator(dir);
+	let lastServer: Server | null = null;
 
-	server.once('error', (err) => {
-		if (lastServer === server) {
-			lastServer = null;
-		}
-		logger.error({ component: 'app', source: 'startup', error: err }, 'Server error');
-		reject(err);
-	});
+	app.use(requestLog())
+		.use(error())
+		.use(body())
+		.use(response())
+		.use(decorator.middleware())
+		.use(decorator.allowedMethods());
 
-	return promise;
-}
-
-export function stop() {
-	const { promise, resolve, reject } = createPromise<void>();
-	const server = lastServer;
-	if (server) {
-		server.close((err) => {
-			if (err) {
-				reject(err);
-				return;
+	createShutdownHandler(() => lastServer, {
+		onBefore: async (signal) => {
+			const shutdownLogger = createLogger({ component: 'app', source: 'shutdown' });
+			shutdownLogger.info({ signal }, 'App server shutdown started');
+		},
+		onAfter: async () => {
+			try {
+				await closeLogger();
+			} catch (error) {
+				process.stderr.write(`Failed to close logs: ${String(error)}\n`);
+				process.exitCode = 1;
+			} finally {
+				process.exit();
 			}
-			lastServer = null;
+		},
+	});
+
+	function start() {
+		if (lastServer) {
+			throw new Error('Server is already running');
+		}
+
+		const { promise, resolve, reject } = createPromise<void>();
+		const server = app.listen(serverPort, '0.0.0.0', () => {
+			logger.info({ component: 'app', source: 'startup', port: serverPort }, 'Server is listening');
 			resolve();
 		});
-	} else {
-		resolve();
-	}
-	return promise;
-}
+		lastServer = server;
 
-export async function restart() {
-	await stop();
-	await start();
+		server.once('error', (err) => {
+			if (lastServer === server) {
+				lastServer = null;
+			}
+			logger.error({ component: 'app', source: 'startup', error: err }, 'Server error');
+			reject(err);
+		});
+
+		return promise;
+	}
+
+	function stop() {
+		const { promise, resolve, reject } = createPromise<void>();
+		const server = lastServer;
+		if (server) {
+			server.close((err) => {
+				if (err) {
+					reject(err);
+					return;
+				}
+				lastServer = null;
+				resolve();
+			});
+		} else {
+			resolve();
+		}
+		return promise;
+	}
+
+	async function restart() {
+		await stop();
+		await start();
+	}
+
+	instance = { start, stop, restart };
+	return instance;
 }

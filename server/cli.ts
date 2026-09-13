@@ -95,6 +95,11 @@ export { program };
 
 export async function main(argv = process.argv) {
 	try {
+		// 无参数调用只展示帮助，避免 commander 将缺少子命令视为失败。
+		if (argv.length <= 2) {
+			program.outputHelp();
+			return;
+		}
 		await program.parseAsync(normalizeArgv(argv));
 	} catch (error) {
 		program.error(error instanceof Error ? error.message : String(error));

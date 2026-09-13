@@ -1,7 +1,12 @@
 # Server CLI
 
-`server/cli.ts` 提供基于 commander 的服务控制命令。命令入口不会改变现有的
-`server/app.ts`，现有 `pnpm server dev` 和 `pnpm server dev:web` 脚本仍按原方式工作。
+`server/cli.ts` 提供基于 commander 的服务命令入口。`pnpm server cli` 无参数调用时
+向 stdout 显示帮助并正常退出（退出码 0），不会加载服务模块。
+`pnpm server dev` 和 `pnpm server dev:web` 脚本通过 `server/app.ts` 启动服务。
+
+当前 CLI 在自身进程中调用服务模块，尚无跨进程服务管理器。`start` 不指定服务时会
+在同一进程启动 API 和静态 Web；另开终端执行 `stop/restart` 无法控制之前启动的实例。
+进程管理的拟议方案见 [进程管理设计](../docs/process-management.md)，尚未实现。
 
 ## 命令格式
 

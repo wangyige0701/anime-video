@@ -71,7 +71,11 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 
 `server/` 是基于 Koa、TypeScript、`koa-use-decorator-router`、Zod 和 Pino 的 API 服务。主要目录和文件职责如下：
 
-- `app.ts`：API 入口，创建 Koa 和装饰器路由扫描器，按顺序注册请求日志、错误、body、响应辅助和路由中间件。
+- `app.ts`：开发入口，根据 `server` 或 `web` 参数启动对应服务；当前静态导入两个服务模块。
+- `cli.ts`：Commander 命令入口，无参数时向 stdout 输出帮助并正常退出；服务模块按命令动态导入。当前 `start/stop/restart` 只操作本进程中的实例，不支持跨进程管理。
+- `cli/server.ts`：API 实现，创建 Koa 和装饰器路由扫描器，按顺序注册请求日志、错误、body、响应辅助和路由中间件。
+- `cli/web.ts`：静态 Web 实现，托管构建产物并提供 history fallback；相对静态目录基于该模块所在目录解析。
+- `cli/shutdown.ts`：注册进程信号处理，关闭 HTTP 连接并调用服务的关闭回调；两个服务同进程运行时共享 logger，关闭回调均会退出进程。
 - `controller/`：装饰器控制器；按 data、video、image、system 等领域暴露 HTTP 接口。
 - `decorators/`：项目自定义装饰器，当前 `Validate` 使用 Zod 校验并替换解析后的 request body。
 - `middlewares/`：请求日志、统一异常映射和 JSON 响应辅助。
@@ -79,7 +83,6 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `src/hls.ts`：原生 HLS 实例、分片预加载、TS/图片缓存和生命周期管理。
 - `src/error/`：`ApiError`、`NotFoundError` 等 HTTP 错误类型。
 - `src/utils/`：文件系统和通用判断工具。
-- `web.ts`：独立 Web 服务入口，托管构建产物并提供 history fallback。
 - `test/`：Vitest 测试和媒体目录 fixture。
 - `*.d.ts`：Koa context 扩展和原生 HLS 类型声明。
 
@@ -207,7 +210,7 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 ### 中间件顺序
 
-`app.ts` 当前顺序为：
+`cli/server.ts` 当前顺序为：
 
 1. `requestLog()`：生成 request ID、设置 `ctx.log` 和 `x-request-id`，请求完成后记录访问摘要。
 2. `error()`：捕获 `ApiError` 和未知异常，映射状态、类型与响应体。

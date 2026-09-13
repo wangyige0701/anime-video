@@ -8,6 +8,7 @@
 		"dev:web": "pnpm build:log-transport && cross-env NODE_ENV=development npx tsx app.ts web",
 		"build": "pnpm build:log-transport",
 		"build:log-transport": "pnpm --dir .. run build:log-transport",
+		"cli": "npx tsx cli.ts",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [],

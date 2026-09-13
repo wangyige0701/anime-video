@@ -9,4 +9,6 @@ if (target === 'web') {
 	startWebServer();
 } else if (target === 'server') {
 	startServer();
+} else {
+	console.error('Usage: pnpm app.ts <target>');
 }

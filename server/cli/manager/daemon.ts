@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { chmod, unlink } from 'node:fs/promises';
-import { spawn, type ChildProcess } from 'node:child_process';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import net from 'node:net';
 import { getEndpoint, getWorkerEntry, ensureRuntimeRoot, getServerRoot } from './paths';
 import {
@@ -318,7 +318,8 @@ function normalizeConfigArgs(argv: readonly string[]) {
 }
 
 async function stopService(record: ServiceRecord) {
-	// 优雅停止始终先走 IPC；只有超过等待期限才强制结束自己创建的 child。
+	// 优雅停止始终先走 IPC；Windows 下超时后必须杀掉整个进程树，避免 tsx/Node
+	// 子进程继续占用 Web 端口而 manager 已经返回失败。
 	if (!record.child) {
 		record.state = 'stopped';
 		scheduleIdleShutdown();
@@ -351,15 +352,65 @@ function waitForExit(child: ChildProcess, timeoutMs: number) {
 		return Promise.resolve();
 	}
 	return new Promise<void>((resolve, reject) => {
-		const timer = setTimeout(() => {
-			child.kill();
-			reject(new Error('worker shutdown timed out'));
+		let settled = false;
+		const finish = (error?: Error) => {
+			if (settled) {
+				return;
+			}
+			settled = true;
+			clearTimeout(timer);
+			if (error) {
+				reject(error);
+				return;
+			}
+			resolve();
+		};
+		const timer = setTimeout(async () => {
+			try {
+				await forceTerminate(child);
+				if (child.exitCode !== null || child.signalCode !== null) {
+					finish();
+					return;
+				}
+				// taskkill 返回成功后等待 exit 事件，确保 stop 响应返回时端口已释放。
+				const exitTimer = setTimeout(() => finish(new Error('worker shutdown timed out')), 2_000);
+				child.once('exit', () => {
+					clearTimeout(exitTimer);
+					finish();
+				});
+			} catch (error) {
+				finish(error instanceof Error ? error : new Error(String(error)));
+			}
 		}, timeoutMs);
 		child.once('exit', () => {
-			clearTimeout(timer);
-			resolve();
+			finish();
 		});
 	});
+}
+
+async function forceTerminate(child: ChildProcess) {
+	if (child.exitCode !== null || child.signalCode !== null || !child.pid) {
+		return;
+	}
+	if (process.platform === 'win32') {
+		// child.kill() 只结束当前 node.exe，tsx 可能仍由其子进程持有监听端口。
+		await new Promise<void>((resolve, reject) => {
+			execFile(
+				process.env.ComSpec ?? 'cmd.exe',
+				['/d', '/s', '/c', `taskkill /pid ${child.pid} /t /f`],
+				(error) => {
+					// taskkill 可能在 worker 已退出的竞态下返回非零，此时无需让 stop 失败。
+					if (!error || child.exitCode !== null || child.signalCode !== null) {
+						resolve();
+						return;
+					}
+					reject(error);
+				},
+			);
+		});
+		return;
+	}
+	child.kill('SIGKILL');
 }
 
 async function shutdownManager() {

@@ -77,7 +77,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `cli/web.ts`：静态 Web 实现，托管构建产物并提供 history fallback；相对静态目录基于该模块所在目录解析。
 - `cli/shutdown.ts`：注册进程信号处理，关闭 HTTP 连接并调用服务的关闭回调；独立开发入口的关闭回调会退出进程，未来管理 worker 需复用资源关闭步骤但由 worker 入口决定是否退出。
 - `cli/worker.ts`：管理器派生的服务 worker 入口，只动态导入目标服务并处理 ready、IPC shutdown 和 manager 断开。
-- `cli/manager/`：CLI 管理器的本地 IPC 客户端、常驻 daemon、协议和运行端点；不参与 HTTP 请求路由。
+- `cli/manager/`：CLI 管理器的本地 IPC 客户端、常驻 daemon、协议和运行端点；不参与 HTTP 请求路由。停止 worker 先通过 IPC 优雅关闭；超时后 Windows 使用 `taskkill /T /F` 终止整个 worker 进程树，避免 tsx 子进程继续占用服务端口。
 - `controller/`：装饰器控制器；按 data、video、image、system 等领域暴露 HTTP 接口。
 - `decorators/`：项目自定义装饰器，当前 `Validate` 使用 Zod 校验并替换解析后的 request body。
 - `middlewares/`：请求日志、统一异常映射和 JSON 响应辅助。

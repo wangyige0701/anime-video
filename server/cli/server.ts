@@ -90,6 +90,9 @@ export default function getInstance() {
 				lastServer = null;
 				resolve();
 			});
+			// API 也可能存在 keep-alive 或流式连接；worker 关闭时主动释放，避免 manager 等待超时。
+			server.closeIdleConnections();
+			server.closeAllConnections();
 		} else {
 			resolve();
 		}

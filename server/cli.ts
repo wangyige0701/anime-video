@@ -15,7 +15,7 @@ const serviceNames: readonly ServiceName[] = ['server', 'web'];
 const configOptionNames = new Set<string>();
 
 const program = new Command()
-	.name('app')
+	.name('anime-video')
 	.description('本地视频服务器命令行服务')
 	.version(packageJson.version, '-v, --version', '显示版本号')
 	.helpOption('-h, --help', '显示帮助信息');
@@ -62,7 +62,7 @@ function parseService(value: string): ServiceName {
 }
 
 async function loadService(name: ServiceName): Promise<ServiceModule> {
-	return name === 'server' ? import('./cli/server') : import('./cli/web');
+	return name === 'server' ? (await import('./cli/server')).default() : (await import('./cli/web')).default();
 }
 
 async function invoke(action: ActionName, target?: ServiceName) {
@@ -88,7 +88,7 @@ addAction('restart', '重启 server 和 web 服务');
 
 program.addHelpText(
 	'after',
-	'\nConfiguration options use --section-field or --section-field=value. Values are interpreted according to config.yaml; environment variables are used when no command-line override is supplied.\n\nExamples:\n  app start\n  app restart server --server-port 4000\n  app start web --web-port=3001 --logging-file-enabled=false\n',
+	'\nConfiguration options use --section-field or --section-field=value. Values are interpreted according to config.yaml; environment variables are used when no command-line override is supplied.\n\nExamples:\n  anime-video start\n  anime-video restart server --server-port 4000\n  anime-video start web --web-port=3001 --logging-file-enabled=false\n',
 );
 
 export { program };

@@ -458,7 +458,7 @@ onBeforeUnmount(() => {
 	playerStore.setLoading(false);
 	playerStore.pause();
 	hls?.destroy();
-	playerStore.reset();
+	playerStore.reset(true);
 });
 
 defineExpose({

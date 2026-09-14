@@ -253,10 +253,12 @@ export const usePlayerStore = defineStore('player', () => {
 		isSubtitleTrackUseable.value = false;
 	}
 
-	function reset() {
+	function reset(isPlayer = false) {
 		pause();
-		seriesId.value = '';
-		seriesTitle.value = '';
+		if (!isPlayer) {
+			seriesId.value = '';
+			seriesTitle.value = '';
+		}
 		seasonId.value = '';
 		seasonTitle.value = '';
 		episodeId.value = '';

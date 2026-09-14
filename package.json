@@ -5,7 +5,8 @@
 	"scripts": {
 		"web": "front",
 		"server": "back",
-		"build:log-transport": "pnpm exec tsc -p server/tsconfig.log-transport.json"
+		"build:log-transport": "pnpm exec tsc -p server/tsconfig.log-transport.json",
+		"move:www": "pnpm run web build && www.cmd"
 	},
 	"keywords": [],
 	"author": "",

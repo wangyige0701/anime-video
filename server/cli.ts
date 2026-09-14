@@ -2,14 +2,10 @@ import { pathToFileURL } from 'node:url';
 import { Command, InvalidArgumentError, Option } from 'commander';
 import packageJson from './package.json';
 import config from '~shared/config-parser';
+import { request } from './cli/manager/client';
+import type { ManagerAction, ManagerResponse, ServiceName } from './cli/manager/protocol';
 
-type ServiceName = 'server' | 'web';
-type ActionName = 'start' | 'stop' | 'restart';
-type ServiceModule = {
-	start: () => Promise<unknown>;
-	stop: () => Promise<unknown>;
-	restart: () => Promise<unknown>;
-};
+type ActionName = Exclude<ManagerAction, 'status'>;
 
 const serviceNames: readonly ServiceName[] = ['server', 'web'];
 const configOptionNames = new Set<string>();
@@ -61,14 +57,12 @@ function parseService(value: string): ServiceName {
 	throw new InvalidArgumentError(`service must be one of: ${serviceNames.join(', ')}`);
 }
 
-async function loadService(name: ServiceName): Promise<ServiceModule> {
-	return name === 'server' ? (await import('./cli/server')).default() : (await import('./cli/web')).default();
-}
-
-async function invoke(action: ActionName, target?: ServiceName) {
-	const targets = target ? [target] : serviceNames;
-	const modules = await Promise.all(targets.map((name) => loadService(name)));
-	await Promise.all(modules.map((service) => service[action]()));
+async function invoke(action: ManagerAction, target: ServiceName | undefined, argv: readonly string[]) {
+	const result = await request(action, target, argv);
+	if (!result.ok) {
+		throw new Error(result.message ?? `manager action failed: ${action}`);
+	}
+	return result;
 }
 
 function addAction(name: ActionName, description: string) {
@@ -78,13 +72,23 @@ function addAction(name: ActionName, description: string) {
 		.argument('[service]', '要操作的服务（server 或 web），省略时同时操作两者', parseService);
 	addConfigOptions(command);
 	command.action(async (service?: ServiceName) => {
-		await invoke(name, service);
+		await invoke(name, service, activeArgv.slice(2));
 	});
 }
 
 addAction('start', '启动 server 和 web 服务');
 addAction('stop', '停止 server 和 web 服务');
 addAction('restart', '重启 server 和 web 服务');
+
+const statusCommand = program
+	.command('status')
+	.description('查看 server 和 web 服务状态')
+	.argument('[service]', '要查看的服务（server 或 web），省略时查看两者', parseService)
+	.option('--json', '以 JSON 输出状态');
+statusCommand.action(async (service: ServiceName | undefined, options: { json?: boolean }) => {
+	const result = await invoke('status', service, activeArgv.slice(2));
+	printStatus(result, options.json === true);
+});
 
 program.addHelpText(
 	'after',
@@ -93,8 +97,11 @@ program.addHelpText(
 
 export { program };
 
+let activeArgv: readonly string[] = process.argv;
+
 export async function main(argv = process.argv) {
 	try {
+		activeArgv = argv;
 		// 无参数调用只展示帮助，避免 commander 将缺少子命令视为失败。
 		if (argv.length <= 2) {
 			program.outputHelp();
@@ -104,6 +111,46 @@ export async function main(argv = process.argv) {
 	} catch (error) {
 		program.error(error instanceof Error ? error.message : String(error));
 	}
+}
+
+function printStatus(result: ManagerResponse, asJson: boolean) {
+	const services = result.services ?? [];
+	if (asJson) {
+		process.stdout.write(
+			`${JSON.stringify({ version: result.version, managerId: result.managerId ?? null, services })}\n`,
+		);
+		return;
+	}
+	process.stdout.write('SERVICE  STATE      PID    UPTIME    RESTARTS  LAST ERROR\n');
+	for (const service of services) {
+		const state = `${stateIcon(service.state)} ${service.state}`;
+		const pid = service.pid === null ? '-' : String(service.pid);
+		const uptime = formatDuration(service.uptimeMs);
+		process.stdout.write(
+			`${service.service.padEnd(8)}${state.padEnd(11)}${pid.padEnd(7)}${uptime.padEnd(10)}${String(service.restartCount).padEnd(10)}${service.lastError ?? '-'}\n`,
+		);
+	}
+}
+
+function stateIcon(state: string) {
+	if (state === 'running') {
+		return '●';
+	}
+	if (state === 'starting' || state === 'stopping' || state === 'backoff') {
+		return '◐';
+	}
+	if (state === 'failed') {
+		return '✖';
+	}
+	return '○';
+}
+
+function formatDuration(milliseconds: number) {
+	const totalSeconds = Math.floor(milliseconds / 1000);
+	const seconds = totalSeconds % 60;
+	const minutes = Math.floor(totalSeconds / 60) % 60;
+	const hours = Math.floor(totalSeconds / 3600);
+	return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
 function normalizeArgv(argv: readonly string[]) {

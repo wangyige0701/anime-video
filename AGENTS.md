@@ -165,11 +165,11 @@ pnpm --dir hls run build:q
 
 ## 运行关系
 
-- `server/app.ts` 按 `server` 或 `web` 参数启动对应服务；API 实现在 `server/cli/server.ts`，默认监听 `0.0.0.0:3000`。
+- `server/app.ts` 按 `server` 或 `web` 参数在分支内动态导入并启动对应服务；API 实现在 `server/cli/server.ts`，默认监听 `0.0.0.0:3000`。
 - Vite 开发服务由 `web` 的 `dev` 脚本启动，固定开发端口配置为 `5173`。
 - `server/cli/web.ts` 在 `3001` 提供静态资源与 history fallback。静态目录由 `config.yaml` 中的 `web.webBundleDir` 配置，相对路径基于 `server/cli/` 解析；当前没有根脚本自动把 `web/dist` 部署到该位置，修改构建或部署流程时必须显式维护这一步。
 
-分别执行开发脚本时，API、Vite 和静态 Web 运行在独立进程中。`server/app.ts` 当前仍会导入两个服务模块；`server/cli.ts start` 则在同一进程启动 API 和静态 Web。CLI 目前没有跨进程服务管理能力，拟议方案见 `docs/process-management.md`，尚未实现。端口和地址来自 `config.yaml`、`routes/server.ts`，调整时必须检查前端 URL 和测试。
+分别执行开发脚本时，API、Vite 和静态 Web 运行在独立进程中。`server/app.ts` 按目标分支动态导入服务；`server/cli.ts` 通过常驻 manager 分别持有 server/web worker，跨终端复用进程句柄。CLI 管理器当前使用源码入口，打包、自动崩溃恢复和状态持久化仍待实现，边界见 `docs/process-management.md`。端口和地址来自 `config.yaml`、`routes/server.ts`，调整时必须检查前端 URL 和测试。
 
 ## 代码格式要求
 

@@ -71,11 +71,13 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 
 `server/` 是基于 Koa、TypeScript、`koa-use-decorator-router`、Zod 和 Pino 的 API 服务。主要目录和文件职责如下：
 
-- `app.ts`：开发入口，根据 `server` 或 `web` 参数启动对应服务；当前静态导入两个服务模块。
-- `cli.ts`：Commander 命令入口，无参数时向 stdout 输出帮助并正常退出；服务模块按命令动态导入。当前 `start/stop/restart` 只操作本进程中的实例，不支持跨进程管理。
+- `app.ts`：开发入口，根据 `server` 或 `web` 参数在分支内动态导入并启动对应服务，不初始化无关模块。
+- `cli.ts`：Commander 命令入口，无参数时向 stdout 输出帮助并正常退出；CLI 的 `start/stop/restart/status` 通过 `cli/manager` 控制跨进程服务。
 - `cli/server.ts`：API 实现，创建 Koa 和装饰器路由扫描器，按顺序注册请求日志、错误、body、响应辅助和路由中间件。
 - `cli/web.ts`：静态 Web 实现，托管构建产物并提供 history fallback；相对静态目录基于该模块所在目录解析。
-- `cli/shutdown.ts`：注册进程信号处理，关闭 HTTP 连接并调用服务的关闭回调；两个服务同进程运行时共享 logger，关闭回调均会退出进程。
+- `cli/shutdown.ts`：注册进程信号处理，关闭 HTTP 连接并调用服务的关闭回调；独立开发入口的关闭回调会退出进程，未来管理 worker 需复用资源关闭步骤但由 worker 入口决定是否退出。
+- `cli/worker.ts`：管理器派生的服务 worker 入口，只动态导入目标服务并处理 ready、IPC shutdown 和 manager 断开。
+- `cli/manager/`：CLI 管理器的本地 IPC 客户端、常驻 daemon、协议和运行端点；不参与 HTTP 请求路由。
 - `controller/`：装饰器控制器；按 data、video、image、system 等领域暴露 HTTP 接口。
 - `decorators/`：项目自定义装饰器，当前 `Validate` 使用 Zod 校验并替换解析后的 request body。
 - `middlewares/`：请求日志、统一异常映射和 JSON 响应辅助。

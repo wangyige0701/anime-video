@@ -8,6 +8,8 @@ streamer/build
 ffmpeg
 remux
 logs
+server/.runtime/
 server/dist/
+server/www/
 
 *.video.json

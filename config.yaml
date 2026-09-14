@@ -75,8 +75,11 @@ web:
 hls:
     # 各类 m3u8 播放列表的文件名（不含扩展名）
     masterM3u8Name: master
+    # 视频媒体播放列表的文件名（不含扩展名）
     mediaM3u8Name: media
+    # 字幕播放列表的文件名（不含扩展名）
     subtitleM3u8Name: subtitle
+    # 预览图播放列表的文件名（不含扩展名）
     imageM3u8Name: image
     # 全局 HLS 分片任务并发数
     globalSegmentConcurrency: 2
@@ -86,8 +89,9 @@ hls:
     contextPoolSize: 4
     # 预览图生成的最大并发数
     imageMaxConcurrency: 1
-    # 预览图输出尺寸（像素）
+    # 预览图输出宽度（像素）
     imageOutputWidth: 320
+    # 预览图输出高度（像素）
     imageOutputHeight: 180
     # 单个预览图分片的最大大小（字节）
     imageMaxSegmentBytes: 51200

@@ -15,7 +15,7 @@ globalThis.__APP_CONFIG__ = config;
 const { closeLogger, createLogger } = await import('~server/middlewares/logger');
 
 const WEB = __APP_CONFIG__.web;
-const staticDir = resolve(dirname(fileURLToPath(import.meta.url)), WEB.webBundleDir);
+const staticDir = resolve(dirname(fileURLToPath(import.meta.url)), `../${WEB.webBundleDir}`);
 const webPort = WEB.port;
 let instance: { start: () => Promise<void>; stop: () => Promise<void>; restart: () => Promise<void> } | null = null;
 
@@ -109,6 +109,8 @@ export default function getInstance() {
 		const { promise, resolve, reject } = createPromise<void>();
 		const server = lastServer;
 		if (server) {
+			// server.close() 会等待 keep-alive 连接结束；静态 Web 请求可能长期保持连接，
+			// CLI worker 需要在停止时主动释放这些连接，保证 manager 能观察到进程退出。
 			server.close((err) => {
 				if (err) {
 					reject(err);
@@ -117,6 +119,8 @@ export default function getInstance() {
 				lastServer = null;
 				resolve();
 			});
+			server.closeIdleConnections();
+			server.closeAllConnections();
 		} else {
 			resolve();
 		}

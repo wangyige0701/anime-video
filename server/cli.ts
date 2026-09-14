@@ -1,7 +1,7 @@
 import { pathToFileURL } from 'node:url';
 import { Command, InvalidArgumentError, Option } from 'commander';
-import packageJson from './package.json';
 import config from '~shared/config-parser';
+import packageJson from './package.json';
 import { request } from './cli/manager/client';
 import type { ManagerAction, ManagerResponse, ServiceName } from './cli/manager/protocol';
 

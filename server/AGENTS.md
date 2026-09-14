@@ -88,6 +88,8 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `test/`：Vitest 测试和媒体目录 fixture。
 - `*.d.ts`：Koa context 扩展和原生 HLS 类型声明。
 
+`cli/manager/paths.ts` 以自身模块位置解析 server 根目录、运行目录及子进程入口，不依赖调用终端的工作目录或 `NODE_ENV`。manager 与 worker 入口沿用当前模块扩展名：通过 tsx 运行源码时为 `.ts`，经 tsc 编译后为 `.js`；派生进程继续继承 `process.execArgv`。构建必须保留 `cli/manager/paths`、`cli/manager/daemon-entry` 和 `cli/worker` 的相对目录结构及一致扩展名。若改用合并模块、扁平输出或带 hash 的打包方案，必须显式输出两个子进程入口，并同步调整入口映射与 server 根目录定位，不能只替换扩展名。该路径适配不处理 tsc 产物中的路径别名、无扩展名 ESM 导入或其他发布资源。
+
 共享配置、路由和类型位于仓库根目录的 `shared/`、`routes/`、`types/`，通过 `~shared`、`~routes`、`~types` 使用。系列状态和类型枚举分别位于 `shared/series-status.ts`、`shared/series-types.ts`，由控制器与前端共用。HTTP 请求响应状态码统一从 `~shared/http-status` 导入 `Status`，供响应中间件、参数校验、控制器和异常类型复用。新增共享契约应放回对应共享目录，不要在 controller 内复制常量或响应类型。
 
 ## 系列、季、集数据层

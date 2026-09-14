@@ -51,7 +51,7 @@ export async function runManager() {
 			if (await isEndpointActive(endpoint)) {
 				throw error;
 			}
-			await unlink(endpoint).catch(() => undefined);
+			await unlink(endpoint).catch(() => void 0);
 			server = createManagerServer();
 			await listen(server, endpoint);
 		} else {
@@ -59,7 +59,7 @@ export async function runManager() {
 		}
 	}
 	if (process.platform !== 'win32') {
-		await chmod(endpoint, 0o600).catch(() => undefined);
+		await chmod(endpoint, 0o600).catch(() => void 0);
 	}
 	process.once('SIGINT', () => void shutdownManager());
 	process.once('SIGTERM', () => void shutdownManager());
@@ -134,8 +134,8 @@ function enqueue(line: string) {
 	}
 	const result = operationQueue.then(() => execute(line));
 	operationQueue = result.then(
-		() => undefined,
-		() => undefined,
+		() => void 0,
+		() => void 0,
 	);
 	return result;
 }
@@ -368,11 +368,11 @@ async function shutdownManager() {
 		idleTimer = null;
 	}
 	for (const record of records.values()) {
-		await stopService(record).catch(() => undefined);
+		await stopService(record).catch(() => void 0);
 	}
 	server?.close();
 	if (process.platform !== 'win32') {
-		await unlink(getEndpoint()).catch(() => undefined);
+		await unlink(getEndpoint()).catch(() => void 0);
 	}
 	process.exit(0);
 }

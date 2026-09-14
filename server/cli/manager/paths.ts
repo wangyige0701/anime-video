@@ -1,15 +1,18 @@
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const serverRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const modulePath = fileURLToPath(import.meta.url);
+const moduleDirectory = dirname(modulePath);
+// 入口与本模块必须保持相对目录和扩展名一致，兼容 tsx 源码运行及 tsc 编译产物。
+const moduleExtension = extname(modulePath);
+const serverRoot = resolve(moduleDirectory, '../..');
 const runtimeRoot = resolve(serverRoot, '.runtime');
 const instanceKey = createHash('sha256').update(serverRoot).digest('hex').slice(0, 16);
 
 /**
  * 运行目录保存 IPC 端点等临时状态，随项目路径区分不同工作区实例。
-
  */
 export function getRuntimeRoot() {
 	return runtimeRoot;
@@ -33,11 +36,10 @@ export function getEndpoint() {
 }
 
 export function getManagerEntry() {
-	// manager 和 worker 共享当前 TypeScript loader 及执行参数。
-	return resolve(dirname(fileURLToPath(import.meta.url)), 'daemon-entry.ts');
+	return resolve(moduleDirectory, `daemon-entry${moduleExtension}`);
 }
 
 export function getWorkerEntry() {
 	// worker 入口根据内部服务名只加载一个目标服务模块。
-	return resolve(dirname(fileURLToPath(import.meta.url)), '../worker.ts');
+	return resolve(moduleDirectory, `../worker${moduleExtension}`);
 }

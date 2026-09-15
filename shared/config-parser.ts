@@ -2,8 +2,28 @@
 import { readFile } from 'node:fs/promises';
 import YAML from 'yaml';
 
+export type ConfigComments = Readonly<Record<string, string>>;
+
+type ConfigEntry = {
+	value: unknown;
+	comment: string;
+};
+
 const configFile = await readFile(new URL('../config.yaml', import.meta.url), 'utf8');
-const defaultConfig = YAML.parse(configFile) as AppConfig;
+const parsedConfig = YAML.parse(configFile) as Record<string, Record<string, ConfigEntry>>;
+const defaultConfig = {} as AppConfig;
+const comments: Record<string, string> = {};
+
+for (const [section, sectionConfig] of Object.entries(parsedConfig)) {
+	const values = {} as Record<string, unknown>;
+	for (const [key, entry] of Object.entries(sectionConfig)) {
+		values[key] = entry.value;
+		comments[`${section}.${key}`] = entry.comment;
+	}
+	(defaultConfig as unknown as Record<string, unknown>)[section] = values;
+}
+
+export const configComments: ConfigComments = comments;
 
 export default applyOverrides(defaultConfig);
 

@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import { Command, InvalidArgumentError, Option } from 'commander';
-import config from '~shared/config-parser';
+import config, { configComments } from '~shared/config-parser';
 import packageJson from './package.json';
 import { request } from './cli/manager/client';
 import type { ManagerAction, ManagerResponse, ServiceName } from './cli/manager/protocol';
@@ -22,7 +22,8 @@ function addConfigOptions(command: Command) {
 			const optionKey = `${section}-${toKebabCase(key)}`;
 			configOptionNames.add(optionKey);
 			const optionName = `--${optionKey} <value>`;
-			const description = `${section}.${key} (default: ${formatDefault(defaultValue)})`;
+			const comment = configComments[`${section}.${key}`] ?? `${section}.${key}`;
+			const description = `${comment} (default: ${formatDefault(defaultValue)})`;
 			command.addOption(new Option(optionName, description));
 		}
 	}

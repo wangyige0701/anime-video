@@ -5,7 +5,7 @@
 	"scripts": {
 		"web": "front",
 		"server": "back",
-		"build:log-transport": "pnpm exec tsc -p server/tsconfig.log-transport.json",
+		"build:log-transport": "pnpm --filter server run build:log-transport",
 		"move:www": "pnpm run web build && www.cmd"
 	},
 	"keywords": [],
@@ -17,6 +17,7 @@
 		"cross-env": "^10.1.0",
 		"prettier": "^3.8.1",
 		"typescript": "~5.9.3",
+		"vite": "^8.3.0",
 		"vitest": "^4.0.18",
 		"yaml": "^2.9.0"
 	},

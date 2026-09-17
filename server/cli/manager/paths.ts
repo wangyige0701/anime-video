@@ -1,14 +1,15 @@
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
-import { dirname, extname, resolve } from 'node:path';
+import { extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runtimePath } from '~shared/runtime';
 
-const modulePath = fileURLToPath(import.meta.url);
-const moduleDirectory = dirname(modulePath);
 // 入口与本模块必须保持相对目录和扩展名一致，兼容 tsx 源码运行及 tsc 编译产物。
-const moduleExtension = extname(modulePath);
-const serverRoot = resolve(moduleDirectory, '../..');
-const runtimeRoot = resolve(serverRoot, '.runtime');
+const moduleExtension = extname(fileURLToPath(import.meta.url));
+const serverRoot = runtimePath(import.meta.url, '../..');
+const runtimeRoot = runtimePath(import.meta.url, './.runtime');
+const managerEntry = runtimePath(import.meta.url, `./daemon-entry${moduleExtension}`);
+const workerEntry = runtimePath(import.meta.url, `../worker${moduleExtension}`);
 const instanceKey = createHash('sha256').update(serverRoot).digest('hex').slice(0, 16);
 
 /**
@@ -36,10 +37,10 @@ export function getEndpoint() {
 }
 
 export function getManagerEntry() {
-	return resolve(moduleDirectory, `daemon-entry${moduleExtension}`);
+	return managerEntry;
 }
 
 export function getWorkerEntry() {
 	// worker 入口根据内部服务名只加载一个目标服务模块。
-	return resolve(moduleDirectory, `../worker${moduleExtension}`);
+	return workerEntry;
 }

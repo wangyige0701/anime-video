@@ -55,7 +55,6 @@ export type WorkerMessage = z.infer<typeof workerMessageSchema>;
 
 /**
  * 行协议要求每条消息以换行结束，便于 socket 分片接收时确定边界。
-
  */
 export function encodeMessage(value: unknown) {
 	return `${JSON.stringify(value)}\n`;

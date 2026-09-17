@@ -1,12 +1,11 @@
 import type { Server } from 'node:http';
-import { resolve, dirname } from 'node:path';
 import Koa from 'koa';
 import server from 'koa-static';
 import { historyApiFallback } from 'koa2-connect-history-api-fallback';
-import { fileURLToPath } from 'node:url';
 import config from '~shared/config-parser';
 import { createShutdownHandler } from './shutdown';
 import { createPromise } from '@wang-yige/utils';
+import { runtimePath } from '~shared/runtime';
 
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
@@ -15,8 +14,8 @@ globalThis.__APP_CONFIG__ = config;
 const { closeLogger, createLogger } = await import('~server/middlewares/logger');
 
 const WEB = __APP_CONFIG__.web;
-const staticDir = resolve(dirname(fileURLToPath(import.meta.url)), `../${WEB.webBundleDir}`);
 const webPort = WEB.port;
+const staticDir = runtimePath(import.meta.url, `../${WEB.webBundleDir}`);
 let instance: { start: () => Promise<void>; stop: () => Promise<void>; restart: () => Promise<void> } | null = null;
 
 export default function getInstance() {

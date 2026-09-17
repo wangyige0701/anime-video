@@ -2,11 +2,10 @@ import type { Server } from 'node:http';
 import Koa from 'koa';
 import body from 'koa-body';
 import Decorator from 'koa-use-decorator-router';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createPromise } from '@wang-yige/utils';
 import config from '~shared/config-parser';
 import { createShutdownHandler } from './shutdown';
+import { runtimePath } from '~shared/runtime';
 
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
@@ -18,8 +17,8 @@ const [{ response }, { error }, { closeLogger, createLogger, logger, requestLog 
 ]);
 
 const SERVER = __APP_CONFIG__.server;
-const dir = resolve(dirname(fileURLToPath(import.meta.url)), '../controller');
 const serverPort = SERVER.port;
+const dir = runtimePath(import.meta.url, '../controller');
 let instance: { start: () => Promise<void>; stop: () => Promise<void>; restart: () => Promise<void> } | null = null;
 
 export default function getInstance() {

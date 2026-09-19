@@ -4,8 +4,8 @@ import body from 'koa-body';
 import Decorator from 'koa-use-decorator-router';
 import { createPromise } from '@wang-yige/utils';
 import config from '~shared/config-parser';
-import { createShutdownHandler } from './shutdown';
 import { runtimePath } from '~shared/runtime';
+import { createShutdownHandler } from './shutdown';
 
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;

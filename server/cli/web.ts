@@ -1,11 +1,13 @@
 import type { Server } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import Koa from 'koa';
 import server from 'koa-static';
 import { historyApiFallback } from 'koa2-connect-history-api-fallback';
 import config from '~shared/config-parser';
-import { createShutdownHandler } from './shutdown';
 import { createPromise } from '@wang-yige/utils';
 import { runtimePath } from '~shared/runtime';
+import { createShutdownHandler } from './shutdown';
 
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
@@ -63,7 +65,25 @@ export default function getInstance() {
 		}
 	});
 
-	app.use(historyApiFallback()).use(server(staticDir));
+	app.use(historyApiFallback());
+
+	const injectConfig = JSON.stringify(__APP_CONFIG__);
+	let replaceHtml = '';
+	// 注入全局配置到 index.html
+	app.use(async (ctx, next) => {
+		if ((ctx.method === 'GET' || ctx.method === 'HEAD') && ctx.path === '/index.html') {
+			ctx.type = 'html';
+			if (!replaceHtml) {
+				const html = await readFile(resolve(staticDir, 'index.html'), 'utf-8');
+				replaceHtml = html.replace('</head>', `<script>window.__APP_CONFIG__=${injectConfig};</script></head>`);
+			}
+			ctx.body = replaceHtml;
+			return;
+		}
+		await next();
+	});
+
+	app.use(server(staticDir));
 
 	createShutdownHandler(() => lastServer, {
 		onBefore: async (signal) => {

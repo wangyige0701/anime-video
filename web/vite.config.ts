@@ -10,41 +10,45 @@ import { getPathAlias } from './vite/alias.ts';
 import config from '../shared/config-parser.ts';
 
 // https://vite.dev/config/
-export default defineConfig({
-	plugins: [
-		getPathAlias(),
-		VueRouter({
-			dts: 'typed-router.d.ts',
-			routesFolder: 'src/views',
-			extendRoute(route) {
-				if (route.path.includes(':seriesId')) {
-					// 系列 ID 为 32 位十六进制字符串
-					route.path = route.path.replace(':seriesId', ':seriesId([a-fA-F0-9]{32})');
-				}
-			},
-		}),
-		vue(),
-		vueJsx(),
-		AutoImport({
-			resolvers: [ElementPlusResolver()],
-			imports: ['vue', 'vue-router', 'pinia', { 'status-ref/vue': ['useVueStatusRef'] }],
-			dts: 'auto-imports.d.ts',
-		}),
-		Components({
-			resolvers: [ElementPlusResolver()],
-			dirs: ['src/components'],
-			globsExclude: ['src/components/**/layouts/**/*.vue'],
-			extensions: ['vue', 'tsx'],
-			deep: true,
-			dts: 'components.d.ts',
-		}),
-	],
-	server: {
-		fs: {
-			allow: [path.resolve(searchForWorkspaceRoot(process.cwd()), '..')],
-		},
-	},
-	define: {
+export default defineConfig(({ command }) => {
+	const define = {
 		__APP_CONFIG__: JSON.stringify(config),
-	},
+	};
+
+	return {
+		plugins: [
+			getPathAlias(),
+			VueRouter({
+				dts: 'typed-router.d.ts',
+				routesFolder: 'src/views',
+				extendRoute(route) {
+					if (route.path.includes(':seriesId')) {
+						// 系列 ID 为 32 位十六进制字符串
+						route.path = route.path.replace(':seriesId', ':seriesId([a-fA-F0-9]{32})');
+					}
+				},
+			}),
+			vue(),
+			vueJsx(),
+			AutoImport({
+				resolvers: [ElementPlusResolver()],
+				imports: ['vue', 'vue-router', 'pinia', { 'status-ref/vue': ['useVueStatusRef'] }],
+				dts: 'auto-imports.d.ts',
+			}),
+			Components({
+				resolvers: [ElementPlusResolver()],
+				dirs: ['src/components'],
+				globsExclude: ['src/components/**/layouts/**/*.vue'],
+				extensions: ['vue', 'tsx'],
+				deep: true,
+				dts: 'components.d.ts',
+			}),
+		],
+		server: {
+			fs: {
+				allow: [path.resolve(searchForWorkspaceRoot(process.cwd()), '..')],
+			},
+		},
+		define: command === 'build' ? {} : define,
+	};
 });

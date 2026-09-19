@@ -3,10 +3,10 @@ import { basename, dirname, extname, posix, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { Plugin } from 'vite';
 
-export function resolveConfigFile(extensions: string[]): Plugin {
+export function copyImportMetaAssets(extensions: string[]): Plugin {
 	if (!extensions.length) {
 		return {
-			name: 'resolve-config-file',
+			name: 'copy-import-meta-assets',
 		};
 	}
 
@@ -19,7 +19,7 @@ export function resolveConfigFile(extensions: string[]): Plugin {
 	const files: string[] = [];
 
 	return {
-		name: 'resolve-config-file',
+		name: 'copy-import-meta-assets',
 		apply: 'build',
 		enforce: 'pre',
 

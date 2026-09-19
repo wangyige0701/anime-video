@@ -1,10 +1,10 @@
-import { dirname, resolve } from 'node:path';
+﻿import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinModules } from 'node:module';
 import { defineConfig } from 'vite';
 import { replaceRuntimePath } from './vite/replaceRuntimePath.ts';
 import { resolveHls } from './vite/resolveHls.ts';
-import { resolveConfigFile } from './vite/resolveConfig.ts';
+import { copyImportMetaAssets } from './vite/copyImportMetaAssets.ts';
 
 const serverDir = dirname(fileURLToPath(import.meta.url));
 const repositoryDir = resolve(serverDir, '..');
@@ -46,7 +46,7 @@ export default defineConfig({
 			},
 		},
 	},
-	plugins: [replaceRuntimePath(), resolveHls(), resolveConfigFile(['yaml'])],
+	plugins: [replaceRuntimePath(), resolveHls(), copyImportMetaAssets(['yaml'])],
 	resolve: {
 		alias: {
 			'~server': resolve(distRootDir, 'server'),

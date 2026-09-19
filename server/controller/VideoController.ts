@@ -1,7 +1,7 @@
 import { Controller, HttpMethod, Inject, ResponseHeader, Singleton, Cors } from 'koa-use-decorator-router';
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { ServerRoot } from '~routes/server';
+import { ServerRoot } from '~shared/server-route-config';
 import { HlsManage } from '~server/src/hls';
 import { NotFoundError } from '~server/src/error/notFound';
 import { Series } from '~server/data/series';

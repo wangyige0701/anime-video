@@ -16,7 +16,7 @@
 <script setup lang="ts">
 import router from '@/router';
 import { debounce } from '@wang-yige/utils';
-import { WebRoute } from '~routes/web';
+import { WebRoute } from '~shared/web-route-config';
 
 const route = useRoute();
 const status = useVueStatusRef('composing');

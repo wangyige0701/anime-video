@@ -51,7 +51,7 @@
 
 <script setup lang="ts">
 import { getSeriesPath } from '@/utils/series';
-import { getImageUrl } from '~routes/server';
+import { getImageUrl } from '~shared/server-route-config';
 
 const props = withDefaults(
 	defineProps<{

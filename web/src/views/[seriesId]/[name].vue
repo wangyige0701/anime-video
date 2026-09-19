@@ -30,7 +30,7 @@ import type { Episode } from '@/data/episode';
 import type { Season } from '@/data/season';
 import { Series } from '@/data/series';
 import { useVideoStore } from '@/stores/video';
-import { WebRoute } from '~routes/web';
+import { WebRoute } from '~shared/web-route-config';
 import router from '@/router';
 import VideoBox from '@/components/detail/VideoBox.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';

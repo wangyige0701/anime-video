@@ -31,8 +31,8 @@ import { endReachedEmitter } from '@/events/end-reached';
 import { refreshEmitter } from '@/events/refresh';
 import { useVideoStore } from '@/stores/video';
 import { getSeriesPath } from '@/utils/series';
-import { getImageUrl } from '~routes/server';
-import { WebRoute } from '~routes/web';
+import { getImageUrl } from '~shared/server-route-config';
+import { WebRoute } from '~shared/web-route-config';
 
 const props = withDefaults(
 	defineProps<{

@@ -12,7 +12,7 @@ import {
 import path from 'node:path';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
-import { ServerRoot } from '~routes/server';
+import { ServerRoot } from '~shared/server-route-config';
 import { ImageNotFoundError } from '~server/src/error/notFound';
 import { Series } from '~server/data/series';
 

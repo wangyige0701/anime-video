@@ -1,6 +1,6 @@
 import type Koa from 'koa';
 import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-use-decorator-router';
-import { ServerRoot } from '~routes/server';
+import { ServerRoot } from '~shared/server-route-config';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
 

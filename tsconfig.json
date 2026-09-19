@@ -12,11 +12,10 @@
 			"~hls/*": ["./hls/build/*"],
 			"~server/*": ["./server/*"],
 			"~web/*": ["./web/*"],
-			"~routes/*": ["./routes/*"],
 			"~types/*": ["./types/*"],
 			"~shared/*": ["./shared/*"]
 		}
 	},
-	"include": ["server", "test", "dev", "test", "web", "types", "routes", "shared"],
+	"include": ["server", "test", "dev", "test", "web", "types", "shared"],
 	"exclude": ["node_modules"]
 }

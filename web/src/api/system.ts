@@ -1,5 +1,5 @@
 import type { Response } from '~types/response';
-import { SERVER_URL, ServerRoot } from '~routes/server';
+import { SERVER_URL, ServerRoot } from '~shared/server-route-config';
 
 export interface SystemInfo {
 	cpu: {

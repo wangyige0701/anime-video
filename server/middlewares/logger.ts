@@ -4,7 +4,7 @@ import type { Context, Middleware } from 'koa';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pino, { type Bindings, type Logger } from 'pino';
-import { ServerRoot } from '~routes/server';
+import { ServerRoot } from '~shared/server-route-config';
 import { LogDestination } from '~server/src/log-destination';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';

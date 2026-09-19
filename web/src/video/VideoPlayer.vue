@@ -14,7 +14,7 @@ import Hls, { type ErrorData } from 'hls.js';
 import { useEventListener } from '@vueuse/core';
 import { createPromise } from '@wang-yige/utils';
 import { usePlayerStore } from '@/stores/player';
-import { getMasterM3u8Url } from '~routes/server';
+import { getMasterM3u8Url } from '~shared/server-route-config';
 import { takeVideoShotToClipboard } from '@/utils/videoShot';
 import { KeyboardAction, useKeyboardAction } from '@/keyboard/action';
 import { useHlsImagePreview } from './useHlsImagePreview';

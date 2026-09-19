@@ -1,5 +1,5 @@
 import type { Response } from '~types/response';
-import { SERVER_URL } from '~routes/server';
+import { SERVER_URL } from '~shared/server-route-config';
 import { AxiosRequest, axios } from 'axios-useful';
 import { isBoolean, isNumber, isString } from '@wang-yige/utils';
 

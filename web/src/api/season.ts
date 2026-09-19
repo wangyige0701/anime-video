@@ -1,6 +1,6 @@
 import type { Season } from '~types/videos';
 import { AxiosRequest } from 'axios-useful';
-import { ServerRoot } from '~routes/server';
+import { ServerRoot } from '~shared/server-route-config';
 import { API } from '@/api';
 
 /**

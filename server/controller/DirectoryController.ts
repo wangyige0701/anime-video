@@ -3,7 +3,7 @@ import { Context, Controller, Cors, HttpMethod, IF, Singleton } from 'koa-use-de
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { Status } from '~shared/http-status';
-import { ServerRoot } from '~routes/server';
+import { ServerRoot } from '~shared/server-route-config';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
 import { Response } from '~server/middlewares/response';

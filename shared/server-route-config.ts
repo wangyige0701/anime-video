@@ -6,6 +6,7 @@ export enum ServerRoot {
 
 const SERVER = __APP_CONFIG__.server;
 const HLS = __APP_CONFIG__.hls;
+
 export const SERVER_URL = `${SERVER.protocol}://${SERVER.host}:${SERVER.port}`;
 
 export function getMasterM3u8Url(videoName: string) {

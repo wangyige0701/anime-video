@@ -31,7 +31,7 @@
 import type { ScrollbarDirection } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
 import { onBeforeMount, onBeforeUnmount } from 'vue';
-import { WebRoute } from '~routes/web';
+import { WebRoute } from '~shared/web-route-config';
 import { useVideoStore } from './stores/video';
 import { useDeviceStore } from './stores/device';
 import { endReachedEmitter } from './events/end-reached';

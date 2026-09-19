@@ -23,14 +23,13 @@ hls (C++ + FFmpeg)
   -> 本地视频文件
 ```
 
-`web` 和 `server` 是 pnpm workspace 包；`hls` 是 Git 子模块和独立 pnpm/CMake 项目。根目录的 `shared/`、`routes/`、`types/` 是源码级共享模块，不是独立 workspace 包。
+`web` 和 `server` 是 pnpm workspace 包；`hls` 是 Git 子模块和独立 pnpm/CMake 项目。根目录的 `shared/`、`types/` 是源码级共享模块，不是独立 workspace 包。
 
 ## 根目录结构
 
 ```text
 anime-video/
 ├── shared/                 # 配置解析、配置类型、系列枚举和 HTTP 状态码
-├── routes/                 # 前后端共用的服务端 URL 与前端路由定义
 ├── types/                  # API 响应及 Series/Season/Episode 共享类型
 ├── server/                 # Koa API、数据层、HLS Node 封装和 Web 托管入口
 ├── web/                    # Vue、Vite、Pinia、hls.js 前端应用
@@ -149,16 +148,15 @@ pnpm --dir hls run build:q
 - `~server/*` -> `server/*`
 - `~web/*` -> `web/*`
 - `~shared/*` -> `config/*`
-- `~routes/*` -> `routes/*`
 - `~types/*` -> `types/*`
 - `~hls/*` -> `hls/build/*`
 
-`server/tsconfig.json` 继承根配置，并把服务端、`shared/`、`routes/`、`types/` 纳入编译。`web/tsconfig.app.json` 单独提供 `@/* -> web/src/*`，并允许前端读取 `~shared/*`、`~routes/*`、`~types/*`；共享系列枚举随前端导入纳入编译。Vite 的 `web/vite/alias.ts` 从该配置生成运行时 alias，因此修改前端别名时必须同时保证 TypeScript 和 Vite 能解析。
+`server/tsconfig.json` 继承根配置，并把服务端、`shared/`、`types/` 纳入编译。`web/tsconfig.app.json` 单独提供 `@/* -> web/src/*`，并允许前端读取 `~shared/*`、`~types/*`；共享系列枚举随前端导入纳入编译。Vite 的 `web/vite/alias.ts` 从该配置生成运行时 alias，因此修改前端别名时必须同时保证 TypeScript 和 Vite 能解析。
 
 共享目录职责如下：
 
 - `shared/` 保存配置解析、配置类型及 `series-status.ts`、`series-types.ts` 系列枚举，以及 `http-status.ts` HTTP 请求响应状态码，不保存组件局部状态。系列枚举供两端复用；`config-parser.ts` 依赖 Node，只供服务端和构建工具使用，不能导入浏览器运行时代码。
-- `routes/server.ts` 保存 API 根路径、URL 生成函数和服务端地址；`routes/web.ts` 保存前端路由名称。
+- `shared/server-route-config.ts` 保存 API 根路径、URL 生成函数和服务端地址；`shared/web-route-config.ts` 保存前端路由名称。
 - `types/` 保存网络 DTO 与跨端类型，不能依赖浏览器或 Node 专属实现。
 
 共享类型、路由或配置发生变化时，要同时检查服务端生产者、前端消费者、测试和两个子项目的 `AGENTS.md`，保证契约描述与实现一致。
@@ -169,7 +167,7 @@ pnpm --dir hls run build:q
 - Vite 开发服务由 `web` 的 `dev` 脚本启动，固定开发端口配置为 `5173`。
 - `server/cli/web.ts` 在 `3001` 提供静态资源与 history fallback。静态目录由 `config.yaml` 中的 `web.webBundleDir` 配置，相对路径基于 `server/cli/` 解析；当前没有根脚本自动把 `web/dist` 部署到该位置，修改构建或部署流程时必须显式维护这一步。
 
-分别执行开发脚本时，API、Vite 和静态 Web 运行在独立进程中。`server/app.ts` 按目标分支动态导入服务；`server/cli.ts` 通过常驻 manager 分别持有 server/web worker，跨终端复用进程句柄。CLI 管理器按当前模块扩展名定位源码或保留目录结构的编译入口，构建布局约束见 `server/AGENTS.md`；完整发布构建、自动崩溃恢复和状态持久化仍待实现。端口和地址来自 `config.yaml`、`routes/server.ts`，调整时必须检查前端 URL 和测试。
+分别执行开发脚本时，API、Vite 和静态 Web 运行在独立进程中。`server/app.ts` 按目标分支动态导入服务；`server/cli.ts` 通过常驻 manager 分别持有 server/web worker，跨终端复用进程句柄。CLI 管理器按当前模块扩展名定位源码或保留目录结构的编译入口，构建布局约束见 `server/AGENTS.md`；完整发布构建、自动崩溃恢复和状态持久化仍待实现。端口和地址来自 `config.yaml`、`shared/server-route-config.ts`，调整时必须检查前端 URL 和测试。
 
 ## 代码格式要求
 
@@ -178,7 +176,7 @@ pnpm --dir hls run build:q
 
 ## 跨项目修改原则
 
-1. 修改共享契约时先确定唯一归属，优先更新根目录的 `shared/`、`routes/` 或 `types/`，不要在 `web` 和 `server` 各维护一份常量。
+1. 修改共享契约时先确定唯一归属，优先更新根目录的 `shared/` 或 `types/`，不要在 `web` 和 `server` 各维护一份常量。
 2. 修改原生 HLS 接口时同步检查 C++ N-API 导出、`server/hls.d.ts`、`server/src/hls.ts`、HTTP controller 和前端 hls.js 调用方。
 3. 新增依赖时放入实际使用它的 importer；只有跨项目工具或根配置直接使用的依赖才放根 `package.json`。
 4. 所有修改保持现有功能与接口兼容，验证范围按受影响项目扩大；跨端修改至少分别执行对应类型检查或构建。

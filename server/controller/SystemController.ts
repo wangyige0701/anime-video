@@ -2,7 +2,7 @@ import type Koa from 'koa';
 import { createPromise } from '@wang-yige/utils';
 import { Context, Controller, Cors, HttpMethod, ResponseHeader, Singleton } from 'koa-use-decorator-router';
 import { OSUtils, type MemoryInfo, type MonitorResult } from 'node-os-utils';
-import { ServerRoot } from '~routes/server';
+import { ServerRoot } from '~shared/server-route-config';
 import { Response } from '~server/middlewares/response';
 
 const UPDATE_INTERVAL_MS = 2000;

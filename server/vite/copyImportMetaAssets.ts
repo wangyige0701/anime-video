@@ -2,6 +2,7 @@ import { copyFile } from 'node:fs/promises';
 import { basename, dirname, extname, posix, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import type { Plugin } from 'vite';
+import type { Node } from '@oxc-project/types';
 
 export function copyImportMetaAssets(extensions: string[]): Plugin {
 	if (!extensions.length) {
@@ -30,7 +31,7 @@ export function copyImportMetaAssets(extensions: string[]): Plugin {
 			handler(code, id) {
 				// 使用构建器自带的 AST 排除注释和字符串中的伪匹配，无需额外解析依赖。
 				const starts = new Set<number>();
-				const nodes: unknown[] = [this.parse(code)];
+				const nodes: Node[] = [this.parse(code)];
 				while (nodes.length) {
 					const node = nodes.pop();
 					if (!node || typeof node !== 'object') {

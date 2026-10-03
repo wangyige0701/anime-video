@@ -5,6 +5,8 @@ import { defineConfig } from 'vite';
 import { replaceRuntimePath } from './vite/replaceRuntimePath.ts';
 import { resolveHls } from './vite/resolveHls.ts';
 import { copyImportMetaAssets } from './vite/copyImportMetaAssets.ts';
+import { copyWebStaticRoot } from './vite/copyWebStaticRoot.ts';
+import config from '../shared/config-parser.ts';
 
 const serverDir = dirname(fileURLToPath(import.meta.url));
 const repositoryDir = resolve(serverDir, '..');
@@ -46,7 +48,7 @@ export default defineConfig({
 			},
 		},
 	},
-	plugins: [replaceRuntimePath(), resolveHls(), copyImportMetaAssets(['yaml'])],
+	plugins: [copyWebStaticRoot(config.web), replaceRuntimePath(), resolveHls(), copyImportMetaAssets(['yaml'])],
 	resolve: {
 		alias: {
 			'~server': resolve(distRootDir, 'server'),

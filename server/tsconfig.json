@@ -10,6 +10,11 @@
 		"rewriteRelativeImportExtensions": true,
 		"allowImportingTsExtensions": true
 	},
-	"include": ["./**/*.ts", "../shared/**/*.ts", "../types/**/*.d.ts", "clear.mjs"],
+	"include": [
+		"./**/*.ts",
+		"../shared/**/*.ts",
+		"../types/**/*.d.ts",
+		"clear.mjs"
+	],
 	"exclude": ["./test", "../node_modules", "../web", "../dev", "../test"]
 }

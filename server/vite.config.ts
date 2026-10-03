@@ -1,4 +1,4 @@
-﻿import { dirname, resolve } from 'node:path';
+﻿import { basename, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinModules } from 'node:module';
 import { defineConfig } from 'vite';
@@ -20,7 +20,7 @@ const controllers = readdirSync(resolve(distRootDir, 'server/controller'))
 	.filter((name) => name.endsWith('.js'))
 	.reduce(
 		(prev, curr) => {
-			prev[`controller/${curr}`] = resolve(
+			prev[`controller/${basename(curr, extname(curr))}`] = resolve(
 				distRootDir,
 				'server/controller',
 				curr,
@@ -61,7 +61,7 @@ export default defineConfig({
 			},
 			output: {
 				entryFileNames: '[name].js',
-				chunkFileNames: 'chunks/[name]-[hash].js',
+				chunkFileNames: 'chunks/[name].js',
 				format: 'es',
 				codeSplitting: {
 					groups: [
@@ -72,6 +72,17 @@ export default defineConfig({
 						},
 					],
 				},
+			},
+			onLog(level, log, defaultHandler) {
+				if (
+					level === 'warn' &&
+					log.code === 'EVAL' &&
+					log.id?.includes('node_modules/depd')
+				) {
+					return;
+				}
+
+				defaultHandler(level, log);
 			},
 		},
 	},

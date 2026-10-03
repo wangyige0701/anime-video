@@ -1,0 +1,12 @@
+{
+	"extends": "./tsconfig.json",
+	"exclude": [
+		"./test",
+		"./vite/**/*.ts",
+		"./vite.config.ts",
+		"../node_modules",
+		"../web",
+		"../dev",
+		"../test"
+	]
+}

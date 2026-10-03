@@ -6,7 +6,7 @@
 	"scripts": {
 		"dev": "pnpm build:log-transport && npx tsx watch --tsconfig tsconfig.json app.ts server",
 		"dev:web": "pnpm build:log-transport && cross-env NODE_ENV=development npx tsx app.ts web",
-		"build:tsc": "node clear.mjs && pnpm exec tsc --p tsconfig.json --skipLibCheck",
+		"build:tsc": "node clear.mjs && pnpm exec tsc --p tsconfig.build.json --skipLibCheck",
 		"build:vite": "pnpm exec vite build",
 		"build:log-transport": "node clear.mjs && pnpm exec tsc -p tsconfig.log-transport.json",
 		"cli": "npx tsx cli.ts",

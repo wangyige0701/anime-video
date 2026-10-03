@@ -11,7 +11,11 @@ export function copyImportMetaAssets(extensions: string[]): Plugin {
 		};
 	}
 
-	const suffixes = new Set(extensions.map((extension) => `.${extension.replace(/^\./, '').toLowerCase()}`));
+	const suffixes = new Set(
+		extensions.map(
+			(extension) => `.${extension.replace(/^\./, '').toLowerCase()}`,
+		),
+	);
 	const matchRegexp = `(?:${extensions.map((ext) => `\\.${ext.replace(/^\./, '').toLowerCase()}`).join('|')})`;
 	const assetImportMetaUrlRE: RegExp = new RegExp(
 		`\\bnew\\s+URL\\s*\\(\\s*('[^']+${matchRegexp}'|"[^"]+${matchRegexp}"|\`[^\`]+${matchRegexp}\`)\\s*,\\s*import\\.meta\\.url\\s*(?:,\\s*)?\\)`,
@@ -37,20 +41,34 @@ export function copyImportMetaAssets(extensions: string[]): Plugin {
 					if (!node || typeof node !== 'object') {
 						continue;
 					}
-					if ('type' in node && node.type === 'NewExpression' && 'start' in node) {
+					if (
+						'type' in node &&
+						node.type === 'NewExpression' &&
+						'start' in node
+					) {
 						starts.add(node.start as number);
 					}
-					nodes.push(...Object.values(node).filter((value) => value && typeof value === 'object'));
+					nodes.push(
+						...Object.values(node).filter(
+							(value) => value && typeof value === 'object',
+						),
+					);
 				}
 
 				let changed = false;
 				const result = code.replace(
 					new RegExp(assetImportMetaUrlRE),
 					(match, rawUrl: string, offset: number) => {
-						if (!starts.has(offset) || (rawUrl[0] === '`' && rawUrl.includes('${'))) {
+						if (
+							!starts.has(offset) ||
+							(rawUrl[0] === '`' && rawUrl.includes('${'))
+						) {
 							return match;
 						}
-						const url = new URL(rawUrl.slice(1, -1), pathToFileURL(id.split(/[?#]/)[0]));
+						const url = new URL(
+							rawUrl.slice(1, -1),
+							pathToFileURL(id.split(/[?#]/)[0]),
+						);
 						if (url.protocol !== 'file:') {
 							return match;
 						}
@@ -62,10 +80,14 @@ export function copyImportMetaAssets(extensions: string[]): Plugin {
 						if (index === -1) {
 							if (
 								files.some(
-									(existing) => basename(existing).toLowerCase() === basename(file).toLowerCase(),
+									(existing) =>
+										basename(existing).toLowerCase() ===
+										basename(file).toLowerCase(),
 								)
 							) {
-								this.error(`配置文件重名，无法复制到同一目录：${file}`);
+								this.error(
+									`配置文件重名，无法复制到同一目录：${file}`,
+								);
 							}
 							index = files.push(file) - 1;
 						}
@@ -80,13 +102,19 @@ export function copyImportMetaAssets(extensions: string[]): Plugin {
 		},
 
 		renderChunk(code, chunk) {
-			const result = code.replace(/__CONFIG_FILE_(\d+)__/g, (_, index: string) => {
-				return posix.relative(
-					posix.dirname(chunk.fileName),
-					encodeURIComponent(basename(files[Number(index)])),
-				);
-			});
-			return result === code ? null : { code: result, map: null };
+			if (!code.match(/__CONFIG_FILE_(\d+)__/g)) {
+				return null;
+			}
+			const result = code.replace(
+				/__CONFIG_FILE_(\d+)__/g,
+				(_, index: string) => {
+					return posix.relative(
+						posix.dirname(chunk.fileName),
+						encodeURIComponent(basename(files[Number(index)])),
+					);
+				},
+			);
+			return { code: result, map: null };
 		},
 
 		async writeBundle(options) {

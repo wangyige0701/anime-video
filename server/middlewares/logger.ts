@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import pino, { type Bindings, type Logger } from 'pino';
 import { ServerRoot } from '~shared/server-route-config';
 import { LogDestination } from '~server/src/log-destination';
+import { runtimePath } from '~shared/runtime';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -15,12 +16,16 @@ const LOGGING = __APP_CONFIG__.logging;
 const logDir = resolve(process.cwd(), LOGGING.directory);
 const moduleDir = fileURLToPath(new URL('.', import.meta.url));
 const sourceTransport = resolve(moduleDir, '../dist/log-transport.js');
-const compiledTransport = resolve(moduleDir, '../log-transport.js');
-const logTransport = [sourceTransport, compiledTransport].find((candidate) => existsSync(candidate));
+const compiledTransport = runtimePath(import.meta.url, '../log-transport.js');
+const logTransport = [sourceTransport, compiledTransport].find((candidate) =>
+	existsSync(candidate),
+);
 
 // 控制台和文件统一走同一个 worker，启动前必须有编译产物。
 if (!logTransport) {
-	throw new Error('日志落盘 transport 尚未编译，请先执行 pnpm build:log-transport');
+	throw new Error(
+		'日志落盘 transport 尚未编译，请先执行 pnpm build:log-transport',
+	);
 }
 
 const transport = pino.transport({
@@ -64,7 +69,9 @@ export function closeLogger() {
 
 process.once('beforeExit', () => {
 	void closeLogger().catch((error: unknown) => {
-		process.stderr.write(`[logger] Failed to close logs: ${String(error)}\n`);
+		process.stderr.write(
+			`[logger] Failed to close logs: ${String(error)}\n`,
+		);
 		process.exitCode = 1;
 	});
 });
@@ -85,7 +92,10 @@ function getRoute(ctx: Pick<Context, 'path'>) {
 
 function getAccessLogLevel(ctx: Pick<Context, 'path'>): LogLevel {
 	// 媒体分片和图片请求频率高，只在调试级别保留访问摘要。
-	if (ctx.path.startsWith(`${ServerRoot.VIDEO}/`) || ctx.path.startsWith(`${ServerRoot.IMAGE}/`)) {
+	if (
+		ctx.path.startsWith(`${ServerRoot.VIDEO}/`) ||
+		ctx.path.startsWith(`${ServerRoot.IMAGE}/`)
+	) {
 		return 'debug';
 	}
 	return 'info';

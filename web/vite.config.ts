@@ -24,7 +24,10 @@ export default defineConfig(({ command }) => {
 				extendRoute(route) {
 					if (route.path.includes(':seriesId')) {
 						// 系列 ID 为 32 位十六进制字符串
-						route.path = route.path.replace(':seriesId', ':seriesId([a-fA-F0-9]{32})');
+						route.path = route.path.replace(
+							':seriesId',
+							':seriesId([a-fA-F0-9]{32})',
+						);
 					}
 				},
 			}),
@@ -32,7 +35,12 @@ export default defineConfig(({ command }) => {
 			vueJsx(),
 			AutoImport({
 				resolvers: [ElementPlusResolver()],
-				imports: ['vue', 'vue-router', 'pinia', { 'status-ref/vue': ['useVueStatusRef'] }],
+				imports: [
+					'vue',
+					'vue-router',
+					'pinia',
+					{ 'status-ref/vue': ['useVueStatusRef'] },
+				],
 				dts: 'auto-imports.d.ts',
 			}),
 			Components({
@@ -46,7 +54,9 @@ export default defineConfig(({ command }) => {
 		],
 		server: {
 			fs: {
-				allow: [path.resolve(searchForWorkspaceRoot(process.cwd()), '..')],
+				allow: [
+					path.resolve(searchForWorkspaceRoot(process.cwd()), '..'),
+				],
 			},
 		},
 		define: command === 'build' ? {} : define,

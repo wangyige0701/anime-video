@@ -3,6 +3,7 @@
 	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
+		"build": "pnpm --filter web run build && pnpm --filter server run build",
 		"web": "front",
 		"server": "back",
 		"build:log-transport": "pnpm --filter server run build:log-transport",

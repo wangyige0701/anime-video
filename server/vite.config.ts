@@ -58,6 +58,10 @@ export default defineConfig({
 				),
 				worker: resolve(distRootDir, 'server/cli/worker.js'),
 				...controllers,
+				'log-transport': resolve(
+					distRootDir,
+					'server/src/log-transport.js',
+				),
 			},
 			output: {
 				entryFileNames: '[name].js',

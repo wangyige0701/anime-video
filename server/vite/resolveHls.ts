@@ -73,10 +73,10 @@ export function resolveHls(): Plugin {
 				return null;
 			}
 			const result = code.replace(/__NODE_HLS__/g, () => {
-				return relative(dirname(chunk.fileName), 'hls').replaceAll(
-					'\\',
-					'/',
-				);
+				return relative(
+					dirname(chunk.fileName),
+					'hls/hls.node',
+				).replaceAll('\\', '/');
 			});
 			return { code: result, map: null };
 		},

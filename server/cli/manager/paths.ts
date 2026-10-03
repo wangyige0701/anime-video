@@ -6,8 +6,8 @@ import { runtimePath } from '~shared/runtime';
 // 入口与本模块必须保持相对目录和扩展名一致，兼容 tsx 源码运行及 tsc 编译产物。
 const serverRoot = runtimePath(import.meta.url, '../..');
 const runtimeRoot = runtimePath(import.meta.url, './.runtime');
-const managerEntry = runtimePath(import.meta.url, `./daemon-entry.ts`);
-const workerEntry = runtimePath(import.meta.url, `../worker.ts`);
+const managerEntry = runtimePath(import.meta.url, './daemon-entry.ts');
+const workerEntry = runtimePath(import.meta.url, '../worker.ts');
 const instanceKey = createHash('sha256')
 	.update(serverRoot)
 	.digest('hex')

@@ -10,6 +10,8 @@ export function replaceRuntimePath(): Plugin {
 	const regexp =
 		/runtimePath\(import\.meta\.url, \s*('[^']+'|"[^"]+"|`[^`]+`)\s*\)/dg;
 
+	const names: string[] = [];
+
 	return {
 		name: 'replace-runtime-path',
 
@@ -96,14 +98,40 @@ export function replaceRuntimePath(): Plugin {
 						if (!templateString && name && ext) {
 							newFile = resolve(dir, `${name}.js`);
 						}
-						let relativePath = relative(dirname(distDir), newFile);
-						relativePath = relativePath.replaceAll('\\', '/');
-						return `__runtimeFileURLToPath(new URL(${JSON.stringify('./' + basename(relativePath))}, '' + import.meta.url))`;
+						const relativePath = relative(
+							distDir,
+							newFile,
+						).replaceAll('\\', '/');
+						const targetName = basename(relativePath);
+						let index = names.indexOf(targetName);
+						if (index === -1) {
+							index = names.push(targetName) - 1;
+						}
+						const quote = rawUrl[0];
+						return `__runtimeFileURLToPath(new URL(${quote}__RUNTIME_PATH_${index}__${quote}, '' + import.meta.url))`;
 					},
 				);
 				const importStatement = `import { fileURLToPath as __runtimeFileURLToPath } from 'node:url';\n`;
 				return { code: importStatement + result, map: null };
 			},
+		},
+
+		renderChunk(code, chunk) {
+			if (!code.match(/__RUNTIME_PATH_(\d+)__/g)) {
+				return null;
+			}
+			const result = code.replace(
+				/__RUNTIME_PATH_(\d+)__/g,
+				(_, index: string) => {
+					const relativePath = relative(
+						dirname(chunk.fileName),
+						'.',
+					).replaceAll('\\', '/');
+					return relativePath + '/' + names[Number(index)];
+				},
+			);
+			console.log(chunk.fileName);
+			return { code: result, map: null };
 		},
 	};
 }

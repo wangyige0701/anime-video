@@ -1,16 +1,17 @@
 import { createHash } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
-import { extname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
 import { runtimePath } from '~shared/runtime';
 
 // 入口与本模块必须保持相对目录和扩展名一致，兼容 tsx 源码运行及 tsc 编译产物。
-const moduleExtension = extname(fileURLToPath(import.meta.url));
 const serverRoot = runtimePath(import.meta.url, '../..');
 const runtimeRoot = runtimePath(import.meta.url, './.runtime');
-const managerEntry = runtimePath(import.meta.url, `./daemon-entry${moduleExtension}`);
-const workerEntry = runtimePath(import.meta.url, `../worker${moduleExtension}`);
-const instanceKey = createHash('sha256').update(serverRoot).digest('hex').slice(0, 16);
+const managerEntry = runtimePath(import.meta.url, `./daemon-entry.ts`);
+const workerEntry = runtimePath(import.meta.url, `../worker.ts`);
+const instanceKey = createHash('sha256')
+	.update(serverRoot)
+	.digest('hex')
+	.slice(0, 16);
 
 /**
  * 运行目录保存 IPC 端点等临时状态，随项目路径区分不同工作区实例。

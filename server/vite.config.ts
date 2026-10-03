@@ -7,11 +7,28 @@ import { resolveHls } from './vite/resolveHls.ts';
 import { copyImportMetaAssets } from './vite/copyImportMetaAssets.ts';
 import { copyWebStaticRoot } from './vite/copyWebStaticRoot.ts';
 import config from '../shared/config-parser.ts';
+import { readdirSync } from 'node:fs';
 
 const serverDir = dirname(fileURLToPath(import.meta.url));
 const repositoryDir = resolve(serverDir, '..');
 const distRootDir = resolve(serverDir, 'dist');
-const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
+const nodeBuiltins = new Set([
+	...builtinModules,
+	...builtinModules.map((name) => `node:${name}`),
+]);
+const controllers = readdirSync(resolve(distRootDir, 'server/controller'))
+	.filter((name) => name.endsWith('.js'))
+	.reduce(
+		(prev, curr) => {
+			prev[`controller/${curr}`] = resolve(
+				distRootDir,
+				'server/controller',
+				curr,
+			);
+			return prev;
+		},
+		{} as Record<string, string>,
+	);
 
 export default defineConfig({
 	build: {
@@ -26,11 +43,21 @@ export default defineConfig({
 		assetsDir: '',
 		rolldownOptions: {
 			external: (id) => {
-				return nodeBuiltins.has(id) || id.startsWith('node:') || /\.(?:node|dll)$/i.test(id);
+				return (
+					nodeBuiltins.has(id) ||
+					id.startsWith('node:') ||
+					/\.(?:node|dll)$/i.test(id)
+				);
 			},
 			platform: 'node',
 			input: {
 				cli: resolve(distRootDir, 'server/cli.js'),
+				'daemon-entry': resolve(
+					distRootDir,
+					'server/cli/manager/daemon-entry.js',
+				),
+				worker: resolve(distRootDir, 'server/cli/worker.js'),
+				...controllers,
 			},
 			output: {
 				entryFileNames: '[name].js',
@@ -48,7 +75,12 @@ export default defineConfig({
 			},
 		},
 	},
-	plugins: [copyWebStaticRoot(config.web), replaceRuntimePath(), resolveHls(), copyImportMetaAssets(['yaml'])],
+	plugins: [
+		copyWebStaticRoot(config.web),
+		replaceRuntimePath(),
+		resolveHls(),
+		copyImportMetaAssets(['yaml']),
+	],
 	resolve: {
 		alias: {
 			'~server': resolve(distRootDir, 'server'),

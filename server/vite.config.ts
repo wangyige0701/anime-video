@@ -1,6 +1,6 @@
 ﻿import { basename, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { builtinModules } from 'node:module';
+import { builtinModules, createRequire } from 'node:module';
 import { defineConfig } from 'vite';
 import { replaceRuntimePath } from './vite/replaceRuntimePath.ts';
 import { resolveHls } from './vite/resolveHls.ts';
@@ -12,6 +12,7 @@ import { readdirSync } from 'node:fs';
 const serverDir = dirname(fileURLToPath(import.meta.url));
 const repositoryDir = resolve(serverDir, '..');
 const distRootDir = resolve(serverDir, 'dist');
+const require = createRequire(import.meta.url);
 const nodeBuiltins = new Set([
 	...builtinModules,
 	...builtinModules.map((name) => `node:${name}`),
@@ -61,6 +62,9 @@ export default defineConfig({
 				'log-transport': resolve(
 					distRootDir,
 					'server/src/log-transport.js',
+				),
+				'thread-stream-worker': require.resolve(
+					'thread-stream/lib/worker.js',
 				),
 			},
 			output: {

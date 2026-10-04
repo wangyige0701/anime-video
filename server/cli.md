@@ -3,6 +3,7 @@
 `server/cli.ts` 提供基于 commander 的服务命令入口。`pnpm server cli` 无参数调用时
 向 stdout 显示帮助并正常退出（退出码 0），不会加载服务模块。
 `pnpm server dev` 和 `pnpm server dev:web` 脚本通过 `server/app.ts` 启动服务。
+Windows 下的 `server/cli-launcher.mjs` 会还原 `pnpm run` 对参数反斜杠产生的一层转义；根 `back.cmd` 的 `cli` 分支直接调用该入口，避免参数再次经过 workspace 的 `pnpm run`。发布产物仍直接使用 `node dist/cli.js`，不经过开发启动器。
 
 CLI 已使用独立的常驻管理进程控制 server/web worker。管理器首次由 `start` 按需启动，
 后续 CLI 调用通过本地 IPC 复用同一个管理器及其子进程句柄；不会因为每次执行 CLI
@@ -37,11 +38,12 @@ anime-video dir list --json
 ```text
 anime-video dir
 anime-video dir list [--json]
-anime-video dir set "C:\\videos" "D:\\media"
+anime-video dir set "C:\videos" "D:\media"
+anime-video dir add "E:\anime" "F:\videos"
 anime-video dir del 0,2 4
 ```
 
-`dir` 不带子命令时显示目录管理帮助。`list` 默认输出带索引的目录表，`list --json` 输出可直接读取的目录数组 JSON。`set` 用一个或多个已存在的目录替换当前配置，`del` 按索引删除目录，索引可由空格或逗号分隔。
+`dir` 不带子命令时显示目录管理帮助。`list` 默认输出带索引的目录表，`list --json` 输出可直接读取的目录数组 JSON。`set` 用一个或多个已存在的目录替换当前配置；`add` 保留现有配置并把一个或多个已存在且未配置的目录追加到末尾；`del` 按索引删除目录，索引可由空格或逗号分隔。Windows cmd 和 PowerShell 中的普通目录使用单个反斜杠；`"D:\\media"` 属于 JavaScript/JSON 转义形式，CLI 会将其作为格式错误拒绝。UNC 路径开头的双反斜杠除外。
 
 ## 配置覆盖
 

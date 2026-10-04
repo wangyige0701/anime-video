@@ -10,7 +10,7 @@
 		"build:tsc": "node clear.mjs && pnpm exec tsc --p tsconfig.build.json --skipLibCheck",
 		"build:vite": "pnpm exec vite build",
 		"build:log-transport": "node clear.mjs && pnpm exec tsc -p tsconfig.log-transport.json",
-		"cli": "npx tsx cli.ts",
+		"cli": "node cli-launcher.mjs",
 		"test": "echo \"Error: no test specified\" && exit 1"
 	},
 	"keywords": [],

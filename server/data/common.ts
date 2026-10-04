@@ -76,6 +76,22 @@ export abstract class Common {
 		await Data.instance<string[]>(this.__path, []).save();
 	}
 
+	/**
+	 * 添加视频系列目录配置数据
+	 *
+	 * - 此方法会等待数据保存完成，确保数据一致性
+	 */
+	public static async addDirectories(...directories: string[]) {
+		const data = await this.getDirectories();
+		data.push(...directories.map((item) => path.resolve(item)));
+		await Data.instance<string[]>(this.__path, []).save();
+	}
+
+	/**
+	 * 删除视频系列目录配置数据
+	 *
+	 * - 此方法会等待数据保存完成，确保数据一致性
+	 */
 	public static async delDirectories(...index: number[]) {
 		const data = await this.getDirectories();
 		const targets = [...new Set(index)].map((i) => data[i]).filter(Boolean);

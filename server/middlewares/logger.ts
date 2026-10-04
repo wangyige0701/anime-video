@@ -20,18 +20,21 @@ const compiledTransport = runtimePath(import.meta.url, '../log-transport.js');
 const logTransport = [sourceTransport, compiledTransport].find((candidate) =>
 	existsSync(candidate),
 );
-const bundlerPaths = globalThis as typeof globalThis & {
-	__bundlerPathsOverrides?: Record<string, string>;
-};
+const threadStreamWorker = runtimePath(
+	import.meta.url,
+	'../thread-stream-worker.js',
+);
+if (existsSync(threadStreamWorker)) {
+	const bundlerPaths = globalThis as typeof globalThis & {
+		__bundlerPathsOverrides?: Record<string, string>;
+	};
 
-// Pino 的 thread-stream 需要独立 worker；发布产物不依赖 node_modules，显式指向 Vite 输出。
-bundlerPaths.__bundlerPathsOverrides = {
-	...bundlerPaths.__bundlerPathsOverrides,
-	'thread-stream-worker': runtimePath(
-		import.meta.url,
-		'../thread-stream-worker.js',
-	),
-};
+	// 发布产物不依赖 node_modules；开发源码运行时使用 thread-stream 自带 worker。
+	bundlerPaths.__bundlerPathsOverrides = {
+		...bundlerPaths.__bundlerPathsOverrides,
+		'thread-stream-worker': threadStreamWorker,
+	};
+}
 
 // 控制台和文件统一走同一个 worker，启动前必须有编译产物。
 if (!logTransport) {

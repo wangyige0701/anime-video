@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { Data } from './data';
 import { RestElements } from '@wang-yige/utils';
+import { getServerRoot } from '~server/cli/manager/paths';
 
 const SERVER = __APP_CONFIG__.server;
 
@@ -10,13 +11,17 @@ type PickType<
 	T extends Record<string, any>,
 	K extends (keyof T)[],
 	U extends Record<string, any> = {},
-> = K['length'] extends 0 ? U : PickType<T, RestElements<K>, U & { [P in K[0]]: T[P] }>;
+> = K['length'] extends 0
+	? U
+	: PickType<T, RestElements<K>, U & { [P in K[0]]: T[P] }>;
 
 type OmitType<
 	T extends Record<string, any>,
 	K extends (keyof T)[],
 	U extends Record<string, any> = T,
-> = K['length'] extends 0 ? U : OmitType<T, RestElements<K>, K[0] extends keyof T ? Omit<T, K[0]> : U>;
+> = K['length'] extends 0
+	? U
+	: OmitType<T, RestElements<K>, K[0] extends keyof T ? Omit<T, K[0]> : U>;
 
 export abstract class Common {
 	// 缓存处理
@@ -47,7 +52,7 @@ export abstract class Common {
 	}
 
 	// 数据文件
-	private static __path = path.join(process.cwd(), getDataFile());
+	private static __path = path.join(getServerRoot(), getDataFile());
 
 	/**
 	 * 获取所有视频系列根目录配置数据
@@ -63,7 +68,11 @@ export abstract class Common {
 	 */
 	public static async setDirectories(...directories: string[]) {
 		const data = await this.getDirectories();
-		data.splice(0, data.length, ...directories.map((item) => path.resolve(item)));
+		data.splice(
+			0,
+			data.length,
+			...directories.map((item) => path.resolve(item)),
+		);
 		await Data.instance<string[]>(this.__path, []).save();
 	}
 
@@ -83,7 +92,10 @@ export abstract class Common {
 		const missingSegments: string[] = [];
 		while (true) {
 			try {
-				return path.join(await fs.realpath(currentDirectory), ...missingSegments);
+				return path.join(
+					await fs.realpath(currentDirectory),
+					...missingSegments,
+				);
 			} catch {
 				const parentDirectory = path.dirname(currentDirectory);
 				if (parentDirectory === currentDirectory) {
@@ -107,7 +119,11 @@ export abstract class Common {
 		for (const item of directories) {
 			const rootDirectory = await Common.resolveRealPath(item);
 			const relativePath = path.relative(rootDirectory, handleDirectory);
-			if (relativePath === '' || (!relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath))) {
+			if (
+				relativePath === '' ||
+				(!relativePath.startsWith(`..${path.sep}`) &&
+					!path.isAbsolute(relativePath))
+			) {
 				return true;
 			}
 		}
@@ -124,7 +140,10 @@ export abstract class Common {
 	/**
 	 * 从对象中提取指定属性
 	 */
-	public static pick<T extends Record<string, any>, K extends (keyof T)[]>(obj: T, keys: K) {
+	public static pick<T extends Record<string, any>, K extends (keyof T)[]>(
+		obj: T,
+		keys: K,
+	) {
 		return keys.reduce((prev, cur) => {
 			prev[cur] = obj[cur];
 			return prev;
@@ -134,7 +153,10 @@ export abstract class Common {
 	/**
 	 * 从对象中移除指定属性
 	 */
-	public static omit<T extends Record<string, any>, K extends (keyof T)[]>(obj: T, keys: K) {
+	public static omit<T extends Record<string, any>, K extends (keyof T)[]>(
+		obj: T,
+		keys: K,
+	) {
 		return Object.keys(obj).reduce((prev, cur) => {
 			if (!keys.includes(cur)) {
 				prev[cur as keyof T] = obj[cur];

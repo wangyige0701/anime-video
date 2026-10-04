@@ -2,6 +2,7 @@ import { pathToFileURL } from 'node:url';
 import { Command, InvalidArgumentError, Option } from 'commander';
 import config, { configComments } from '~shared/config-parser';
 import packageJson from './package.json';
+import { addDirectoryCommands } from './cli/directories';
 import { request } from './cli/manager/client';
 import type { ManagerAction, ManagerResponse, ServiceName } from './cli/manager/protocol';
 
@@ -9,6 +10,9 @@ type ActionName = Exclude<ManagerAction, 'status'>;
 
 const serviceNames: readonly ServiceName[] = ['server', 'web'];
 const configOptionNames = new Set<string>();
+
+// @ts-expect-error
+globalThis.__APP_CONFIG__ = config;
 
 const program = new Command()
 	.name('anime-video')
@@ -90,6 +94,8 @@ statusCommand.action(async (service: ServiceName | undefined, options: { json?: 
 	const result = await invoke('status', service, activeArgv.slice(2));
 	printStatus(result, options.json === true);
 });
+
+addDirectoryCommands(program);
 
 program.addHelpText(
 	'after',

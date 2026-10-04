@@ -76,6 +76,18 @@ export abstract class Common {
 		await Data.instance<string[]>(this.__path, []).save();
 	}
 
+	public static async delDirectories(...index: number[]) {
+		const data = await this.getDirectories();
+		const targets = [...new Set(index)].map((i) => data[i]).filter(Boolean);
+		for (const target of targets) {
+			const index = data.indexOf(target);
+			if (index !== -1) {
+				data.splice(index, 1);
+			}
+		}
+		await Data.instance<string[]>(this.__path, []).save();
+	}
+
 	/**
 	 * 解析真实路径；不存在的叶子节点会基于最近的可解析祖先重建路径。
 	 *

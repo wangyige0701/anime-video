@@ -1,5 +1,6 @@
 mod cli;
 mod panel;
+mod position;
 mod tray;
 
 use gpui::Application;

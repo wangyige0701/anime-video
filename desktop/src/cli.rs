@@ -29,7 +29,7 @@ impl Service {
     pub fn label(self) -> &'static str {
         match self {
             Self::Api => "接口服务",
-            Self::Web => "Web 服务",
+            Self::Web => "网页服务",
         }
     }
 
@@ -70,11 +70,6 @@ impl ServiceAction {
 pub struct ServiceStatus {
     pub service: String,
     pub state: String,
-    pub pid: Option<u32>,
-    #[serde(rename = "uptimeMs")]
-    pub uptime_ms: u64,
-    #[serde(rename = "lastError")]
-    pub last_error: Option<String>,
 }
 
 impl ServiceStatus {
@@ -193,7 +188,7 @@ fn parse_json<T: for<'a> Deserialize<'a>>(output: &str) -> Result<T, String> {
                 .lines()
                 .rev()
                 .find(|line| line.trim_start().starts_with(['{', '[']))
-                .ok_or_else(|| "服务命令没有返回 JSON 数据".to_string())
+                .ok_or_else(|| "服务命令没有返回结构化数据".to_string())
                 .and_then(|line| serde_json::from_str(line).map_err(|error| error.to_string()))
         })
         .map_err(|error| format!("无法读取服务状态: {error}"))

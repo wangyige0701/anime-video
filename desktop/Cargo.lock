@@ -1350,6 +1350,8 @@ version = "0.1.0"
 dependencies = [
  "gpui",
  "image",
+ "serde",
+ "serde_json",
  "tray-icon",
 ]
 

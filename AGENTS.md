@@ -12,7 +12,7 @@
 
 ## 项目概览
 
-项目由 Vue 播放器前端、Koa API 服务、HLS 原生扩展和根目录共享契约组成。主要调用关系如下：
+项目由 Vue 播放器前端、Koa API 服务、HLS 原生扩展、Windows 桌面托盘控制端和根目录共享契约组成。主要调用关系如下：
 
 ```text
 web (Vue + hls.js)
@@ -21,6 +21,8 @@ server (Koa + 装饰器 controller)
   -> N-API
 hls (C++ + FFmpeg)
   -> 本地视频文件
+desktop (GPUI + tray-icon)
+  -> server CLI（服务与视频目录管理）
 ```
 
 `web` 和 `server` 是 pnpm workspace 包；`hls` 是 Git 子模块和独立 pnpm/CMake 项目。根目录的 `shared/`、`types/` 是源码级共享模块，不是独立 workspace 包。
@@ -34,6 +36,7 @@ anime-video/
 ├── server/                 # Koa API、数据层、HLS Node 封装和 Web 托管入口
 ├── web/                    # Vue、Vite、Pinia、hls.js 前端应用
 ├── hls/                    # Git 子模块；C++/FFmpeg Node 原生扩展
+├── desktop/                # 独立 Cargo 项目；Windows 托盘服务控制与目录管理浮层
 ├── dev/                    # 开发期辅助脚本和实验性测试，不属于正式运行入口
 ├── ui/                     # 设计与界面参考图片
 ├── docs/                   # 配置覆盖与开发文档
@@ -93,6 +96,8 @@ pnpm --dir hls install --ignore-workspace
 
 不要用根锁文件替代 `hls/pnpm-lock.yaml`，也不要在没有评估构建、Node ABI 和发布方式前把 `hls` 加入根 workspace。首次获取仓库时还需要初始化 Git 子模块，`hls` 的提交指针变更应作为子模块变更单独审查。
 
+`desktop/` 同样不属于 pnpm workspace，是独立的 Cargo 项目。它在开发构建中从仓库根目录执行 `pnpm run server cli <命令>`，调用既有的服务管理与目录管理 CLI；发布构建预留 `node dist/cli.js` 入口，运行时打包布局尚未实现。桌面端不得绕过 CLI 直接修改服务 manager 状态或 `.video.json`。
+
 ### 脚本与过滤器
 
 根脚本 `web` 和 `server` 分别调用 `front.cmd`、`back.cmd`，再把后续参数转发给对应 workspace 包。`back.cmd` 对 `cli` 单独调用 `server/cli-launcher.mjs`，由启动器还原 Windows 下 `pnpm run` 产生的一层反斜杠转义并直接启动 tsx，避免 CLI 参数再次经过 workspace 脚本转义；其他服务端脚本仍通过 workspace 转发。因此 Windows 下可使用：
@@ -102,6 +107,7 @@ pnpm web dev
 pnpm web build
 pnpm server dev
 pnpm server dev:web
+pnpm dev:desktop
 ```
 
 日志 transport 的 TypeScript 运行时文件需要在开发或构建前编译；控制台与文件输出共用一个 worker，关闭文件输出时也需要编译：

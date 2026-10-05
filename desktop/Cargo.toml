@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 gpui = "0.2.2"
 tray-icon = "0.26.0"
+image = { version = "0.25.10", default-features = false, features = ["png"] }

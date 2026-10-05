@@ -14,3 +14,7 @@ server/dist/
 server/www/
 
 *.video.json
+
+# rust
+target/
+*.rs.bk

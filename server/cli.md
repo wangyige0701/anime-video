@@ -17,6 +17,7 @@ CLI 已使用独立的常驻管理进程控制 server/web worker。管理器首�
 
 ```text
 anime-video <start|stop|restart|status> [server|web] [配置覆盖选项]
+anime-video config [--json]
 ```
 
 省略服务名称时会同时操作 `server` 和 `web`；指定服务名称时只操作对应模块。
@@ -27,6 +28,7 @@ anime-video stop web
 anime-video restart server
 anime-video status
 anime-video status server --json
+anime-video config --json
 anime-video dir list --json
 ```
 
@@ -46,6 +48,10 @@ anime-video dir del 0,2 4
 `dir` 不带子命令时显示目录管理帮助。`list` 默认输出带索引的目录表，`list --json` 输出可直接读取的目录数组 JSON。`set` 用一个或多个已存在的目录替换当前配置；`add` 保留现有配置并把一个或多个已存在且未配置的目录追加到末尾；`del` 按索引删除目录，索引可由空格或逗号分隔。Windows cmd 和 PowerShell 中的普通目录使用单个反斜杠；`"D:\\media"` 属于 JavaScript/JSON 转义形式，CLI 会将其作为格式错误拒绝。UNC 路径开头的双反斜杠除外。
 
 ## 配置覆盖
+
+`config` 输出当前已经合并命令行、环境变量和 `config.yaml` 默认值的生效配置。默认格式为
+逐行的 `section.key=value`，`config --json` 输出完整 JSON 对象，供桌面端等调用方读取
+Web 访问地址或其他运行参数；该命令只读取配置，不会启动服务管理器。
 
 `config.yaml` 中每个一级区段的字段都会自动生成对应的长选项，字段名转换为 kebab-case：
 

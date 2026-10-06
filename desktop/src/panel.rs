@@ -1,7 +1,8 @@
 use crate::cli::{self, Service, ServiceAction, ServiceStatus, Snapshot};
+use crate::state::CachedState;
 use gpui::{
     Animation, AnimationExt as _, ClickEvent, Context, PathPromptOptions, Render, Subscription,
-    Window, div, img, prelude::*, pulsating_between, px, rgb,
+    Transformation, Window, div, img, percentage, prelude::*, px, rgb, svg,
 };
 use std::{fs, path::PathBuf, time::Duration};
 
@@ -27,6 +28,8 @@ const ICON_ADD: &str = "\u{e710}";
 const ICON_CLOSE: &str = "\u{e711}";
 const ICON_FOLDER: &str = "\u{e8b7}";
 const ICON_POWER: &str = "\u{e7e8}";
+const ICON_GLOBE: &str = "\u{e774}";
+const LOADER_SVG: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/loader.svg");
 
 #[derive(Clone)]
 enum PendingOperation {
@@ -41,6 +44,7 @@ enum PendingOperation {
 }
 
 pub struct TrayPanel {
+    cache: CachedState,
     api: ServiceStatus,
     web: ServiceStatus,
     directories: Vec<String>,
@@ -53,7 +57,7 @@ pub struct TrayPanel {
 }
 
 impl TrayPanel {
-    pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(cache: CachedState, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let activation_subscription = cx.observe_window_activation(window, |panel, window, _| {
             if window.is_window_active() {
                 panel.was_activated = true;
@@ -61,13 +65,20 @@ impl TrayPanel {
                 window.remove_window();
             }
         });
+        let cached = cache.read();
         let panel = Self {
-            api: ServiceStatus::stopped(Service::Api),
-            web: ServiceStatus::stopped(Service::Web),
-            directories: Vec::new(),
+            cache,
+            api: cached.snapshot.api,
+            web: cached.snapshot.web,
+            directories: cached.snapshot.directories,
             busy: false,
             pending_operation: None,
-            notice: "正在读取状态...".to_string(),
+            notice: if cached.snapshot_loaded {
+                "状态已就绪"
+            } else {
+                "正在预取状态..."
+            }
+            .to_string(),
             was_activated: false,
             path_prompt_open: false,
             _activation_subscription: activation_subscription,
@@ -317,9 +328,20 @@ impl TrayPanel {
         cx.notify();
     }
 
+    fn open_web(&mut self, cx: &mut Context<Self>) {
+        if let Some(web_url) = self.cache.read().web_url {
+            cx.open_url(&web_url);
+            self.notice = "已在浏览器打开网页".to_string();
+        } else {
+            self.notice = "网页地址尚未就绪".to_string();
+        }
+        cx.notify();
+    }
+
     fn apply_snapshot(&mut self, result: Result<Snapshot, String>, success_message: &str) {
         match result {
             Ok(snapshot) => {
+                self.cache.update_snapshot(snapshot.clone());
                 self.api = snapshot.api;
                 self.web = snapshot.web;
                 self.directories = snapshot.directories;
@@ -537,6 +559,7 @@ impl Render for TrayPanel {
         let stop_loading = self.is_global_action_loading(ServiceAction::Stop);
         let restart_loading = self.is_global_action_loading(ServiceAction::Restart);
         let adding_directories = self.is_adding_directories();
+        let can_open_web = self.cache.read().web_url.is_some();
         let start_label = if start_loading {
             "启动中".to_string()
         } else {
@@ -555,7 +578,7 @@ impl Render for TrayPanel {
         let notice = if self.busy {
             "处理中...".to_string()
         } else {
-            shorten(&self.notice, 24)
+            shorten(&self.notice, 14)
         };
 
         div()
@@ -974,6 +997,28 @@ impl Render for TrayPanel {
                     .child(div().flex_1().child(notice))
                     .child(
                         div()
+                            .id("open-web")
+                            .h(px(26.0))
+                            .flex()
+                            .items_center()
+                            .gap_1()
+                            .px_2()
+                            .rounded_md()
+                            .text_color(rgb(if can_open_web { PRIMARY } else { DISABLED }))
+                            .when(can_open_web, |element| {
+                                element
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(PRIMARY_SOFT)))
+                                    .on_click(cx.listener(|panel, _, _, cx| panel.open_web(cx)))
+                            })
+                            .child(fluent_icon(
+                                ICON_GLOBE,
+                                if can_open_web { PRIMARY } else { DISABLED },
+                            ))
+                            .child("网页"),
+                    )
+                    .child(
+                        div()
                             .id("quit")
                             .h(px(26.0))
                             .flex()
@@ -1004,21 +1049,14 @@ fn fluent_icon(glyph: &'static str, color: u32) -> impl IntoElement {
 }
 
 fn loading_indicator(color: u32) -> impl IntoElement {
-    div()
+    svg()
         .size_4()
-        .flex()
-        .items_center()
-        .justify_center()
-        .font_family(ICON_FONT)
-        .text_size(px(13.0))
+        .path(LOADER_SVG)
         .text_color(rgb(color))
-        .child(ICON_REFRESH)
         .with_animation(
             "pending-action-spinner",
-            Animation::new(Duration::from_millis(700))
-                .repeat()
-                .with_easing(pulsating_between(0.25, 1.0)),
-            |element, opacity| element.opacity(opacity),
+            Animation::new(Duration::from_millis(700)).repeat(),
+            |element, delta| element.with_transformation(Transformation::rotate(percentage(delta))),
         )
 }
 

@@ -72,7 +72,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 `server/` 是基于 Koa、TypeScript、`koa-use-decorator-router`、Zod 和 Pino 的 API 服务。主要目录和文件职责如下：
 
 - `app.ts`：开发入口，根据 `server` 或 `web` 参数在分支内动态导入并启动对应服务，不初始化无关模块。
-- `cli.ts`：Commander 命令入口，无参数时向 stdout 输出帮助并正常退出；CLI 的 `start/stop/restart/status` 通过 `cli/manager` 控制跨进程服务，并注册目录管理子命令。
+- `cli.ts`：Commander 命令入口，无参数时向 stdout 输出帮助并正常退出；CLI 的 `start/stop/restart/status` 通过 `cli/manager` 控制跨进程服务，`config --json` 输出当前生效配置，并注册目录管理子命令。
 - `cli-launcher.mjs`：pnpm 开发入口，还原 Windows `pnpm run` 产生的一层参数反斜杠转义，再直接通过 tsx 启动 `cli.ts`；发布产物不使用该启动器。
 - `cli/directories.ts`：目录管理 CLI 子命令，负责目录参数校验、真实路径规范化和索引解析；通过 `Series` 读写目录配置并在变更后刷新系列缓存。
 - `cli/server.ts`：API 实现，创建 Koa 和装饰器路由扫描器，按顺序注册请求日志、错误、body、响应辅助和路由中间件。

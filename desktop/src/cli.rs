@@ -89,9 +89,31 @@ pub struct Snapshot {
     pub directories: Vec<String>,
 }
 
+impl Snapshot {
+    pub fn stopped() -> Self {
+        Self {
+            api: ServiceStatus::stopped(Service::Api),
+            web: ServiceStatus::stopped(Service::Web),
+            directories: Vec::new(),
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct StatusResponse {
     services: Vec<ServiceStatus>,
+}
+
+#[derive(Deserialize)]
+struct ConfigResponse {
+    web: WebConfig,
+}
+
+#[derive(Deserialize)]
+struct WebConfig {
+    protocol: String,
+    host: String,
+    port: u16,
 }
 
 pub fn load_snapshot() -> Result<Snapshot, String> {
@@ -116,6 +138,22 @@ pub fn load_snapshot() -> Result<Snapshot, String> {
         web,
         directories,
     })
+}
+
+pub fn load_web_url() -> Result<String, String> {
+    let response: ConfigResponse = parse_json(&run_cli(&["config", "--json"])?)?;
+    let host = match response.web.host.as_str() {
+        "0.0.0.0" | "::" | "[::]" => "localhost",
+        host => host,
+    };
+    Ok(format!(
+        "{}://{}:{}",
+        response.web.protocol, host, response.web.port
+    ))
+}
+
+pub fn stop_all_services() -> Result<(), String> {
+    run_service_action(ServiceAction::Stop, None)
 }
 
 pub fn run_service_action(action: ServiceAction, service: Option<Service>) -> Result<(), String> {

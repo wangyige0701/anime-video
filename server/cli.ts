@@ -95,6 +95,11 @@ statusCommand.action(async (service: ServiceName | undefined, options: { json?: 
 	printStatus(result, options.json === true);
 });
 
+const configCommand = program.command('config').description('查看当前生效的配置').option('--json', '以 JSON 输出配置');
+configCommand.action((options: { json?: boolean }) => {
+	printConfig(options.json === true);
+});
+
 addDirectoryCommands(program);
 
 program.addHelpText(
@@ -136,6 +141,18 @@ function printStatus(result: ManagerResponse, asJson: boolean) {
 		process.stdout.write(
 			`${service.service.padEnd(8)}${state.padEnd(11)}${pid.padEnd(7)}${uptime.padEnd(10)}${String(service.restartCount).padEnd(10)}${service.lastError ?? '-'}\n`,
 		);
+	}
+}
+
+function printConfig(asJson: boolean) {
+	if (asJson) {
+		process.stdout.write(`${JSON.stringify(config)}\n`);
+		return;
+	}
+	for (const [section, sectionConfig] of Object.entries(config)) {
+		for (const [key, value] of Object.entries(sectionConfig)) {
+			process.stdout.write(`${section}.${key}=${formatDefault(value)}\n`);
+		}
 	}
 }
 

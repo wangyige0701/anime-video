@@ -1,8 +1,10 @@
+use crate::cli;
 use crate::panel::TrayPanel;
 use crate::position;
+use crate::state::CachedState;
 use gpui::{
-    App, AppContext, AsyncApp, Bounds, Context, Global, Render, TitlebarOptions, Window,
-    WindowHandle, WindowKind, WindowOptions, div, point, prelude::*, px, size,
+    App, AppContext, AsyncApp, Bounds, Context, Global, Render, Subscription, TitlebarOptions,
+    Window, WindowHandle, WindowKind, WindowOptions, div, point, prelude::*, px, size,
 };
 use tray_icon::{
     Icon, MouseButton, MouseButtonState, Rect, TrayIcon, TrayIconBuilder, TrayIconEvent,
@@ -14,6 +16,8 @@ const PANEL_HEIGHT: f32 = 390.0;
 pub struct TrayState {
     _icon: TrayIcon,
     _host: WindowHandle<TrayHost>,
+    _quit_subscription: Subscription,
+    cache: CachedState,
     panel: Option<WindowHandle<TrayPanel>>,
 }
 
@@ -28,6 +32,7 @@ impl Render for TrayHost {
 }
 
 pub fn install(cx: &mut App) {
+    let cache = CachedState::new();
     let icon = TrayIconBuilder::new()
         .with_tooltip("动画管理服务")
         .with_icon(application_icon())
@@ -56,11 +61,22 @@ pub fn install(cx: &mut App) {
         )
         .expect("创建托盘宿主窗口失败");
 
+    let quit_subscription = cx.on_app_quit(|_| {
+        if let Err(error) = cli::stop_all_services() {
+            eprintln!("退出时停止服务失败: {error}");
+        }
+        async {}
+    });
+
     cx.set_global(TrayState {
         _icon: icon,
         _host: host,
+        _quit_subscription: quit_subscription,
+        cache: cache.clone(),
         panel: None,
     });
+
+    preload_state(cache, cx);
 
     let (sender, receiver) = async_channel::unbounded();
     TrayIconEvent::set_event_handler(Some(move |event| {
@@ -78,6 +94,41 @@ pub fn install(cx: &mut App) {
     cx.spawn(async move |cx: &mut AsyncApp| {
         while let Ok(rect) = receiver.recv().await {
             let _ = cx.update(move |cx| toggle_panel(rect, cx));
+        }
+    })
+    .detach();
+}
+
+fn preload_state(cache: CachedState, cx: &mut App) {
+    let snapshot_cache = cache.clone();
+    cx.spawn(async move |cx: &mut AsyncApp| {
+        let result = cx
+            .background_executor()
+            .spawn(async { cli::load_snapshot() })
+            .await;
+        match result {
+            Ok(snapshot) => snapshot_cache.update_snapshot(snapshot),
+            Err(error) => eprintln!("预取服务状态失败: {error}"),
+        }
+    })
+    .detach();
+
+    cx.spawn(async move |cx: &mut AsyncApp| {
+        let result = cx
+            .background_executor()
+            .spawn(async { cli::load_web_url() })
+            .await;
+        match result {
+            Ok(web_url) => {
+                cache.update_web_url(web_url);
+                let _ = cx.update(|cx| {
+                    let panel = cx.global::<TrayState>().panel;
+                    if let Some(panel) = panel {
+                        let _ = panel.update(cx, |_, _, cx| cx.notify());
+                    }
+                });
+            }
+            Err(error) => eprintln!("预取网页地址失败: {error}"),
         }
     })
     .detach();
@@ -110,8 +161,9 @@ fn toggle_panel(rect: Rect, cx: &mut App) {
         ..Default::default()
     };
 
+    let cache = cx.global::<TrayState>().cache.clone();
     match cx.open_window(options, |window, cx| {
-        cx.new(|cx| TrayPanel::new(window, cx))
+        cx.new(|cx| TrayPanel::new(cache, window, cx))
     }) {
         Ok(panel) => {
             let _ = panel.update(cx, |_, window, _| {

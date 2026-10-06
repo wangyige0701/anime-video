@@ -7,6 +7,7 @@
 - `server/AGENTS.md`：Koa 服务端、数据层、HLS Node 封装、接口与日志约定。
 - `web/AGENTS.md`：Vue 前端、播放器、数据层、状态管理、样式与组件约定。
 - `hls/AGENTS.md`：C++ 原生扩展、FFmpeg、分片和预览图轨道约定。
+- `desktop/AGENTS.md`：GPUI 托盘窗口、Windows 定位与目录选择器、CLI 调用和桌面交互约定。
 
 子目录文档对其目录内实现提供更具体的约束；根文档负责跨目录边界，不能用根级概述替代子项目规范。修改项目结构、workspace 配置、共享模块或跨项目调用关系时同步维护本文件；只修改单一子项目内部架构时，至少同步维护该子项目的 `AGENTS.md`。
 

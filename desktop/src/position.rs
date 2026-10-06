@@ -1,7 +1,7 @@
 use gpui::{App, Bounds, DisplayId, Pixels, Window, point, px, size};
 use tray_icon::Rect;
 
-const TRAY_GAP: i32 = 8;
+const TRAY_GAP: i32 = -2;
 
 pub struct TrayPlacement {
     pub bounds: Bounds<Pixels>,

@@ -8,8 +8,8 @@ use tray_icon::{
     Icon, MouseButton, MouseButtonState, Rect, TrayIcon, TrayIconBuilder, TrayIconEvent,
 };
 
-const PANEL_WIDTH: f32 = 344.0;
-const PANEL_HEIGHT: f32 = 456.0;
+const PANEL_WIDTH: f32 = 232.0;
+const PANEL_HEIGHT: f32 = 390.0;
 
 pub struct TrayState {
     _icon: TrayIcon,
@@ -29,7 +29,7 @@ impl Render for TrayHost {
 
 pub fn install(cx: &mut App) {
     let icon = TrayIconBuilder::new()
-        .with_tooltip("动漫视频服务管理")
+        .with_tooltip("动画管理服务")
         .with_icon(application_icon())
         .with_menu_on_left_click(false)
         .with_menu_on_right_click(false)
@@ -98,7 +98,7 @@ fn toggle_panel(rect: Rect, cx: &mut App) {
     let options = WindowOptions {
         window_bounds: Some(gpui::WindowBounds::Windowed(placement.bounds)),
         titlebar: Some(TitlebarOptions {
-            title: Some("动漫视频".into()),
+            title: Some("动画管理服务".into()),
             appears_transparent: true,
             ..Default::default()
         }),

@@ -245,19 +245,22 @@ impl TrayPanel {
         let status = self.status_for(service);
         let (color, label) = status_presentation(&status.state);
         let service_key = service.key();
+        let can_stop_or_restart = status.state == "running";
+        let action_color = if can_stop_or_restart { DANGER } else { MUTED };
+        let restart_color = if can_stop_or_restart { WARNING } else { MUTED };
 
         div()
             .id(("service-row", service_key))
-            .h(px(56.0))
+            .h(px(48.0))
             .flex()
             .items_center()
-            .gap_2()
-            .px_3()
+            .gap_1()
+            .px_2()
             .border_b_1()
             .border_color(rgb(BORDER))
             .child(
                 div()
-                    .w(px(112.0))
+                    .w(px(76.0))
                     .flex()
                     .items_center()
                     .gap_2()
@@ -268,7 +271,7 @@ impl TrayPanel {
                             .flex_col()
                             .child(
                                 div()
-                                    .text_sm()
+                                    .text_xs()
                                     .font_weight(gpui::FontWeight::SEMIBOLD)
                                     .text_color(rgb(INK))
                                     .child(service.label()),
@@ -285,8 +288,8 @@ impl TrayPanel {
                     .child(
                         div()
                             .id(("start", service_key))
-                            .w(px(30.0))
-                            .h(px(30.0))
+                            .w(px(24.0))
+                            .h(px(24.0))
                             .flex()
                             .items_center()
                             .justify_center()
@@ -303,49 +306,55 @@ impl TrayPanel {
                     .child(
                         div()
                             .id(("stop", service_key))
-                            .w(px(30.0))
-                            .h(px(30.0))
+                            .w(px(24.0))
+                            .h(px(24.0))
                             .flex()
                             .items_center()
                             .justify_center()
-                            .cursor_pointer()
                             .rounded_md()
                             .text_sm()
-                            .text_color(rgb(DANGER))
-                            .hover(|style| style.bg(rgb(0xffedf0)))
-                            .on_click(cx.listener(move |panel, _, _, cx| {
-                                panel.run_action(ServiceAction::Stop, Some(service), cx)
-                            }))
+                            .text_color(rgb(action_color))
+                            .when(can_stop_or_restart, |element| {
+                                element
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0xffedf0)))
+                                    .on_click(cx.listener(move |panel, _, _, cx| {
+                                        panel.run_action(ServiceAction::Stop, Some(service), cx)
+                                    }))
+                            })
                             .child("■"),
                     )
                     .child(
                         div()
                             .id(("restart", service_key))
-                            .w(px(30.0))
-                            .h(px(30.0))
+                            .w(px(24.0))
+                            .h(px(24.0))
                             .flex()
                             .items_center()
                             .justify_center()
-                            .cursor_pointer()
                             .rounded_md()
-                            .text_base()
-                            .text_color(rgb(WARNING))
-                            .hover(|style| style.bg(rgb(0xfff3e6)))
-                            .on_click(cx.listener(move |panel, _, _, cx| {
-                                panel.run_action(ServiceAction::Restart, Some(service), cx)
-                            }))
+                            .text_sm()
+                            .text_color(rgb(restart_color))
+                            .when(can_stop_or_restart, |element| {
+                                element
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0xfff3e6)))
+                                    .on_click(cx.listener(move |panel, _, _, cx| {
+                                        panel.run_action(ServiceAction::Restart, Some(service), cx)
+                                    }))
+                            })
                             .child("↻"),
                     )
                     .child(
                         div()
                             .id(("logs", service_key))
-                            .h(px(30.0))
+                            .h(px(24.0))
                             .flex()
                             .items_center()
                             .justify_center()
                             .cursor_pointer()
                             .rounded_md()
-                            .px_2()
+                            .px_1()
                             .text_xs()
                             .text_color(rgb(MUTED))
                             .hover(|style| style.bg(rgb(SUBTLE)).text_color(rgb(INK)))
@@ -362,6 +371,9 @@ impl Render for TrayPanel {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let directories = self.directories.clone();
         let (overall_color, overall_label) = self.aggregate_status();
+        let has_running_service = self.web.state == "running" || self.api.state == "running";
+        let all_stop_color = if has_running_service { DANGER } else { MUTED };
+        let all_restart_color = if has_running_service { WARNING } else { MUTED };
         let notice = if self.busy {
             "处理中...".to_string()
         } else {
@@ -382,19 +394,19 @@ impl Render for TrayPanel {
             .text_color(rgb(INK))
             .child(
                 div()
-                    .h(px(52.0))
+                    .h(px(42.0))
                     .flex()
                     .items_center()
-                    .px_3()
-                    .gap_2()
+                    .px_2()
+                    .gap_1()
                     .border_b_1()
                     .border_color(rgb(BORDER))
                     .child(
                         div()
                             .flex_1()
-                            .text_base()
+                            .text_sm()
                             .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .child("动漫视频"),
+                            .child("动画管理服务"),
                     )
                     .child(
                         div()
@@ -409,8 +421,8 @@ impl Render for TrayPanel {
                     .child(
                         div()
                             .id("refresh")
-                            .w(px(30.0))
-                            .h(px(30.0))
+                            .w(px(24.0))
+                            .h(px(24.0))
                             .flex()
                             .items_center()
                             .justify_center()
@@ -425,18 +437,18 @@ impl Render for TrayPanel {
             )
             .child(
                 div()
-                    .h(px(48.0))
+                    .h(px(40.0))
                     .flex()
                     .items_center()
-                    .gap_2()
-                    .px_3()
+                    .gap_1()
+                    .px_2()
                     .border_b_1()
                     .border_color(rgb(BORDER))
                     .child(
                         div()
                             .id("all-start")
                             .flex_1()
-                            .h(px(30.0))
+                            .h(px(26.0))
                             .flex()
                             .items_center()
                             .justify_center()
@@ -450,79 +462,85 @@ impl Render for TrayPanel {
                             .on_click(cx.listener(|panel, _, _, cx| {
                                 panel.run_action(ServiceAction::Start, None, cx)
                             }))
-                            .child("▶  启动"),
+                            .child("▶ 启动"),
                     )
                     .child(
                         div()
                             .id("all-stop")
                             .flex_1()
-                            .h(px(30.0))
+                            .h(px(26.0))
                             .flex()
                             .items_center()
                             .justify_center()
                             .gap_1()
-                            .cursor_pointer()
                             .rounded_md()
                             .bg(rgb(0xffedf0))
                             .text_xs()
-                            .text_color(rgb(DANGER))
-                            .hover(|style| style.bg(rgb(0xffe1e6)))
-                            .on_click(cx.listener(|panel, _, _, cx| {
-                                panel.run_action(ServiceAction::Stop, None, cx)
-                            }))
-                            .child("■  停止"),
+                            .text_color(rgb(all_stop_color))
+                            .when(has_running_service, |element| {
+                                element
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0xffe1e6)))
+                                    .on_click(cx.listener(|panel, _, _, cx| {
+                                        panel.run_action(ServiceAction::Stop, None, cx)
+                                    }))
+                            })
+                            .child("■ 停止"),
                     )
                     .child(
                         div()
                             .id("all-restart")
                             .flex_1()
-                            .h(px(30.0))
+                            .h(px(26.0))
                             .flex()
                             .items_center()
                             .justify_center()
                             .gap_1()
-                            .cursor_pointer()
                             .rounded_md()
                             .bg(rgb(0xfff3e6))
                             .text_xs()
-                            .text_color(rgb(WARNING))
-                            .hover(|style| style.bg(rgb(0xffead5)))
-                            .on_click(cx.listener(|panel, _, _, cx| {
-                                panel.run_action(ServiceAction::Restart, None, cx)
-                            }))
-                            .child("↻  重启"),
+                            .text_color(rgb(all_restart_color))
+                            .when(has_running_service, |element| {
+                                element
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(0xffead5)))
+                                    .on_click(cx.listener(|panel, _, _, cx| {
+                                        panel.run_action(ServiceAction::Restart, None, cx)
+                                    }))
+                            })
+                            .child("↻ 重启"),
                     ),
             )
             .child(self.service_row(Service::Web, cx))
             .child(self.service_row(Service::Api, cx))
             .child(
                 div()
-                    .h(px(42.0))
+                    .h(px(34.0))
                     .flex()
                     .items_center()
                     .justify_between()
-                    .px_3()
+                    .px_2()
                     .child(
                         div()
-                            .text_sm()
+                            .text_xs()
                             .font_weight(gpui::FontWeight::SEMIBOLD)
                             .child("视频检索目录"),
                     )
                     .child(
                         div()
                             .id("add-directory")
-                            .h(px(28.0))
+                            .h(px(24.0))
                             .flex()
                             .items_center()
                             .justify_center()
                             .cursor_pointer()
                             .rounded_md()
-                            .px_2()
+                            .px_1()
                             .text_xs()
                             .text_color(rgb(PRIMARY))
                             .hover(|style| style.bg(rgb(0xeaf2ff)))
                             .on_click(cx.listener(Self::choose_directories))
-                            .child("＋ 添加"),
+                            .child("＋"),
                     ),
             )
             .child(
@@ -530,11 +548,11 @@ impl Render for TrayPanel {
                     .id("directory-list")
                     .flex_1()
                     .overflow_y_scroll()
-                    .px_3()
+                    .px_2()
                     .children(directories.iter().enumerate().map(|(index, directory)| {
                         div()
                             .id(("directory", index))
-                            .h(px(34.0))
+                            .h(px(30.0))
                             .flex()
                             .items_center()
                             .gap_2()
@@ -545,13 +563,13 @@ impl Render for TrayPanel {
                                     .flex_1()
                                     .text_xs()
                                     .text_color(rgb(MUTED))
-                                    .child(shorten(directory, 36)),
+                                    .child(shorten(directory, 22)),
                             )
                             .child(
                                 div()
                                     .id(("remove-directory", index))
-                                    .w(px(26.0))
-                                    .h(px(26.0))
+                                    .w(px(22.0))
+                                    .h(px(22.0))
                                     .flex()
                                     .items_center()
                                     .justify_center()
@@ -569,7 +587,7 @@ impl Render for TrayPanel {
                     .when(directories.is_empty(), |element| {
                         element.child(
                             div()
-                                .h(px(44.0))
+                                .h(px(38.0))
                                 .flex()
                                 .items_center()
                                 .text_xs()
@@ -580,10 +598,10 @@ impl Render for TrayPanel {
             )
             .child(
                 div()
-                    .h(px(28.0))
+                    .h(px(24.0))
                     .flex()
                     .items_center()
-                    .px_3()
+                    .px_2()
                     .bg(rgb(SUBTLE))
                     .text_xs()
                     .text_color(rgb(MUTED))
@@ -592,18 +610,18 @@ impl Render for TrayPanel {
             .child(
                 div()
                     .id("quit")
-                    .h(px(40.0))
+                    .h(px(34.0))
                     .flex()
                     .items_center()
                     .justify_center()
                     .cursor_pointer()
                     .border_t_1()
                     .border_color(rgb(BORDER))
-                    .text_sm()
+                    .text_xs()
                     .text_color(rgb(MUTED))
                     .hover(|style| style.bg(rgb(0xffedf0)).text_color(rgb(DANGER)))
                     .on_click(cx.listener(|_, _, _, cx| cx.quit()))
-                    .child("退出动漫视频"),
+                    .child("退出动画管理服务"),
             )
     }
 }

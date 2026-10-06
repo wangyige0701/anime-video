@@ -1,11 +1,18 @@
 use crate::cli::{self, Service, ServiceAction, ServiceStatus, Snapshot};
+use crate::folder_picker;
+use crate::position;
 use crate::state::CachedState;
 use gpui::{
-    Animation, AnimationExt as _, AnyView, App, ClickEvent, Context, PathPromptOptions, Render,
-    SharedString, Subscription, Transformation, Window, div, img, percentage, prelude::*, px, rgb,
-    svg,
+    Animation, AnimationExt as _, AnyView, App, ClickEvent, Context, Render, SharedString,
+    Subscription, Transformation, Window, div, img, percentage, prelude::*, px, rgb, size, svg,
 };
 use std::{fs, path::PathBuf, time::Duration};
+use tray_icon::Rect;
+
+pub const PANEL_WIDTH: f32 = 232.0;
+const PANEL_MIN_HEIGHT: f32 = 390.0;
+const DIRECTORY_ROW_HEIGHT: f32 = 34.0;
+const MAX_VISIBLE_DIRECTORY_ROWS: usize = 5;
 
 const INK: u32 = 0x172033;
 const MUTED: u32 = 0x748095;
@@ -17,6 +24,7 @@ const SUBTLE: u32 = 0xf1f3f7;
 const PRIMARY: u32 = 0x3b5ccc;
 const PRIMARY_SOFT: u32 = 0xeef2ff;
 const SUCCESS: u32 = 0x16a34a;
+const SUCCESS_SOFT: u32 = 0xecfdf3;
 const WARNING: u32 = 0xd97706;
 const DANGER: u32 = 0xdc2626;
 
@@ -30,11 +38,10 @@ const ICON_CLOSE: &str = "\u{e711}";
 const ICON_FOLDER: &str = "\u{e8b7}";
 const ICON_POWER: &str = "\u{e7e8}";
 const ICON_GLOBE: &str = "\u{e774}";
-const LOADER_SVG: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/loader.svg");
+const LOADING_SVG: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/loading.svg");
 
 #[derive(Clone)]
 enum PendingOperation {
-    Refresh,
     ServiceAction {
         action: ServiceAction,
         services: Vec<Service>,
@@ -50,11 +57,15 @@ pub struct TrayPanel {
     web: ServiceStatus,
     directories: Vec<String>,
     busy: bool,
+    refreshing: bool,
     pending_operation: Option<PendingOperation>,
     notice: String,
+    tray_rect: Rect,
+    panel_height: f32,
     was_activated: bool,
     path_prompt_open: bool,
     _activation_subscription: Subscription,
+    _bounds_subscription: Subscription,
 }
 
 struct HoverHint {
@@ -76,13 +87,22 @@ impl Render for HoverHint {
 }
 
 impl TrayPanel {
-    pub fn new(cache: CachedState, window: &mut Window, cx: &mut Context<Self>) -> Self {
+    pub fn new(
+        cache: CachedState,
+        tray_rect: Rect,
+        panel_height: f32,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let activation_subscription = cx.observe_window_activation(window, |panel, window, _| {
             if window.is_window_active() {
                 panel.was_activated = true;
             } else if panel.was_activated && !panel.path_prompt_open {
                 window.remove_window();
             }
+        });
+        let bounds_subscription = cx.observe_window_bounds(window, |panel, window, _| {
+            position::bring_to_front_and_align(window, panel.tray_rect);
         });
         let cached = cache.read();
         let panel = Self {
@@ -91,6 +111,7 @@ impl TrayPanel {
             web: cached.snapshot.web,
             directories: cached.snapshot.directories,
             busy: false,
+            refreshing: false,
             pending_operation: None,
             notice: if cached.snapshot_loaded {
                 "状态已就绪"
@@ -98,9 +119,12 @@ impl TrayPanel {
                 "正在预取状态..."
             }
             .to_string(),
+            tray_rect,
+            panel_height,
             was_activated: false,
             path_prompt_open: false,
             _activation_subscription: activation_subscription,
+            _bounds_subscription: bounds_subscription,
         };
         let panel_entity = cx.entity();
         cx.defer(move |cx| panel_entity.update(cx, |panel, cx| panel.refresh(cx)));
@@ -108,11 +132,10 @@ impl TrayPanel {
     }
 
     fn refresh(&mut self, cx: &mut Context<Self>) {
-        if self.busy {
+        if self.refreshing || self.busy {
             return;
         }
-        self.busy = true;
-        self.pending_operation = Some(PendingOperation::Refresh);
+        self.refreshing = true;
         self.notice = "正在刷新...".to_string();
         cx.notify();
 
@@ -122,9 +145,12 @@ impl TrayPanel {
                 .spawn(async { cli::load_snapshot() })
                 .await;
             let _ = this.update(cx, |panel, cx| {
-                panel.busy = false;
-                panel.pending_operation = None;
+                panel.refreshing = false;
+                let active_notice = panel.busy.then(|| panel.notice.clone());
                 panel.apply_snapshot(result, "状态已刷新");
+                if let Some(notice) = active_notice {
+                    panel.notice = notice;
+                }
                 cx.notify();
             });
         })
@@ -156,6 +182,8 @@ impl TrayPanel {
         self.notice = format!("正在{}{}...", action.label(), target);
         cx.notify();
 
+        let cache = self.cache.clone();
+        // 任务由应用执行器持有，面板关闭只会让最后的界面更新失败，不会取消 CLI 命令。
         cx.spawn(async move |this, cx| {
             let result = cx
                 .background_executor()
@@ -166,6 +194,9 @@ impl TrayPanel {
                     cli::load_snapshot()
                 })
                 .await;
+            if let Ok(snapshot) = &result {
+                cache.update_snapshot(snapshot.clone());
+            }
             let _ = this.update(cx, |panel, cx| {
                 panel.busy = false;
                 panel.pending_operation = None;
@@ -191,7 +222,7 @@ impl TrayPanel {
     }
 
     fn is_refreshing(&self) -> bool {
-        matches!(self.pending_operation, Some(PendingOperation::Refresh))
+        self.refreshing
     }
 
     fn is_global_action_loading(&self, action: ServiceAction) -> bool {
@@ -230,35 +261,38 @@ impl TrayPanel {
         )
     }
 
-    fn choose_directories(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
+    fn choose_directories(&mut self, _: &ClickEvent, window: &mut Window, cx: &mut Context<Self>) {
         if self.busy {
             return;
         }
 
-        // 系统路径选择器会让浮层暂时失焦，不能在它仍引用窗口句柄时关闭面板。
+        // 系统选择器使用独立 STA 消息循环；选择期间隐藏面板，避免置顶浮层遮挡对话框。
         self.path_prompt_open = true;
         self.busy = true;
         self.pending_operation = Some(PendingOperation::AddDirectories);
         self.notice = "正在选择目录...".to_string();
         cx.notify();
 
-        let selection = cx.prompt_for_paths(PathPromptOptions {
-            files: false,
-            directories: true,
-            multiple: true,
-            prompt: Some("选择视频检索目录".into()),
-        });
+        let panel_handle = position::window_handle(window);
+        position::set_topmost_handle(panel_handle, false);
+        position::set_visible_handle(panel_handle, false);
+        let selection = folder_picker::choose_directories();
 
         cx.spawn(async move |this, cx| {
-            let selection = selection.await;
+            let selection = selection
+                .recv()
+                .await
+                .unwrap_or_else(|_| Err("目录选择器意外关闭，请重试".to_string()));
             let _ = this.update(cx, |panel, cx| {
                 panel.path_prompt_open = false;
                 cx.notify();
             });
+            position::set_visible_handle(panel_handle, true);
+            position::set_topmost_handle(panel_handle, true);
 
             let paths = match selection {
-                Ok(Ok(Some(paths))) if !paths.is_empty() => paths,
-                Ok(Ok(_)) => {
+                Ok(Some(paths)) if !paths.is_empty() => paths,
+                Ok(_) => {
                     let _ = this.update(cx, |panel, cx| {
                         panel.busy = false;
                         panel.pending_operation = None;
@@ -267,20 +301,11 @@ impl TrayPanel {
                     });
                     return;
                 }
-                Ok(Err(error)) => {
-                    let _ = this.update(cx, |panel, cx| {
-                        panel.busy = false;
-                        panel.pending_operation = None;
-                        panel.notice = compact_error(&error.to_string());
-                        cx.notify();
-                    });
-                    return;
-                }
                 Err(error) => {
                     let _ = this.update(cx, |panel, cx| {
                         panel.busy = false;
                         panel.pending_operation = None;
-                        panel.notice = compact_error(&error.to_string());
+                        panel.notice = compact_error(&error);
                         cx.notify();
                     });
                     return;
@@ -397,6 +422,15 @@ impl TrayPanel {
         }
     }
 
+    fn resize_for_directories(&mut self, window: &mut Window) {
+        let height = panel_height_for_directory_count(self.directories.len());
+        if (height - self.panel_height).abs() < f32::EPSILON {
+            return;
+        }
+        self.panel_height = height;
+        window.resize(size(px(PANEL_WIDTH), px(height)));
+    }
+
     fn service_row(&self, service: Service, cx: &mut Context<Self>) -> impl IntoElement {
         let status = self.status_for(service);
         let (color, label) = status_presentation(&status.state);
@@ -407,7 +441,7 @@ impl TrayPanel {
         let stop_loading = self.is_service_action_loading(service, ServiceAction::Stop);
         let restart_loading = self.is_service_action_loading(service, ServiceAction::Restart);
         let start_color = if can_start || start_loading {
-            PRIMARY
+            SUCCESS
         } else {
             DISABLED
         };
@@ -470,7 +504,7 @@ impl TrayPanel {
                             .when(can_start, |element| {
                                 element
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(PRIMARY_SOFT)))
+                                    .hover(|style| style.bg(rgb(SUCCESS_SOFT)))
                                     .on_click(cx.listener(move |panel, _, _, cx| {
                                         panel.run_actions(
                                             ServiceAction::Start,
@@ -481,7 +515,7 @@ impl TrayPanel {
                                     }))
                             })
                             .when(start_loading, |element| {
-                                element.child(loading_indicator(PRIMARY))
+                                element.child(loading_indicator(SUCCESS))
                             })
                             .when(!start_loading, |element| {
                                 element.child(fluent_icon(ICON_PLAY, start_color))
@@ -569,7 +603,8 @@ impl TrayPanel {
 }
 
 impl Render for TrayPanel {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.resize_for_directories(window);
         let directories = self.directories.clone();
         let (overall_color, overall_label) = self.aggregate_status();
         let startable_services = self.startable_services();
@@ -671,7 +706,7 @@ impl Render for TrayPanel {
                             .justify_center()
                             .rounded_md()
                             .tooltip(tooltip("刷新服务状态"))
-                            .when(!self.busy, |element| {
+                            .when(!self.busy && !refreshing, |element| {
                                 element
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(SUBTLE)))
@@ -732,13 +767,13 @@ impl Render for TrayPanel {
                                     .rounded_md()
                                     .tooltip(tooltip("启动所有未运行的服务"))
                                     .bg(rgb(if can_start_all || start_loading {
-                                        PRIMARY_SOFT
+                                        SUCCESS_SOFT
                                     } else {
                                         SUBTLE
                                     }))
                                     .text_xs()
                                     .text_color(rgb(if can_start_all || start_loading {
-                                        PRIMARY
+                                        SUCCESS
                                     } else {
                                         DISABLED
                                     }))
@@ -746,7 +781,7 @@ impl Render for TrayPanel {
                                         let services = startable_services.clone();
                                         element
                                             .cursor_pointer()
-                                            .hover(|style| style.bg(rgb(0xdbeafe)))
+                                            .hover(|style| style.bg(rgb(0xdcfce7)))
                                             .on_click(cx.listener(move |panel, _, _, cx| {
                                                 panel.run_actions(
                                                     ServiceAction::Start,
@@ -757,12 +792,12 @@ impl Render for TrayPanel {
                                             }))
                                     })
                                     .when(start_loading, |element| {
-                                        element.child(loading_indicator(PRIMARY))
+                                        element.child(loading_indicator(SUCCESS))
                                     })
                                     .when(!start_loading, |element| {
                                         element.child(fluent_icon(
                                             ICON_PLAY,
-                                            if can_start_all { PRIMARY } else { DISABLED },
+                                            if can_start_all { SUCCESS } else { DISABLED },
                                         ))
                                     })
                                     .child(start_label),
@@ -1072,7 +1107,7 @@ fn tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> A
     }
 }
 
-fn fluent_icon(glyph: &'static str, color: u32) -> impl IntoElement {
+fn fluent_icon(glyph: &'static str, color: u32) -> gpui::Div {
     div()
         .size_4()
         .flex()
@@ -1087,13 +1122,18 @@ fn fluent_icon(glyph: &'static str, color: u32) -> impl IntoElement {
 fn loading_indicator(color: u32) -> impl IntoElement {
     svg()
         .size_4()
-        .path(LOADER_SVG)
+        .path(LOADING_SVG)
         .text_color(rgb(color))
         .with_animation(
             "pending-action-spinner",
-            Animation::new(Duration::from_millis(700)).repeat(),
+            Animation::new(Duration::from_millis(1_200)).repeat(),
             |element, delta| element.with_transformation(Transformation::rotate(percentage(delta))),
         )
+}
+
+pub fn panel_height_for_directory_count(directory_count: usize) -> f32 {
+    let visible_rows = directory_count.clamp(1, MAX_VISIBLE_DIRECTORY_ROWS);
+    PANEL_MIN_HEIGHT + (visible_rows.saturating_sub(1) as f32 * DIRECTORY_ROW_HEIGHT)
 }
 
 fn status_presentation(state: &str) -> (u32, &'static str) {
@@ -1160,4 +1200,18 @@ fn shorten(value: &str, limit: usize) -> String {
             .take(limit.saturating_sub(3))
             .collect::<String>()
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn panel_height_grows_until_directory_limit() {
+        assert_eq!(panel_height_for_directory_count(0), PANEL_MIN_HEIGHT);
+        assert_eq!(panel_height_for_directory_count(1), PANEL_MIN_HEIGHT);
+        assert_eq!(panel_height_for_directory_count(2), 424.0);
+        assert_eq!(panel_height_for_directory_count(5), 526.0);
+        assert_eq!(panel_height_for_directory_count(8), 526.0);
+    }
 }

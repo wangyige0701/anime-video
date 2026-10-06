@@ -1,5 +1,5 @@
 use crate::cli;
-use crate::panel::TrayPanel;
+use crate::panel::{PANEL_WIDTH, TrayPanel, panel_height_for_directory_count};
 use crate::position;
 use crate::state::CachedState;
 use gpui::{
@@ -9,9 +9,6 @@ use gpui::{
 use tray_icon::{
     Icon, MouseButton, MouseButtonState, Rect, TrayIcon, TrayIconBuilder, TrayIconEvent,
 };
-
-const PANEL_WIDTH: f32 = 232.0;
-const PANEL_HEIGHT: f32 = 390.0;
 
 pub struct TrayState {
     _icon: TrayIcon,
@@ -83,7 +80,7 @@ pub fn install(cx: &mut App) {
         if let TrayIconEvent::Click {
             rect,
             button: MouseButton::Left | MouseButton::Right,
-            button_state: MouseButtonState::Down,
+            button_state: MouseButtonState::Up,
             ..
         } = event
         {
@@ -145,7 +142,9 @@ fn toggle_panel(rect: Rect, cx: &mut App) {
         }
     }
 
-    let placement = position::beside_tray_icon(rect, PANEL_WIDTH, PANEL_HEIGHT, cx);
+    let cache = cx.global::<TrayState>().cache.clone();
+    let panel_height = panel_height_for_directory_count(cache.read().snapshot.directories.len());
+    let placement = position::beside_tray_icon(rect, PANEL_WIDTH, panel_height, cx);
     let options = WindowOptions {
         window_bounds: Some(gpui::WindowBounds::Windowed(placement.bounds)),
         titlebar: Some(TitlebarOptions {
@@ -161,9 +160,8 @@ fn toggle_panel(rect: Rect, cx: &mut App) {
         ..Default::default()
     };
 
-    let cache = cx.global::<TrayState>().cache.clone();
     match cx.open_window(options, |window, cx| {
-        cx.new(|cx| TrayPanel::new(cache, window, cx))
+        cx.new(|cx| TrayPanel::new(cache, rect, panel_height, window, cx))
     }) {
         Ok(panel) => {
             let _ = panel.update(cx, |_, window, _| {

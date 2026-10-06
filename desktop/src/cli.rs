@@ -117,8 +117,20 @@ struct WebConfig {
 }
 
 pub fn load_snapshot() -> Result<Snapshot, String> {
-    let response: StatusResponse = parse_json(&run_cli(&["status", "--json"])?)?;
-    let directories: Vec<String> = parse_json(&run_cli(&["dir", "list", "--json"])?)?;
+    let (status, directories) = std::thread::scope(|scope| {
+        let status = scope.spawn(|| run_cli(&["status", "--json"]));
+        let directories = scope.spawn(|| run_cli(&["dir", "list", "--json"]));
+        (
+            status
+                .join()
+                .map_err(|_| "状态查询线程意外退出".to_string()),
+            directories
+                .join()
+                .map_err(|_| "目录查询线程意外退出".to_string()),
+        )
+    });
+    let response: StatusResponse = parse_json(&status??)?;
+    let directories: Vec<String> = parse_json(&directories??)?;
 
     let api = response
         .services

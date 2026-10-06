@@ -40,6 +40,79 @@ pub fn bring_to_front_and_align(window: &Window, tray_rect: Rect) {
 pub fn bring_to_front_and_align(_: &Window, _: Rect) {}
 
 #[cfg(windows)]
+pub fn set_topmost_handle(handle: Option<isize>, topmost: bool) {
+    use std::ffi::c_void;
+    use windows::Win32::{
+        Foundation::HWND,
+        UI::WindowsAndMessaging::{
+            HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE,
+            SetForegroundWindow, SetWindowPos,
+        },
+    };
+
+    let Some(handle) = handle else {
+        return;
+    };
+    let hwnd = HWND(handle as *mut c_void);
+    let insert_after = if topmost {
+        HWND_TOPMOST
+    } else {
+        HWND_NOTOPMOST
+    };
+    let _ = unsafe {
+        SetWindowPos(
+            hwnd,
+            Some(insert_after),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+        )
+    };
+    if topmost {
+        let _ = unsafe { SetForegroundWindow(hwnd) };
+    }
+}
+
+#[cfg(not(windows))]
+pub fn set_topmost_handle(_: Option<isize>, _: bool) {}
+
+#[cfg(windows)]
+pub fn set_visible_handle(handle: Option<isize>, visible: bool) {
+    use std::ffi::c_void;
+    use windows::Win32::{
+        Foundation::HWND,
+        UI::WindowsAndMessaging::{SW_HIDE, SW_SHOWNOACTIVATE, ShowWindow},
+    };
+
+    let Some(handle) = handle else {
+        return;
+    };
+    let command = if visible { SW_SHOWNOACTIVATE } else { SW_HIDE };
+    let _ = unsafe { ShowWindow(HWND(handle as *mut c_void), command) };
+}
+
+#[cfg(not(windows))]
+pub fn set_visible_handle(_: Option<isize>, _: bool) {}
+
+#[cfg(windows)]
+pub fn window_handle(window: &Window) -> Option<isize> {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    let handle = HasWindowHandle::window_handle(window).ok()?;
+    match handle.as_raw() {
+        RawWindowHandle::Win32(handle) => Some(handle.hwnd.get()),
+        _ => None,
+    }
+}
+
+#[cfg(not(windows))]
+pub fn window_handle(_: &Window) -> Option<isize> {
+    None
+}
+
+#[cfg(windows)]
 pub fn beside_tray_icon(
     tray_rect: Rect,
     panel_width: f32,

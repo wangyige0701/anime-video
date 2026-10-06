@@ -3,7 +3,7 @@
 `server/cli.ts` 提供基于 commander 的服务命令入口。`pnpm server cli` 无参数调用时
 向 stdout 显示帮助并正常退出（退出码 0），不会加载服务模块。
 `pnpm server dev` 和 `pnpm server dev:web` 脚本通过 `server/app.ts` 启动服务。
-Windows 下的 `server/cli-launcher.mjs` 会还原 `pnpm run` 对参数反斜杠产生的一层转义；根 `back.cmd` 的 `cli` 分支直接调用该入口，避免参数再次经过 workspace 的 `pnpm run`。发布产物仍直接使用 `node dist/cli.js`，不经过开发启动器。
+Windows 下的 `server/cli-launcher.mjs` 会还原 `pnpm run` 对参数反斜杠产生的一层转义；根 `back.cmd` 的 `cli` 分支直接调用该入口，避免参数再次经过 workspace 的 `pnpm run`。启动器通过 Node 的 `--import tsx` 在同一进程加载 TypeScript，并预加载 `cli-userinfo-fallback.cjs`：仅当 Windows 的 `uv_os_get_passwd` 因 `ENOMEM` 失败时，才从当前用户环境变量补全 `os.userInfo()`，避免 tsx 在创建临时目录前退出；manager 和 worker 会继承这两项加载参数。发布产物仍直接使用 `node dist/cli.js`，不经过开发启动器。
 
 CLI 已使用独立的常驻管理进程控制 server/web worker。管理器首次由 `start` 按需启动，
 后续 CLI 调用通过本地 IPC 复用同一个管理器及其子进程句柄；不会因为每次执行 CLI

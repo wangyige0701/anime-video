@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const serverDirectory = fileURLToPath(new URL('.', import.meta.url));
-const tsxCli = fileURLToPath(import.meta.resolve('tsx/cli'));
+const userInfoFallback = fileURLToPath(new URL('./cli-userinfo-fallback.cjs', import.meta.url));
 
 export function decodePnpmScriptArgument(argument) {
 	if (process.platform !== 'win32') {
@@ -19,11 +19,15 @@ export async function main(argv = process.argv.slice(2)) {
 		pnpmLifecycleEvent === 'server' || pnpmLifecycleEvent === 'cli'
 			? forwardedArguments.map(decodePnpmScriptArgument)
 			: forwardedArguments;
-	const child = spawn(process.execPath, [tsxCli, 'cli.ts', ...cliArguments], {
-		cwd: serverDirectory,
-		stdio: 'inherit',
-		windowsHide: true,
-	});
+	const child = spawn(
+		process.execPath,
+		['--require', userInfoFallback, '--import', 'tsx', 'cli.ts', ...cliArguments],
+		{
+			cwd: serverDirectory,
+			stdio: 'inherit',
+			windowsHide: true,
+		},
+	);
 	const exitCode = await new Promise((resolve, reject) => {
 		child.once('error', reject);
 		child.once('exit', resolve);

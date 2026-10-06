@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import net from 'node:net';
 import {
 	managerResponseSchema,
+	serviceNames,
 	type ManagerAction,
 	type ManagerRequest,
 	type ManagerResponse,
@@ -17,7 +18,14 @@ const requestTimeoutMs = 30_000;
 export async function request(action: ManagerAction, target: ServiceName | undefined, argv: readonly string[]) {
 	// status 不会拉起后台 manager；变更命令在端点不可达时才按需创建它。
 	if (action === 'status') {
-		return connect(getEndpoint(), { action, target, argv: [...argv] });
+		try {
+			return await connect(getEndpoint(), { action, target, argv: [...argv] });
+		} catch (error) {
+			if (isConnectionError(error)) {
+				return stoppedResponse(target);
+			}
+			throw error;
+		}
 	}
 
 	try {
@@ -29,6 +37,26 @@ export async function request(action: ManagerAction, target: ServiceName | undef
 		await startManager();
 		return connect(getEndpoint(), { action, target, argv: [...argv] });
 	}
+}
+
+function stoppedResponse(target: ServiceName | undefined): ManagerResponse {
+	const targets = target ? [target] : [...serviceNames];
+	return {
+		version: 1,
+		requestId: randomUUID(),
+		ok: true,
+		services: targets.map((service) => ({
+			service,
+			instanceId: null,
+			state: 'stopped' as const,
+			pid: null,
+			startedAt: null,
+			uptimeMs: 0,
+			restartCount: 0,
+			lastExit: null,
+			lastError: null,
+		})),
+	};
 }
 
 async function startManager() {

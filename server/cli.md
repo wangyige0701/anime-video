@@ -80,7 +80,8 @@ anime-video start --hls-global-segment-concurrency 4
 - 管理逻辑位于 `server/cli/manager/`；`client.ts` 连接本地端点，`daemon.ts` 长期持有
   server/web 两个 worker 的句柄，`protocol.ts` 使用版本化 JSON 行协议。
 - Windows 使用命名管道，Linux 使用 Unix socket。`start` 在管理器不可达时按需创建
-  后台管理进程；`status` 不会因为查询而创建管理器。
+  后台管理进程；`status` 不会因为查询而创建管理器，管理器尚未启动或已经退出时返回
+  目标服务的 `stopped` 状态。
 - Linux socket 创建后限制为当前用户可读写（0600）；Windows 依赖本地命名管道，未开放
   TCP 管理端口。
 - worker 由 `cli/worker.ts` 统一分发，启动时只动态导入目标服务模块并等待 `ready`；

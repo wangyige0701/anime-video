@@ -1,8 +1,9 @@
 use crate::cli::{self, Service, ServiceAction, ServiceStatus, Snapshot};
 use crate::state::CachedState;
 use gpui::{
-    Animation, AnimationExt as _, ClickEvent, Context, PathPromptOptions, Render, Subscription,
-    Transformation, Window, div, img, percentage, prelude::*, px, rgb, svg,
+    Animation, AnimationExt as _, AnyView, App, ClickEvent, Context, PathPromptOptions, Render,
+    SharedString, Subscription, Transformation, Window, div, img, percentage, prelude::*, px, rgb,
+    svg,
 };
 use std::{fs, path::PathBuf, time::Duration};
 
@@ -54,6 +55,24 @@ pub struct TrayPanel {
     was_activated: bool,
     path_prompt_open: bool,
     _activation_subscription: Subscription,
+}
+
+struct HoverHint {
+    text: SharedString,
+}
+
+impl Render for HoverHint {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .px_2()
+            .py_1()
+            .rounded_md()
+            .bg(rgb(INK))
+            .text_xs()
+            .text_color(rgb(PANEL))
+            .shadow_md()
+            .child(self.text.clone())
+    }
 }
 
 impl TrayPanel {
@@ -243,7 +262,7 @@ impl TrayPanel {
                     let _ = this.update(cx, |panel, cx| {
                         panel.busy = false;
                         panel.pending_operation = None;
-                        panel.notice = "未添加目录".to_string();
+                        panel.notice = "已取消添加目录".to_string();
                         cx.notify();
                     });
                     return;
@@ -447,6 +466,7 @@ impl TrayPanel {
                             .items_center()
                             .justify_center()
                             .rounded_md()
+                            .tooltip(tooltip(format!("启动{}", service.label())))
                             .when(can_start, |element| {
                                 element
                                     .cursor_pointer()
@@ -476,6 +496,7 @@ impl TrayPanel {
                             .items_center()
                             .justify_center()
                             .rounded_md()
+                            .tooltip(tooltip(format!("停止{}", service.label())))
                             .when(can_stop_or_restart, |element| {
                                 element
                                     .cursor_pointer()
@@ -505,6 +526,7 @@ impl TrayPanel {
                             .items_center()
                             .justify_center()
                             .rounded_md()
+                            .tooltip(tooltip(format!("重启{}", service.label())))
                             .when(can_stop_or_restart, |element| {
                                 element
                                     .cursor_pointer()
@@ -535,6 +557,7 @@ impl TrayPanel {
                             .justify_center()
                             .cursor_pointer()
                             .rounded_md()
+                            .tooltip(tooltip(format!("打开{}日志文件夹", service.label())))
                             .hover(|style| style.bg(rgb(SUBTLE)).text_color(rgb(INK)))
                             .on_click(
                                 cx.listener(move |panel, _, _, cx| panel.reveal_logs(service, cx)),
@@ -559,7 +582,7 @@ impl Render for TrayPanel {
         let stop_loading = self.is_global_action_loading(ServiceAction::Stop);
         let restart_loading = self.is_global_action_loading(ServiceAction::Restart);
         let adding_directories = self.is_adding_directories();
-        let can_open_web = self.cache.read().web_url.is_some();
+        let show_web_entry = self.web.state == "running" && self.cache.read().web_url.is_some();
         let start_label = if start_loading {
             "启动中".to_string()
         } else {
@@ -647,6 +670,7 @@ impl Render for TrayPanel {
                             .items_center()
                             .justify_center()
                             .rounded_md()
+                            .tooltip(tooltip("刷新服务状态"))
                             .when(!self.busy, |element| {
                                 element
                                     .cursor_pointer()
@@ -663,12 +687,13 @@ impl Render for TrayPanel {
             )
             .child(
                 div()
-                    .h(px(62.0))
+                    .h(px(73.0))
                     .flex()
                     .flex_col()
                     .gap_2()
                     .px_3()
-                    .py_2()
+                    .pt_2()
+                    .pb(px(13.0))
                     .bg(rgb(CANVAS))
                     .border_b_1()
                     .border_color(rgb(BORDER))
@@ -705,6 +730,7 @@ impl Render for TrayPanel {
                                     .justify_center()
                                     .gap_1()
                                     .rounded_md()
+                                    .tooltip(tooltip("启动所有未运行的服务"))
                                     .bg(rgb(if can_start_all || start_loading {
                                         PRIMARY_SOFT
                                     } else {
@@ -751,6 +777,7 @@ impl Render for TrayPanel {
                                     .justify_center()
                                     .gap_1()
                                     .rounded_md()
+                                    .tooltip(tooltip("停止所有运行中的服务"))
                                     .bg(rgb(if can_stop_all || stop_loading {
                                         0xffedf0
                                     } else {
@@ -797,6 +824,7 @@ impl Render for TrayPanel {
                                     .justify_center()
                                     .gap_1()
                                     .rounded_md()
+                                    .tooltip(tooltip("重启所有运行中的服务"))
                                     .bg(rgb(if can_stop_all || restart_loading {
                                         0xfff3e6
                                     } else {
@@ -896,6 +924,7 @@ impl Render for TrayPanel {
                             .items_center()
                             .justify_center()
                             .rounded_md()
+                            .tooltip(tooltip("添加视频目录"))
                             .when(!self.busy, |element| {
                                 element
                                     .cursor_pointer()
@@ -946,6 +975,7 @@ impl Render for TrayPanel {
                                     .items_center()
                                     .justify_center()
                                     .rounded_md()
+                                    .tooltip(tooltip("删除此视频目录"))
                                     .when(!self.busy, |element| {
                                         element
                                             .cursor_pointer()
@@ -995,28 +1025,25 @@ impl Render for TrayPanel {
                     .text_xs()
                     .text_color(rgb(MUTED))
                     .child(div().flex_1().child(notice))
-                    .child(
-                        div()
-                            .id("open-web")
-                            .h(px(26.0))
-                            .flex()
-                            .items_center()
-                            .gap_1()
-                            .px_2()
-                            .rounded_md()
-                            .text_color(rgb(if can_open_web { PRIMARY } else { DISABLED }))
-                            .when(can_open_web, |element| {
-                                element
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(PRIMARY_SOFT)))
-                                    .on_click(cx.listener(|panel, _, _, cx| panel.open_web(cx)))
-                            })
-                            .child(fluent_icon(
-                                ICON_GLOBE,
-                                if can_open_web { PRIMARY } else { DISABLED },
-                            ))
-                            .child("网页"),
-                    )
+                    .when(show_web_entry, |element| {
+                        element.child(
+                            div()
+                                .id("open-web")
+                                .h(px(26.0))
+                                .flex()
+                                .items_center()
+                                .gap_1()
+                                .px_2()
+                                .cursor_pointer()
+                                .rounded_md()
+                                .tooltip(tooltip("在默认浏览器打开网页"))
+                                .text_color(rgb(PRIMARY))
+                                .hover(|style| style.bg(rgb(PRIMARY_SOFT)))
+                                .on_click(cx.listener(|panel, _, _, cx| panel.open_web(cx)))
+                                .child(fluent_icon(ICON_GLOBE, PRIMARY))
+                                .child("网页"),
+                        )
+                    })
                     .child(
                         div()
                             .id("quit")
@@ -1027,12 +1054,21 @@ impl Render for TrayPanel {
                             .px_2()
                             .cursor_pointer()
                             .rounded_md()
+                            .tooltip(tooltip("停止全部服务并退出"))
                             .hover(|style| style.bg(rgb(0xffedf0)).text_color(rgb(DANGER)))
                             .on_click(cx.listener(|_, _, _, cx| cx.quit()))
                             .child(fluent_icon(ICON_POWER, MUTED))
                             .child("退出"),
                     ),
             )
+    }
+}
+
+fn tooltip(text: impl Into<SharedString>) -> impl Fn(&mut Window, &mut App) -> AnyView {
+    let text = text.into();
+    move |_, cx| {
+        let text = text.clone();
+        cx.new(|_| HoverHint { text }).into()
     }
 }
 

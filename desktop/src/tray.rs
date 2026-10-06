@@ -125,7 +125,7 @@ fn toggle_panel(rect: Rect, cx: &mut App) {
 }
 
 fn application_icon() -> Icon {
-    let image = image::load_from_memory(include_bytes!("../assets/icon.png"))
+    let image = image::load_from_memory(include_bytes!("../assets/icon_64.png"))
         .expect("读取托盘图标失败")
         .into_rgba8();
     let (width, height) = image.dimensions();

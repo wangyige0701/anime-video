@@ -1,26 +1,54 @@
 use crate::cli::{self, Service, ServiceAction, ServiceStatus, Snapshot};
 use gpui::{
-    ClickEvent, Context, PathPromptOptions, Render, Subscription, Window, div, prelude::*, px, rgb,
+    Animation, AnimationExt as _, ClickEvent, Context, PathPromptOptions, Render, Subscription,
+    Window, div, img, prelude::*, pulsating_between, px, rgb,
 };
-use std::fs;
+use std::{fs, path::PathBuf, time::Duration};
 
 const INK: u32 = 0x172033;
-const MUTED: u32 = 0x7a8496;
-const BORDER: u32 = 0xe4e8ef;
+const MUTED: u32 = 0x748095;
+const DISABLED: u32 = 0xaab2c0;
+const BORDER: u32 = 0xe3e7ee;
 const PANEL: u32 = 0xffffff;
-const SUBTLE: u32 = 0xf6f8fb;
-const PRIMARY: u32 = 0x2563eb;
+const CANVAS: u32 = 0xf7f8fb;
+const SUBTLE: u32 = 0xf1f3f7;
+const PRIMARY: u32 = 0x3b5ccc;
+const PRIMARY_SOFT: u32 = 0xeef2ff;
 const SUCCESS: u32 = 0x16a34a;
 const WARNING: u32 = 0xd97706;
 const DANGER: u32 = 0xdc2626;
+
+const ICON_FONT: &str = "Segoe Fluent Icons";
+const ICON_PLAY: &str = "\u{e768}";
+const ICON_STOP: &str = "\u{e71a}";
+const ICON_REFRESH: &str = "\u{e72c}";
+const ICON_DOCUMENT: &str = "\u{e8a5}";
+const ICON_ADD: &str = "\u{e710}";
+const ICON_CLOSE: &str = "\u{e711}";
+const ICON_FOLDER: &str = "\u{e8b7}";
+const ICON_POWER: &str = "\u{e7e8}";
+
+#[derive(Clone)]
+enum PendingOperation {
+    Refresh,
+    ServiceAction {
+        action: ServiceAction,
+        services: Vec<Service>,
+        global: bool,
+    },
+    AddDirectories,
+    RemoveDirectory(usize),
+}
 
 pub struct TrayPanel {
     api: ServiceStatus,
     web: ServiceStatus,
     directories: Vec<String>,
     busy: bool,
+    pending_operation: Option<PendingOperation>,
     notice: String,
     was_activated: bool,
+    path_prompt_open: bool,
     _activation_subscription: Subscription,
 }
 
@@ -29,7 +57,7 @@ impl TrayPanel {
         let activation_subscription = cx.observe_window_activation(window, |panel, window, _| {
             if window.is_window_active() {
                 panel.was_activated = true;
-            } else if panel.was_activated {
+            } else if panel.was_activated && !panel.path_prompt_open {
                 window.remove_window();
             }
         });
@@ -38,8 +66,10 @@ impl TrayPanel {
             web: ServiceStatus::stopped(Service::Web),
             directories: Vec::new(),
             busy: false,
+            pending_operation: None,
             notice: "正在读取状态...".to_string(),
             was_activated: false,
+            path_prompt_open: false,
             _activation_subscription: activation_subscription,
         };
         let panel_entity = cx.entity();
@@ -52,6 +82,7 @@ impl TrayPanel {
             return;
         }
         self.busy = true;
+        self.pending_operation = Some(PendingOperation::Refresh);
         self.notice = "正在刷新...".to_string();
         cx.notify();
 
@@ -62,6 +93,7 @@ impl TrayPanel {
                 .await;
             let _ = this.update(cx, |panel, cx| {
                 panel.busy = false;
+                panel.pending_operation = None;
                 panel.apply_snapshot(result, "状态已刷新");
                 cx.notify();
             });
@@ -69,18 +101,28 @@ impl TrayPanel {
         .detach();
     }
 
-    fn run_action(
+    fn run_actions(
         &mut self,
         action: ServiceAction,
-        service: Option<Service>,
+        services: Vec<Service>,
+        global: bool,
         cx: &mut Context<Self>,
     ) {
-        if self.busy {
+        if self.busy || services.is_empty() {
             return;
         }
 
         self.busy = true;
-        let target = service.map(Service::label).unwrap_or("全部服务");
+        self.pending_operation = Some(PendingOperation::ServiceAction {
+            action,
+            services: services.clone(),
+            global,
+        });
+        let target = if services.len() == 1 {
+            services[0].label().to_string()
+        } else {
+            format!("{}项服务", services.len())
+        };
         self.notice = format!("正在{}{}...", action.label(), target);
         cx.notify();
 
@@ -88,12 +130,15 @@ impl TrayPanel {
             let result = cx
                 .background_executor()
                 .spawn(async move {
-                    cli::run_service_action(action, service)?;
+                    for service in services {
+                        cli::run_service_action(action, Some(service))?;
+                    }
                     cli::load_snapshot()
                 })
                 .await;
             let _ = this.update(cx, |panel, cx| {
                 panel.busy = false;
+                panel.pending_operation = None;
                 panel.apply_snapshot(result, "服务操作完成");
                 cx.notify();
             });
@@ -101,10 +146,71 @@ impl TrayPanel {
         .detach();
     }
 
+    fn startable_services(&self) -> Vec<Service> {
+        [Service::Web, Service::Api]
+            .into_iter()
+            .filter(|service| is_startable(&self.status_for(*service).state))
+            .collect()
+    }
+
+    fn running_services(&self) -> Vec<Service> {
+        [Service::Web, Service::Api]
+            .into_iter()
+            .filter(|service| self.status_for(*service).state == "running")
+            .collect()
+    }
+
+    fn is_refreshing(&self) -> bool {
+        matches!(self.pending_operation, Some(PendingOperation::Refresh))
+    }
+
+    fn is_global_action_loading(&self, action: ServiceAction) -> bool {
+        matches!(
+            &self.pending_operation,
+            Some(PendingOperation::ServiceAction {
+                action: pending_action,
+                global: true,
+                ..
+            }) if *pending_action == action
+        )
+    }
+
+    fn is_service_action_loading(&self, service: Service, action: ServiceAction) -> bool {
+        matches!(
+            &self.pending_operation,
+            Some(PendingOperation::ServiceAction {
+                action: pending_action,
+                services,
+                global: false,
+            }) if *pending_action == action && services.contains(&service)
+        )
+    }
+
+    fn is_adding_directories(&self) -> bool {
+        matches!(
+            self.pending_operation,
+            Some(PendingOperation::AddDirectories)
+        )
+    }
+
+    fn is_removing_directory(&self, index: usize) -> bool {
+        matches!(
+            self.pending_operation,
+            Some(PendingOperation::RemoveDirectory(pending_index)) if pending_index == index
+        )
+    }
+
     fn choose_directories(&mut self, _: &ClickEvent, _: &mut Window, cx: &mut Context<Self>) {
         if self.busy {
             return;
         }
+
+        // 系统路径选择器会让浮层暂时失焦，不能在它仍引用窗口句柄时关闭面板。
+        self.path_prompt_open = true;
+        self.busy = true;
+        self.pending_operation = Some(PendingOperation::AddDirectories);
+        self.notice = "正在选择目录...".to_string();
+        cx.notify();
 
         let selection = cx.prompt_for_paths(PathPromptOptions {
             files: false,
@@ -112,16 +218,20 @@ impl TrayPanel {
             multiple: true,
             prompt: Some("选择视频检索目录".into()),
         });
-        self.busy = true;
-        self.notice = "正在选择目录...".to_string();
-        cx.notify();
 
         cx.spawn(async move |this, cx| {
-            let paths = match selection.await {
+            let selection = selection.await;
+            let _ = this.update(cx, |panel, cx| {
+                panel.path_prompt_open = false;
+                cx.notify();
+            });
+
+            let paths = match selection {
                 Ok(Ok(Some(paths))) if !paths.is_empty() => paths,
                 Ok(Ok(_)) => {
                     let _ = this.update(cx, |panel, cx| {
                         panel.busy = false;
+                        panel.pending_operation = None;
                         panel.notice = "未添加目录".to_string();
                         cx.notify();
                     });
@@ -130,6 +240,7 @@ impl TrayPanel {
                 Ok(Err(error)) => {
                     let _ = this.update(cx, |panel, cx| {
                         panel.busy = false;
+                        panel.pending_operation = None;
                         panel.notice = compact_error(&error.to_string());
                         cx.notify();
                     });
@@ -138,6 +249,7 @@ impl TrayPanel {
                 Err(error) => {
                     let _ = this.update(cx, |panel, cx| {
                         panel.busy = false;
+                        panel.pending_operation = None;
                         panel.notice = compact_error(&error.to_string());
                         cx.notify();
                     });
@@ -157,6 +269,7 @@ impl TrayPanel {
                 .await;
             let _ = this.update(cx, |panel, cx| {
                 panel.busy = false;
+                panel.pending_operation = None;
                 panel.apply_snapshot(result, "目录已更新");
                 cx.notify();
             });
@@ -170,6 +283,7 @@ impl TrayPanel {
         }
 
         self.busy = true;
+        self.pending_operation = Some(PendingOperation::RemoveDirectory(index));
         self.notice = "正在删除目录...".to_string();
         cx.notify();
 
@@ -183,6 +297,7 @@ impl TrayPanel {
                 .await;
             let _ = this.update(cx, |panel, cx| {
                 panel.busy = false;
+                panel.pending_operation = None;
                 panel.apply_snapshot(result, "目录已删除");
                 cx.notify();
             });
@@ -235,7 +350,7 @@ impl TrayPanel {
         } else {
             match running {
                 2 => (SUCCESS, "全部运行中"),
-                1 => (WARNING, "1 项运行中"),
+                1 => (WARNING, "已运行 1/2"),
                 _ => (MUTED, "全部已停止"),
             }
         }
@@ -245,22 +360,39 @@ impl TrayPanel {
         let status = self.status_for(service);
         let (color, label) = status_presentation(&status.state);
         let service_key = service.key();
-        let can_stop_or_restart = status.state == "running";
-        let action_color = if can_stop_or_restart { DANGER } else { MUTED };
-        let restart_color = if can_stop_or_restart { WARNING } else { MUTED };
+        let can_start = !self.busy && is_startable(&status.state);
+        let can_stop_or_restart = !self.busy && status.state == "running";
+        let start_loading = self.is_service_action_loading(service, ServiceAction::Start);
+        let stop_loading = self.is_service_action_loading(service, ServiceAction::Stop);
+        let restart_loading = self.is_service_action_loading(service, ServiceAction::Restart);
+        let start_color = if can_start || start_loading {
+            PRIMARY
+        } else {
+            DISABLED
+        };
+        let stop_color = if can_stop_or_restart || stop_loading {
+            DANGER
+        } else {
+            DISABLED
+        };
+        let restart_color = if can_stop_or_restart || restart_loading {
+            WARNING
+        } else {
+            DISABLED
+        };
 
         div()
             .id(("service-row", service_key))
-            .h(px(48.0))
+            .h(px(52.0))
             .flex()
             .items_center()
-            .gap_1()
-            .px_2()
+            .px_3()
+            .bg(rgb(PANEL))
             .border_b_1()
             .border_color(rgb(BORDER))
             .child(
                 div()
-                    .w(px(76.0))
+                    .flex_1()
                     .flex()
                     .items_center()
                     .gap_2()
@@ -281,87 +413,111 @@ impl TrayPanel {
             )
             .child(
                 div()
-                    .flex_1()
                     .flex()
                     .justify_end()
                     .gap_1()
                     .child(
                         div()
                             .id(("start", service_key))
-                            .w(px(24.0))
-                            .h(px(24.0))
+                            .w(px(28.0))
+                            .h(px(28.0))
                             .flex()
                             .items_center()
                             .justify_center()
-                            .cursor_pointer()
                             .rounded_md()
-                            .text_sm()
-                            .text_color(rgb(PRIMARY))
-                            .hover(|style| style.bg(rgb(0xeaf2ff)))
-                            .on_click(cx.listener(move |panel, _, _, cx| {
-                                panel.run_action(ServiceAction::Start, Some(service), cx)
-                            }))
-                            .child("▶"),
+                            .when(can_start, |element| {
+                                element
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(PRIMARY_SOFT)))
+                                    .on_click(cx.listener(move |panel, _, _, cx| {
+                                        panel.run_actions(
+                                            ServiceAction::Start,
+                                            vec![service],
+                                            false,
+                                            cx,
+                                        )
+                                    }))
+                            })
+                            .when(start_loading, |element| {
+                                element.child(loading_indicator(PRIMARY))
+                            })
+                            .when(!start_loading, |element| {
+                                element.child(fluent_icon(ICON_PLAY, start_color))
+                            }),
                     )
                     .child(
                         div()
                             .id(("stop", service_key))
-                            .w(px(24.0))
-                            .h(px(24.0))
+                            .w(px(28.0))
+                            .h(px(28.0))
                             .flex()
                             .items_center()
                             .justify_center()
                             .rounded_md()
-                            .text_sm()
-                            .text_color(rgb(action_color))
                             .when(can_stop_or_restart, |element| {
                                 element
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(0xffedf0)))
                                     .on_click(cx.listener(move |panel, _, _, cx| {
-                                        panel.run_action(ServiceAction::Stop, Some(service), cx)
+                                        panel.run_actions(
+                                            ServiceAction::Stop,
+                                            vec![service],
+                                            false,
+                                            cx,
+                                        )
                                     }))
                             })
-                            .child("■"),
+                            .when(stop_loading, |element| {
+                                element.child(loading_indicator(DANGER))
+                            })
+                            .when(!stop_loading, |element| {
+                                element.child(fluent_icon(ICON_STOP, stop_color))
+                            }),
                     )
                     .child(
                         div()
                             .id(("restart", service_key))
-                            .w(px(24.0))
-                            .h(px(24.0))
+                            .w(px(28.0))
+                            .h(px(28.0))
                             .flex()
                             .items_center()
                             .justify_center()
                             .rounded_md()
-                            .text_sm()
-                            .text_color(rgb(restart_color))
                             .when(can_stop_or_restart, |element| {
                                 element
                                     .cursor_pointer()
                                     .hover(|style| style.bg(rgb(0xfff3e6)))
                                     .on_click(cx.listener(move |panel, _, _, cx| {
-                                        panel.run_action(ServiceAction::Restart, Some(service), cx)
+                                        panel.run_actions(
+                                            ServiceAction::Restart,
+                                            vec![service],
+                                            false,
+                                            cx,
+                                        )
                                     }))
                             })
-                            .child("↻"),
+                            .when(restart_loading, |element| {
+                                element.child(loading_indicator(WARNING))
+                            })
+                            .when(!restart_loading, |element| {
+                                element.child(fluent_icon(ICON_REFRESH, restart_color))
+                            }),
                     )
                     .child(
                         div()
                             .id(("logs", service_key))
-                            .h(px(24.0))
+                            .w(px(28.0))
+                            .h(px(28.0))
                             .flex()
                             .items_center()
                             .justify_center()
                             .cursor_pointer()
                             .rounded_md()
-                            .px_1()
-                            .text_xs()
-                            .text_color(rgb(MUTED))
                             .hover(|style| style.bg(rgb(SUBTLE)).text_color(rgb(INK)))
                             .on_click(
                                 cx.listener(move |panel, _, _, cx| panel.reveal_logs(service, cx)),
                             )
-                            .child("日志"),
+                            .child(fluent_icon(ICON_DOCUMENT, MUTED)),
                     ),
             )
     }
@@ -371,13 +527,35 @@ impl Render for TrayPanel {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let directories = self.directories.clone();
         let (overall_color, overall_label) = self.aggregate_status();
-        let has_running_service = self.web.state == "running" || self.api.state == "running";
-        let all_stop_color = if has_running_service { DANGER } else { MUTED };
-        let all_restart_color = if has_running_service { WARNING } else { MUTED };
+        let startable_services = self.startable_services();
+        let running_services = self.running_services();
+        let running_count = running_services.len();
+        let can_start_all = !self.busy && !startable_services.is_empty();
+        let can_stop_all = !self.busy && !running_services.is_empty();
+        let refreshing = self.is_refreshing();
+        let start_loading = self.is_global_action_loading(ServiceAction::Start);
+        let stop_loading = self.is_global_action_loading(ServiceAction::Stop);
+        let restart_loading = self.is_global_action_loading(ServiceAction::Restart);
+        let adding_directories = self.is_adding_directories();
+        let start_label = if start_loading {
+            "启动中".to_string()
+        } else {
+            action_label("启动", startable_services.len())
+        };
+        let stop_label = if stop_loading {
+            "停止中".to_string()
+        } else {
+            action_label("停止", running_services.len())
+        };
+        let restart_label = if restart_loading {
+            "重启中".to_string()
+        } else {
+            action_label("重启", running_services.len())
+        };
         let notice = if self.busy {
             "处理中...".to_string()
         } else {
-            shorten(&self.notice, 42)
+            shorten(&self.notice, 24)
         };
 
         div()
@@ -386,7 +564,7 @@ impl Render for TrayPanel {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .bg(rgb(PANEL))
+            .bg(rgb(CANVAS))
             .border_1()
             .border_color(rgb(BORDER))
             .rounded_lg()
@@ -394,153 +572,322 @@ impl Render for TrayPanel {
             .text_color(rgb(INK))
             .child(
                 div()
-                    .h(px(42.0))
+                    .h(px(62.0))
                     .flex()
                     .items_center()
-                    .px_2()
-                    .gap_1()
+                    .px_3()
+                    .gap_3()
+                    .bg(rgb(PANEL))
                     .border_b_1()
                     .border_color(rgb(BORDER))
                     .child(
                         div()
-                            .flex_1()
-                            .text_sm()
-                            .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .child("动画管理服务"),
+                            .size_8()
+                            .overflow_hidden()
+                            .rounded_lg()
+                            .border_1()
+                            .border_color(rgb(BORDER))
+                            .child(
+                                img(PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                                    .join("assets/icon.png"))
+                                .size_full(),
+                            ),
                     )
                     .child(
                         div()
+                            .flex_1()
                             .flex()
-                            .items_center()
-                            .gap_1()
-                            .text_xs()
-                            .text_color(rgb(MUTED))
-                            .child(div().size_2().rounded_full().bg(rgb(overall_color)))
-                            .child(overall_label),
+                            .flex_col()
+                            .gap_0p5()
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .child("动画管理服务"),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_1()
+                                    .text_xs()
+                                    .text_color(rgb(MUTED))
+                                    .child(div().size_2().rounded_full().bg(rgb(overall_color)))
+                                    .child(format!("{}  {}/2", overall_label, running_count)),
+                            ),
                     )
                     .child(
                         div()
                             .id("refresh")
-                            .w(px(24.0))
-                            .h(px(24.0))
+                            .size_7()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .cursor_pointer()
                             .rounded_md()
-                            .text_base()
-                            .text_color(rgb(MUTED))
-                            .hover(|style| style.bg(rgb(SUBTLE)).text_color(rgb(INK)))
-                            .on_click(cx.listener(|panel, _, _, cx| panel.refresh(cx)))
-                            .child("↻"),
+                            .when(!self.busy, |element| {
+                                element
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(SUBTLE)))
+                                    .on_click(cx.listener(|panel, _, _, cx| panel.refresh(cx)))
+                            })
+                            .when(refreshing, |element| {
+                                element.child(loading_indicator(MUTED))
+                            })
+                            .when(!refreshing, |element| {
+                                element.child(fluent_icon(ICON_REFRESH, MUTED))
+                            }),
                     ),
             )
             .child(
                 div()
-                    .h(px(40.0))
+                    .h(px(62.0))
                     .flex()
-                    .items_center()
-                    .gap_1()
-                    .px_2()
+                    .flex_col()
+                    .gap_2()
+                    .px_3()
+                    .py_2()
+                    .bg(rgb(CANVAS))
                     .border_b_1()
                     .border_color(rgb(BORDER))
                     .child(
                         div()
-                            .id("all-start")
-                            .flex_1()
-                            .h(px(26.0))
                             .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap_1()
-                            .cursor_pointer()
-                            .rounded_md()
-                            .bg(rgb(0xeaf2ff))
+                            .justify_between()
                             .text_xs()
-                            .text_color(rgb(PRIMARY))
-                            .hover(|style| style.bg(rgb(0xdbeafe)))
-                            .on_click(cx.listener(|panel, _, _, cx| {
-                                panel.run_action(ServiceAction::Start, None, cx)
-                            }))
-                            .child("▶ 启动"),
+                            .text_color(rgb(MUTED))
+                            .child(
+                                div()
+                                    .font_weight(gpui::FontWeight::SEMIBOLD)
+                                    .text_color(rgb(INK))
+                                    .child("全局控制"),
+                            )
+                            .child(if self.busy {
+                                "正在处理"
+                            } else {
+                                "按当前状态执行"
+                            }),
                     )
                     .child(
                         div()
-                            .id("all-stop")
-                            .flex_1()
-                            .h(px(26.0))
                             .flex()
                             .items_center()
-                            .justify_center()
-                            .gap_1()
-                            .rounded_md()
-                            .bg(rgb(0xffedf0))
-                            .text_xs()
-                            .text_color(rgb(all_stop_color))
-                            .when(has_running_service, |element| {
-                                element
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0xffe1e6)))
-                                    .on_click(cx.listener(|panel, _, _, cx| {
-                                        panel.run_action(ServiceAction::Stop, None, cx)
+                            .gap_2()
+                            .child(
+                                div()
+                                    .id("all-start")
+                                    .flex_1()
+                                    .h(px(28.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .gap_1()
+                                    .rounded_md()
+                                    .bg(rgb(if can_start_all || start_loading {
+                                        PRIMARY_SOFT
+                                    } else {
+                                        SUBTLE
                                     }))
-                            })
-                            .child("■ 停止"),
-                    )
-                    .child(
-                        div()
-                            .id("all-restart")
-                            .flex_1()
-                            .h(px(26.0))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .gap_1()
-                            .rounded_md()
-                            .bg(rgb(0xfff3e6))
-                            .text_xs()
-                            .text_color(rgb(all_restart_color))
-                            .when(has_running_service, |element| {
-                                element
-                                    .cursor_pointer()
-                                    .hover(|style| style.bg(rgb(0xffead5)))
-                                    .on_click(cx.listener(|panel, _, _, cx| {
-                                        panel.run_action(ServiceAction::Restart, None, cx)
+                                    .text_xs()
+                                    .text_color(rgb(if can_start_all || start_loading {
+                                        PRIMARY
+                                    } else {
+                                        DISABLED
                                     }))
-                            })
-                            .child("↻ 重启"),
+                                    .when(can_start_all, |element| {
+                                        let services = startable_services.clone();
+                                        element
+                                            .cursor_pointer()
+                                            .hover(|style| style.bg(rgb(0xdbeafe)))
+                                            .on_click(cx.listener(move |panel, _, _, cx| {
+                                                panel.run_actions(
+                                                    ServiceAction::Start,
+                                                    services.clone(),
+                                                    true,
+                                                    cx,
+                                                )
+                                            }))
+                                    })
+                                    .when(start_loading, |element| {
+                                        element.child(loading_indicator(PRIMARY))
+                                    })
+                                    .when(!start_loading, |element| {
+                                        element.child(fluent_icon(
+                                            ICON_PLAY,
+                                            if can_start_all { PRIMARY } else { DISABLED },
+                                        ))
+                                    })
+                                    .child(start_label),
+                            )
+                            .child(
+                                div()
+                                    .id("all-stop")
+                                    .flex_1()
+                                    .h(px(28.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .gap_1()
+                                    .rounded_md()
+                                    .bg(rgb(if can_stop_all || stop_loading {
+                                        0xffedf0
+                                    } else {
+                                        SUBTLE
+                                    }))
+                                    .text_xs()
+                                    .text_color(rgb(if can_stop_all || stop_loading {
+                                        DANGER
+                                    } else {
+                                        DISABLED
+                                    }))
+                                    .when(can_stop_all, |element| {
+                                        let services = running_services.clone();
+                                        element
+                                            .cursor_pointer()
+                                            .hover(|style| style.bg(rgb(0xffe1e6)))
+                                            .on_click(cx.listener(move |panel, _, _, cx| {
+                                                panel.run_actions(
+                                                    ServiceAction::Stop,
+                                                    services.clone(),
+                                                    true,
+                                                    cx,
+                                                )
+                                            }))
+                                    })
+                                    .when(stop_loading, |element| {
+                                        element.child(loading_indicator(DANGER))
+                                    })
+                                    .when(!stop_loading, |element| {
+                                        element.child(fluent_icon(
+                                            ICON_STOP,
+                                            if can_stop_all { DANGER } else { DISABLED },
+                                        ))
+                                    })
+                                    .child(stop_label),
+                            )
+                            .child(
+                                div()
+                                    .id("all-restart")
+                                    .flex_1()
+                                    .h(px(28.0))
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .gap_1()
+                                    .rounded_md()
+                                    .bg(rgb(if can_stop_all || restart_loading {
+                                        0xfff3e6
+                                    } else {
+                                        SUBTLE
+                                    }))
+                                    .text_xs()
+                                    .text_color(rgb(if can_stop_all || restart_loading {
+                                        WARNING
+                                    } else {
+                                        DISABLED
+                                    }))
+                                    .when(can_stop_all, |element| {
+                                        let services = running_services.clone();
+                                        element
+                                            .cursor_pointer()
+                                            .hover(|style| style.bg(rgb(0xffead5)))
+                                            .on_click(cx.listener(move |panel, _, _, cx| {
+                                                panel.run_actions(
+                                                    ServiceAction::Restart,
+                                                    services.clone(),
+                                                    true,
+                                                    cx,
+                                                )
+                                            }))
+                                    })
+                                    .when(restart_loading, |element| {
+                                        element.child(loading_indicator(WARNING))
+                                    })
+                                    .when(!restart_loading, |element| {
+                                        element.child(fluent_icon(
+                                            ICON_REFRESH,
+                                            if can_stop_all { WARNING } else { DISABLED },
+                                        ))
+                                    })
+                                    .child(restart_label),
+                            ),
                     ),
+            )
+            .child(
+                div()
+                    .h(px(28.0))
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .px_3()
+                    .bg(rgb(PANEL))
+                    .text_xs()
+                    .text_color(rgb(MUTED))
+                    .child(
+                        div()
+                            .font_weight(gpui::FontWeight::SEMIBOLD)
+                            .text_color(rgb(INK))
+                            .child("服务状态"),
+                    )
+                    .child(format!("已运行 {}/2", running_count)),
             )
             .child(self.service_row(Service::Web, cx))
             .child(self.service_row(Service::Api, cx))
             .child(
                 div()
-                    .h(px(34.0))
+                    .h(px(32.0))
                     .flex()
                     .items_center()
                     .justify_between()
-                    .px_2()
+                    .px_3()
+                    .bg(rgb(CANVAS))
+                    .border_t_1()
+                    .border_b_1()
+                    .border_color(rgb(BORDER))
                     .child(
                         div()
+                            .flex()
+                            .items_center()
+                            .gap_2()
                             .text_xs()
                             .font_weight(gpui::FontWeight::SEMIBOLD)
-                            .child("视频检索目录"),
+                            .child("视频目录")
+                            .child(
+                                div()
+                                    .min_w(px(18.0))
+                                    .h(px(18.0))
+                                    .px_1()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .rounded_full()
+                                    .bg(rgb(SUBTLE))
+                                    .text_color(rgb(MUTED))
+                                    .child(directories.len().to_string()),
+                            ),
                     )
                     .child(
                         div()
                             .id("add-directory")
-                            .h(px(24.0))
+                            .size_7()
                             .flex()
                             .items_center()
                             .justify_center()
-                            .cursor_pointer()
                             .rounded_md()
-                            .px_1()
-                            .text_xs()
-                            .text_color(rgb(PRIMARY))
-                            .hover(|style| style.bg(rgb(0xeaf2ff)))
-                            .on_click(cx.listener(Self::choose_directories))
-                            .child("＋"),
+                            .when(!self.busy, |element| {
+                                element
+                                    .cursor_pointer()
+                                    .hover(|style| style.bg(rgb(PRIMARY_SOFT)))
+                                    .on_click(cx.listener(Self::choose_directories))
+                            })
+                            .when(adding_directories, |element| {
+                                element.child(loading_indicator(PRIMARY))
+                            })
+                            .when(!adding_directories, |element| {
+                                element.child(fluent_icon(
+                                    ICON_ADD,
+                                    if self.busy { DISABLED } else { PRIMARY },
+                                ))
+                            }),
                     ),
             )
             .child(
@@ -548,16 +895,19 @@ impl Render for TrayPanel {
                     .id("directory-list")
                     .flex_1()
                     .overflow_y_scroll()
-                    .px_2()
+                    .bg(rgb(PANEL))
+                    .px_3()
                     .children(directories.iter().enumerate().map(|(index, directory)| {
+                        let removing_directory = self.is_removing_directory(index);
                         div()
                             .id(("directory", index))
-                            .h(px(30.0))
+                            .h(px(34.0))
                             .flex()
                             .items_center()
                             .gap_2()
                             .border_b_1()
                             .border_color(rgb(BORDER))
+                            .child(fluent_icon(ICON_FOLDER, MUTED))
                             .child(
                                 div()
                                     .flex_1()
@@ -568,62 +918,108 @@ impl Render for TrayPanel {
                             .child(
                                 div()
                                     .id(("remove-directory", index))
-                                    .w(px(22.0))
-                                    .h(px(22.0))
+                                    .size_7()
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .cursor_pointer()
                                     .rounded_md()
-                                    .text_base()
-                                    .text_color(rgb(MUTED))
-                                    .hover(|style| style.bg(rgb(0xffedf0)).text_color(rgb(DANGER)))
-                                    .on_click(cx.listener(move |panel, _, _, cx| {
-                                        panel.remove_directory(index, cx)
-                                    }))
-                                    .child("×"),
+                                    .when(!self.busy, |element| {
+                                        element
+                                            .cursor_pointer()
+                                            .hover(|style| {
+                                                style.bg(rgb(0xffedf0)).text_color(rgb(DANGER))
+                                            })
+                                            .on_click(cx.listener(move |panel, _, _, cx| {
+                                                panel.remove_directory(index, cx)
+                                            }))
+                                    })
+                                    .when(removing_directory, |element| {
+                                        element.child(loading_indicator(DANGER))
+                                    })
+                                    .when(!removing_directory, |element| {
+                                        element.child(fluent_icon(
+                                            ICON_CLOSE,
+                                            if self.busy { DISABLED } else { DANGER },
+                                        ))
+                                    }),
                             )
                     }))
                     .when(directories.is_empty(), |element| {
                         element.child(
                             div()
-                                .h(px(38.0))
+                                .h_full()
                                 .flex()
                                 .items_center()
+                                .justify_center()
+                                .gap_2()
                                 .text_xs()
                                 .text_color(rgb(MUTED))
-                                .child("尚未添加目录"),
+                                .child(fluent_icon(ICON_FOLDER, MUTED))
+                                .child("未添加视频目录"),
                         )
                     }),
             )
             .child(
                 div()
-                    .h(px(24.0))
+                    .h(px(36.0))
                     .flex()
                     .items_center()
-                    .px_2()
-                    .bg(rgb(SUBTLE))
-                    .text_xs()
-                    .text_color(rgb(MUTED))
-                    .child(notice),
-            )
-            .child(
-                div()
-                    .id("quit")
-                    .h(px(34.0))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .cursor_pointer()
+                    .justify_between()
+                    .px_3()
+                    .bg(rgb(CANVAS))
                     .border_t_1()
                     .border_color(rgb(BORDER))
                     .text_xs()
                     .text_color(rgb(MUTED))
-                    .hover(|style| style.bg(rgb(0xffedf0)).text_color(rgb(DANGER)))
-                    .on_click(cx.listener(|_, _, _, cx| cx.quit()))
-                    .child("退出动画管理服务"),
+                    .child(div().flex_1().child(notice))
+                    .child(
+                        div()
+                            .id("quit")
+                            .h(px(26.0))
+                            .flex()
+                            .items_center()
+                            .gap_1()
+                            .px_2()
+                            .cursor_pointer()
+                            .rounded_md()
+                            .hover(|style| style.bg(rgb(0xffedf0)).text_color(rgb(DANGER)))
+                            .on_click(cx.listener(|_, _, _, cx| cx.quit()))
+                            .child(fluent_icon(ICON_POWER, MUTED))
+                            .child("退出"),
+                    ),
             )
     }
+}
+
+fn fluent_icon(glyph: &'static str, color: u32) -> impl IntoElement {
+    div()
+        .size_4()
+        .flex()
+        .items_center()
+        .justify_center()
+        .font_family(ICON_FONT)
+        .text_size(px(13.0))
+        .text_color(rgb(color))
+        .child(glyph)
+}
+
+fn loading_indicator(color: u32) -> impl IntoElement {
+    div()
+        .size_4()
+        .flex()
+        .items_center()
+        .justify_center()
+        .font_family(ICON_FONT)
+        .text_size(px(13.0))
+        .text_color(rgb(color))
+        .child(ICON_REFRESH)
+        .with_animation(
+            "pending-action-spinner",
+            Animation::new(Duration::from_millis(700))
+                .repeat()
+                .with_easing(pulsating_between(0.25, 1.0)),
+            |element, opacity| element.opacity(opacity),
+        )
 }
 
 fn status_presentation(state: &str) -> (u32, &'static str) {
@@ -633,6 +1029,18 @@ fn status_presentation(state: &str) -> (u32, &'static str) {
         "stopping" => (WARNING, "停止中"),
         "failed" | "backoff" => (DANGER, "异常"),
         _ => (MUTED, "已停止"),
+    }
+}
+
+fn is_startable(state: &str) -> bool {
+    matches!(state, "stopped" | "failed" | "backoff")
+}
+
+fn action_label(action: &str, count: usize) -> String {
+    if count == 0 {
+        action.to_string()
+    } else {
+        format!("{} {}", action, count)
     }
 }
 

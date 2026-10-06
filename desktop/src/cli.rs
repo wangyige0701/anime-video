@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::{
     env,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -153,7 +153,18 @@ pub fn load_web_url() -> Result<String, String> {
 }
 
 pub fn stop_all_services() -> Result<(), String> {
-    run_service_action(ServiceAction::Stop, None)
+    // 退出钩子运行在 GPUI 主线程，不能同步等待 manager 的 IPC 和 worker 关闭；
+    // 交给独立 CLI 进程执行 stop，manager 会继续负责优雅关闭及超时回收。
+    let mut command = cli_command();
+    command
+        .arg(ServiceAction::Stop.cli_name())
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    command
+        .spawn()
+        .map(|_| ())
+        .map_err(|error| format!("无法启动停止服务命令: {error}"))
 }
 
 pub fn run_service_action(action: ServiceAction, service: Option<Service>) -> Result<(), String> {

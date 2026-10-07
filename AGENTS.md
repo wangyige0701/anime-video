@@ -45,6 +45,7 @@ anime-video/
 ├── back.cmd                # Windows 下把参数转发给 server workspace 脚本
 ├── clear.mjs               # 根构建前清空 dist（包括其中的 Junction/符号链接）
 ├── build-desktop.mjs       # 编译并复制桌面端发布 EXE
+├── build-installer.mjs     # 组装发布目录并调用 Inno Setup 生成安装包
 ├── runtime/                # 发布构建时下载 Node.js 运行时
 ├── package.json            # workspace 根包和根级工具依赖
 ├── pnpm-workspace.yaml     # workspace 范围、依赖覆盖和安装策略
@@ -104,7 +105,7 @@ pnpm --dir hls install --ignore-workspace
 
 ### 脚本与过滤器
 
-根 `build` 脚本首先执行 `clear.mjs`，完整删除根 `dist/` 及其中的 Junction/符号链接，再依次构建 web、server、desktop 和运行时；服务端发布产物输出到 `dist/server/`，桌面端发布产物名称由 `application.executableName` 生成，Node.js 运行时输出到 `dist/runtime/`。Cargo 的中间产物仍为 `desktop/target/release/desktop.exe`，`build:desktop` 复制时将其重命名为最终发布文件；`install:runtime` 根据 `config.yaml` 的版本和镜像下载、校验并安装 `node.exe`。根脚本 `web` 和 `server` 分别调用 `front.cmd`、`back.cmd`，再把后续参数转发给对应 workspace 包。`back.cmd` 对 `cli` 单独调用 `server/cli-launcher.mjs`，由启动器还原 Windows 下 `pnpm run` 产生的一层反斜杠转义，通过 Node 的 `--import tsx` 启动 TypeScript CLI，并在 Windows `uv_os_get_passwd` 因 `ENOMEM` 失败时启用当前用户信息兼容层；这也避免 CLI 参数再次经过 workspace 脚本转义。其他服务端脚本仍通过 workspace 转发。因此 Windows 下可使用：
+根 `build` 脚本首先执行 `clear.mjs`，完整删除根 `dist/` 及其中的 Junction/符号链接，再依次构建 web、server、desktop 和运行时；服务端发布产物输出到 `dist/server/`，桌面端发布产物名称由 `application.executableName` 生成，Node.js 运行时输出到 `dist/runtime/`。Cargo 的中间产物仍为 `desktop/target/release/desktop.exe`，`build:desktop` 复制时将其重命名为最终发布文件；`install:runtime` 根据 `config.yaml` 的版本和镜像下载、校验并安装 `node.exe`。执行 `pnpm run build:installer` 组装安装目录并调用 Inno Setup，安装器会复制服务端、运行时、桌面端和精简后的 HLS 原生文件（仅 `hls.node` 与 `.dll`），并创建带 `application.appUserModelId` 的开始菜单快捷方式和注册信息。构建机需要安装 Inno Setup 6，或设置 `ISCC_PATH` 指向 `ISCC.exe`。根脚本 `web` 和 `server` 分别调用 `front.cmd`、`back.cmd`，再把后续参数转发给对应 workspace 包。`back.cmd` 对 `cli` 单独调用 `server/cli-launcher.mjs`，由启动器还原 Windows 下 `pnpm run` 产生的一层反斜杠转义，通过 Node 的 `--import tsx` 启动 TypeScript CLI，并在 Windows `uv_os_get_passwd` 因 `ENOMEM` 失败时启用当前用户信息兼容层；这也避免 CLI 参数再次经过 workspace 脚本转义。其他服务端脚本仍通过 workspace 转发。因此 Windows 下可使用：
 
 ```powershell
 pnpm web dev

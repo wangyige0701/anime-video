@@ -1,3 +1,4 @@
+use crate::logging;
 use serde::Deserialize;
 use std::{
     env,
@@ -179,10 +180,10 @@ pub fn stop_all_services() -> Result<(), String> {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
-    command
-        .spawn()
-        .map(|_| ())
-        .map_err(|error| format!("无法启动停止服务命令: {error}"))
+    command.spawn().map(|_| ()).map_err(|error| {
+        logging::error(format!("退出时启动停止服务命令失败: {error}"));
+        format!("无法启动停止服务命令: {error}")
+    })
 }
 
 pub fn run_service_action(action: ServiceAction, service: Option<Service>) -> Result<(), String> {
@@ -214,22 +215,42 @@ fn run_cli(args: &[&str]) -> Result<String, String> {
     let mut command = cli_command();
     command.args(args);
 
-    let output = command
-        .output()
-        .map_err(|error| format!("无法执行服务命令: {error}"))?;
+    logging::info(format!(
+        "执行 CLI: {}，参数: {:?}",
+        command_line_display(&command),
+        args
+    ));
+
+    let output = command.output().map_err(|error| {
+        logging::error(format!("执行 CLI 进程失败: {error}"));
+        format!("无法执行服务命令: {error}")
+    })?;
     let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+
+    logging::info(format!(
+        "CLI 完成，退出码: {:?}，标准输出: {:?}，标准错误: {:?}",
+        output.status.code(),
+        stdout,
+        stderr
+    ));
 
     if output.status.success() {
         return Ok(stdout);
     }
 
     let detail = if stderr.is_empty() { stdout } else { stderr };
-    Err(if detail.is_empty() {
+    let error = if detail.is_empty() {
         format!("服务命令退出，状态码: {}", output.status)
     } else {
         detail
-    })
+    };
+    logging::error(format!("CLI 执行失败: {error}"));
+    Err(error)
+}
+
+fn command_line_display(command: &Command) -> String {
+    format!("{:?}", command)
 }
 
 fn cli_command() -> Command {
@@ -240,6 +261,10 @@ fn cli_command() -> Command {
             .current_dir(application_root())
             .args(["run", "server", "cli"]);
         hide_console(&mut command);
+        logging::info(format!(
+            "开发环境 CLI 根目录: {}",
+            application_root().display()
+        ));
         return command;
     }
 
@@ -248,13 +273,19 @@ fn cli_command() -> Command {
         .join("runtime")
         .join(if cfg!(windows) { "node.exe" } else { "node" });
     let cli_entry = root.join("server").join("cli.js");
-    let mut command = Command::new(executable);
+    let mut command = Command::new(&executable);
     command
-        .current_dir(root)
+        .current_dir(&root)
         .env("NODE_ENV", "production")
         .env("ANIME_VIDEO_DESKTOP", "1")
-        .arg(cli_entry);
+        .arg(&cli_entry);
     hide_console(&mut command);
+    logging::info(format!(
+        "正式环境 CLI 运行时: {}，入口: {}，根目录: {}",
+        executable.display(),
+        cli_entry.display(),
+        root.display()
+    ));
     command
 }
 

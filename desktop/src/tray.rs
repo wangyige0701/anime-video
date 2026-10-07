@@ -1,5 +1,6 @@
 use crate::cli;
 use crate::config;
+use crate::logging;
 use crate::notification;
 use crate::panel::{PANEL_WIDTH, TrayPanel, panel_height_for_directory_count};
 use crate::position;
@@ -33,6 +34,7 @@ impl Render for TrayHost {
 }
 
 pub fn install(cx: &mut App) {
+    logging::info("开始安装托盘图标和隐藏宿主窗口");
     let cache = CachedState::new();
     let icon = TrayIconBuilder::new()
         .with_tooltip("动画管理服务")
@@ -41,6 +43,7 @@ pub fn install(cx: &mut App) {
         .with_menu_on_right_click(false)
         .build()
         .expect("创建托盘图标失败");
+    logging::info("托盘图标创建成功");
 
     #[cfg(windows)]
     schedule_startup_notification(cx);
@@ -67,7 +70,7 @@ pub fn install(cx: &mut App) {
 
     let quit_subscription = cx.on_app_quit(|_| {
         if let Err(error) = cli::stop_all_services() {
-            eprintln!("退出时停止服务失败: {error}");
+            logging::error(format!("退出时停止服务失败: {error}"));
         }
         async {}
     });
@@ -118,12 +121,13 @@ fn schedule_startup_notification(cx: &mut App) {
         {
             Ok(application_id) => application_id,
             Err(error) => {
-                eprintln!("读取应用标识失败: {error}");
+                logging::error(format!("读取应用标识失败: {error}"));
                 return;
             }
         };
 
         for attempt in 0..4 {
+            logging::info(format!("发送启动 Toast，第 {} 次尝试", attempt + 1));
             let sent = cx
                 .background_executor()
                 .spawn({
@@ -132,6 +136,7 @@ fn schedule_startup_notification(cx: &mut App) {
                 })
                 .await;
             if sent {
+                logging::info("启动 Toast 发送成功");
                 return;
             }
             if attempt < 3 {
@@ -140,6 +145,7 @@ fn schedule_startup_notification(cx: &mut App) {
                     .await;
             }
         }
+        logging::error("启动 Toast 发送失败，已达到重试次数");
     })
     .detach();
 }
@@ -153,7 +159,7 @@ fn preload_state(cache: CachedState, cx: &mut App) {
             .await;
         match result {
             Ok(snapshot) => snapshot_cache.update_snapshot(snapshot),
-            Err(error) => eprintln!("预取服务状态失败: {error}"),
+            Err(error) => logging::error(format!("预取服务状态失败: {error}")),
         }
     })
     .detach();
@@ -173,7 +179,7 @@ fn preload_state(cache: CachedState, cx: &mut App) {
                     }
                 });
             }
-            Err(error) => eprintln!("预取网页地址失败: {error}"),
+            Err(error) => logging::error(format!("预取网页地址失败: {error}")),
         }
     })
     .detach();
@@ -218,7 +224,7 @@ fn toggle_panel(rect: Rect, cx: &mut App) {
             });
             cx.global_mut::<TrayState>().panel = Some(panel);
         }
-        Err(error) => eprintln!("无法打开服务管理面板: {error:?}"),
+        Err(error) => logging::error(format!("无法打开服务管理面板: {error:?}")),
     }
 }
 

@@ -23,6 +23,7 @@ desktop/
 │   ├── notification.rs    # Windows Runtime Toast 启动通知
 │   ├── folder_picker.rs   # Windows IFileOpenDialog 目录选择器
 │   ├── config.rs          # 开发/正式环境配置文件定位与读取
+│   ├── logging.rs         # 桌面端启动、命令执行和异常日志
 │   ├── cli.rs             # server CLI 调用、JSON 解析和桌面端领域类型
 │   ├── state.rs           # 跨浮层实例共享的状态与网页地址缓存
 │   └── assets.rs          # GPUI 文件资源加载器
@@ -76,6 +77,7 @@ desktop/
 - 桌面端调用 `pnpm.cmd`、`node.exe` 和停止服务命令时必须设置 Windows `CREATE_NO_WINDOW`，避免发布托盘程序拉起控制台窗口。
 - Release 构建使用 `cargo build --release --manifest-path desktop/Cargo.toml`，生成 `desktop/target/release/desktop.exe`；根目录的 `build:desktop` 脚本根据 `config.yaml` 的 `application.executableName` 将它复制为最终 EXE，`install:runtime` 会将配置版本的 Node.js 安装到 `dist/runtime/node.exe`。`build:installer` 负责复制发布目录，并只将 `hls.node` 与 DLL 放入安装包中的 `server/hls`，使用中文现代向导输出 `dist/动画管理服务安装程序.exe`；安装器负责创建带 AUMID 的快捷方式，桌面端不在运行时创建快捷方式。完整发布运行时仍以托盘 EXE 所在目录为应用根，执行同级 `runtime/node.exe server/cli.js <命令>` 并设置 `NODE_ENV=production` 与内部标记 `ANIME_VIDEO_DESKTOP=1`，不依赖 PATH、pnpm 或 tsx。完整发布目录必须保持配置名称对应的 EXE、`runtime/node.exe` 和 `server/cli.js` 的相对布局。
 - `ANIME_VIDEO_ROOT` 可覆盖默认应用根目录；未设置时 Debug 构建以 `CARGO_MANIFEST_DIR` 的父目录为根，Release 构建以当前 EXE 所在目录为根。
+- 桌面端日志由 `logging.rs` 在启动最早期初始化：Debug 写入仓库根 `logs/desktop.log`，Release 写入 `%LOCALAPPDATA%\\Anime Video\\logs\\desktop.log`，可用 `ANIME_VIDEO_DESKTOP_LOG_DIR` 覆盖。日志包含 EXE、配置和资源路径、AUMID/Toast Windows API 结果、每次 CLI 命令及其标准输出/错误/退出码，以及未捕获异常；正式版无控制台时必须通过该文件排查启动失败。
 - 状态使用 `status --json`，目录使用 `dir list --json`，Web 地址使用 `config --json`。状态和目录查询彼此独立，当前并行执行以缩短首次加载时间。
 - CLI 可能在 stdout 前输出包管理器脚本文本；JSON 解析先尝试完整输出，再从末尾寻找以 `{` 或 `[` 开始的结构化行。改变 CLI 输出时必须同时验证该兼容逻辑。
 - 新增桌面功能若需要 server 数据，优先扩展正式 CLI 契约并同步文档，不在桌面端读取 server 内部文件或复制配置解析逻辑。

@@ -1,7 +1,7 @@
 ﻿import { basename, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { builtinModules, createRequire } from 'node:module';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import { replaceRuntimePath } from './vite/replaceRuntimePath.ts';
 import { resolveHls } from './vite/resolveHls.ts';
 import { copyImportMetaAssets } from './vite/copyImportMetaAssets.ts';
@@ -71,7 +71,13 @@ export default defineConfig({
 			},
 		},
 	},
-	plugins: [copyWebStaticRoot(config.web), replaceRuntimePath(), resolveHls(), copyImportMetaAssets(['yaml'])],
+	plugins: [
+		copyWebStaticRoot(config.web),
+		replaceRuntimePath(),
+		resolveHls(),
+		copyImportMetaAssets(['yaml']),
+		emitNodeModulePackage(),
+	],
 	resolve: {
 		alias: {
 			'~server': resolve(distRootDir, 'server'),
@@ -82,3 +88,16 @@ export default defineConfig({
 		noExternal: true,
 	},
 });
+
+function emitNodeModulePackage(): Plugin {
+	return {
+		name: 'emit-node-module-package',
+		generateBundle() {
+			this.emitFile({
+				type: 'asset',
+				fileName: 'package.json',
+				source: '{"type":"module"}\n',
+			});
+		},
+	};
+}

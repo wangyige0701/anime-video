@@ -44,7 +44,7 @@ anime-video/
 ├── front.cmd               # Windows 下把参数转发给 web workspace 脚本
 ├── back.cmd                # Windows 下把参数转发给 server workspace 脚本
 ├── clear.mjs               # 根构建前清空 dist（包括其中的 Junction/符号链接）
-├── build-desktop.mjs       # 编译并复制桌面端发布 EXE
+├── build-desktop.mjs       # 编译并复制桌面端发布 EXE 与 Toast 图标
 ├── build-installer.mjs     # 组装发布目录并调用 Inno Setup 生成安装包
 ├── installer/              # 安装器语言资源
 ├── runtime/                # 发布构建时下载 Node.js 运行时
@@ -105,6 +105,8 @@ pnpm --dir hls install --ignore-workspace
 `desktop/` 同样不属于 pnpm workspace，是独立的 Cargo 项目。它在开发构建中从仓库根目录执行 `pnpm run server cli <命令>`，调用既有的服务管理、配置查询与目录管理 CLI；发布构建以托盘 EXE 所在目录为根，通过同级 `runtime/node.exe` 执行 `server/cli.js`。桌面端启动后预取服务状态与 `config --json` 提供的 Web 地址，退出时通过 CLI 停止全部受管服务；不得绕过 CLI 直接修改服务 manager 状态或 `.video.json`。发布桌面程序的最终文件名由 `config.yaml` 的 `application.executableName` 决定。
 
 ### 脚本与过滤器
+
+服务端发布目录必须保留由构建器生成的 `dist/server/package.json`（内容声明 `type: module`），否则 Node.js 会把发布版 `worker.js` 按 CommonJS 解析并导致服务启动失败。
 
 根 `build` 脚本首先执行 `clear.mjs`，完整删除根 `dist/` 及其中的 Junction/符号链接，再依次构建 web、server、desktop 和运行时；服务端发布产物输出到 `dist/server/`，桌面端发布产物名称由 `application.executableName` 生成，Node.js 运行时输出到 `dist/runtime/`。Cargo 的中间产物仍为 `desktop/target/release/desktop.exe`，`build:desktop` 复制时将其重命名为最终发布文件；`install:runtime` 根据 `config.yaml` 的版本和镜像下载、校验并安装 `node.exe`。执行 `pnpm run build:installer` 组装安装目录并调用 Inno Setup，安装器会复制服务端、运行时、桌面端和精简后的 HLS 原生文件（仅 `hls.node` 与 `.dll`），使用 `installer/ChineseSimplified.isl` 渲染中文现代安装向导，输出 `dist/动画管理服务安装程序.exe`，并创建带 `application.appUserModelId` 的开始菜单快捷方式和注册信息。构建机需要安装 Inno Setup 6，或设置 `ISCC_PATH` 指向 `ISCC.exe`。根脚本 `web` 和 `server` 分别调用 `front.cmd`、`back.cmd`，再把后续参数转发给对应 workspace 包。`back.cmd` 对 `cli` 单独调用 `server/cli-launcher.mjs`，由启动器还原 Windows 下 `pnpm run` 产生的一层反斜杠转义，通过 Node 的 `--import tsx` 启动 TypeScript CLI，并在 Windows `uv_os_get_passwd` 因 `ENOMEM` 失败时启用当前用户信息兼容层；这也避免 CLI 参数再次经过 workspace 脚本转义。其他服务端脚本仍通过 workspace 转发。因此 Windows 下可使用：
 

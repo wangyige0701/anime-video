@@ -253,12 +253,16 @@ async function startService(record: ServiceRecord, argv: readonly string[]) {
 		{
 			// worker 通过 IPC 报告 ready/error，标准输出不绑定 CLI 终端。
 			cwd: getServerRoot(),
-			stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+			stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
 			windowsHide: true,
 		},
 	);
 	record.child = child;
 	record.pid = child.pid ?? null;
+	child.stdout?.resume();
+	child.stderr?.on('data', (chunk: Buffer | string) => {
+		appendWorkerOutput(record, 'stderr', chunk);
+	});
 	record.ready = new Promise<void>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			record.lastError = 'worker startup timed out';
@@ -275,6 +279,7 @@ async function startService(record: ServiceRecord, argv: readonly string[]) {
 			if (message.data.type === 'ready') {
 				clearTimeout(timer);
 				record.state = 'running';
+				record.lastError = null;
 				record.startedAt = new Date().toISOString();
 				resolve();
 			} else if (message.data.type === 'error') {
@@ -309,6 +314,18 @@ async function startService(record: ServiceRecord, argv: readonly string[]) {
 		});
 	});
 	await record.ready;
+}
+
+function appendWorkerOutput(record: ServiceRecord, stream: 'stdout' | 'stderr', chunk: Buffer | string) {
+	const output = String(chunk).trim();
+	if (!output) {
+		return;
+	}
+	const detail = `[worker ${stream}] ${output}`;
+	record.lastError = record.lastError ? `${record.lastError}\n${detail}` : detail;
+	if (record.lastError.length > 8_000) {
+		record.lastError = record.lastError.slice(-8_000);
+	}
 }
 
 function normalizeConfigArgs(argv: readonly string[]) {

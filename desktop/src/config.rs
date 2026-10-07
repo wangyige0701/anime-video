@@ -3,8 +3,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::logging;
+
 pub fn load_app_user_model_id() -> Result<String, String> {
     let path = config_path();
+    logging::info(format!("读取应用配置: {}", path.display()));
     let source = fs::read_to_string(&path)
         .map_err(|error| format!("无法读取配置文件 {}: {error}", path.display()))?;
     let value = yaml_value(&source, "application", "appUserModelId").ok_or_else(|| {
@@ -19,7 +22,7 @@ pub fn load_app_user_model_id() -> Result<String, String> {
     Ok(value)
 }
 
-fn config_path() -> PathBuf {
+pub fn config_path() -> PathBuf {
     if cfg!(debug_assertions) {
         return Path::new(env!("CARGO_MANIFEST_DIR"))
             .parent()

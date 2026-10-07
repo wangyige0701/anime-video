@@ -4,6 +4,7 @@ mod assets;
 mod cli;
 mod config;
 mod folder_picker;
+mod logging;
 mod notification;
 mod panel;
 mod position;
@@ -13,12 +14,24 @@ mod tray;
 use gpui::Application;
 
 fn main() {
+    logging::init();
+    logging::install_panic_hook();
+    logging::info(format!(
+        "应用启动，exe={}, 当前目录={}",
+        std::env::current_exe()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|error| format!("读取失败: {error}")),
+        std::env::current_dir()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|error| format!("读取失败: {error}")),
+    ));
     match config::load_app_user_model_id() {
         Ok(application_id) => {
+            logging::info(format!("读取应用标识: {application_id}"));
             notification::register_process_app_user_model_id(&application_id);
         }
         Err(error) => {
-            eprintln!("读取应用标识失败: {error}");
+            logging::error(format!("读取应用标识失败: {error}"));
         }
     }
     Application::new()

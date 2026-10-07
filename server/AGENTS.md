@@ -296,7 +296,7 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 API 和静态 Web 入口统一使用共享 Pino logger。控制台与文件输出由同一个 Pino worker 线程中的
 `dist/server/log-transport.js` 负责，TypeScript 源码为 `src/log-transport.ts`；即使关闭文件输出，启动前也必须编译。
-发布构建还会在根 `dist/server/` 单独输出 `thread-stream-worker.js`，并通过 Pino 的 bundler path override 让主 bundle 定位该 worker；发布产物不依赖运行时 `node_modules` 中的 Pino 或 thread-stream 文件。
+发布构建还会在根 `dist/server/` 输出声明 `type: module` 的 `package.json`、单独输出 `thread-stream-worker.js`，并通过 Pino 的 bundler path override 让主 bundle 定位该 worker；发布产物不依赖运行时 `node_modules` 中的 Pino 或 thread-stream 文件。`package.json` 不能删除，否则 Node.js 会将仅含动态 import/顶层 await 的 `worker.js` 按 CommonJS 解析，服务 worker 会在启动前退出。
 开发模式使用 `pino-pretty.prettyFactory()`，生产模式向 stdout 写入 NDJSON，两种模式都等待输出回调并保留背压。
 主线程的 `src/log-destination.ts` 按 `logging.maxQueueBytes` 限制待写及在途记录，默认 4MiB；超过上限丢弃新记录并
 向 stderr 报告丢弃数量。不要改回无背压的多 target 分发，也不要把队列字节上限描述为进程 RSS 上限。

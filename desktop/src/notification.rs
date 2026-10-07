@@ -40,13 +40,13 @@ fn show_startup_on_thread(application_id: &str) -> bool {
     logging::info("Windows Runtime 初始化成功");
 
     let registration_error = set_app_user_model_id(application_id).err();
-    let result = show_toast(Some(application_id)).or_else(|first_error| {
+    let result = show_toast(Some(application_id), true).or_else(|first_error| {
         if let Some(registration_error) = registration_error {
             logging::error(format!("应用标识注册失败: {registration_error:?}"));
         }
         logging::error(format!("首次创建 Toast 通知失败: {first_error:?}"));
         let _ = set_app_user_model_id(application_id);
-        show_toast(None)
+        show_toast(None, false)
     });
 
     unsafe {
@@ -70,19 +70,24 @@ fn set_app_user_model_id(application_id: &str) -> windows::core::Result<()> {
 }
 
 #[cfg(windows)]
-fn show_toast(application_id: Option<&str>) -> windows::core::Result<()> {
+fn show_toast(application_id: Option<&str>, include_icon: bool) -> windows::core::Result<()> {
     use windows::{
         Data::Xml::Dom::XmlDocument,
-        UI::Notifications::{ToastNotification, ToastNotificationManager},
+        UI::Notifications::{NotificationSetting, ToastNotification, ToastNotificationManager},
         core::HSTRING,
     };
 
     let document = XmlDocument::new()?;
-    let image = startup_icon_uri()
-        .map(|uri| {
-            format!(r#"<image placement="appLogoOverride" src="{uri}" hint-crop="circle"/>"#)
-        })
-        .unwrap_or_default();
+    let image = if include_icon {
+        startup_icon_uri()
+            .map(|uri| {
+                format!(r#"<image placement="appLogoOverride" src="{uri}" hint-crop="circle"/>"#)
+            })
+            .unwrap_or_default()
+    } else {
+        logging::info("使用无图标 Toast 备用内容");
+        String::new()
+    };
     let xml = format!(
         r#"<toast><visual><binding template="ToastGeneric"><text>动画管理服务</text><text>应用已成功启动</text>{image}</binding></visual></toast>"#
     );
@@ -95,6 +100,17 @@ fn show_toast(application_id: Option<&str>) -> windows::core::Result<()> {
         }
         None => ToastNotificationManager::CreateToastNotifier()?,
     };
+    match notifier.Setting() {
+        Ok(setting) if setting == NotificationSetting::Enabled => {
+            logging::info("Windows 应用通知状态：已启用");
+        }
+        Ok(setting) => {
+            logging::error(format!("Windows 应用通知状态未启用: {setting:?}"));
+        }
+        Err(error) => {
+            logging::error(format!("读取 Windows 应用通知状态失败: {error:?}"));
+        }
+    }
     notifier.Show(&toast)
 }
 

@@ -186,6 +186,8 @@ Name: "{userdesktop}\\动画管理服务"; Filename: "{app}\\${executable}"; Wor
 
 [Registry]
 Root: HKCU; Subkey: "Software\\Classes\\AppUserModelId\\${applicationId}"; ValueType: string; ValueName: "DisplayName"; ValueData: "动画管理服务"; Flags: uninsdeletekey
+Root: HKCU; Subkey: "Software\\Classes\\AppUserModelId\\${applicationId}"; ValueType: string; ValueName: "IconUri"; ValueData: "{app}\\icon.png"
+Root: HKCU; Subkey: "Software\\Classes\\AppUserModelId\\${applicationId}"; ValueType: string; ValueName: "IconBackgroundColor"; ValueData: "#1677FF"
 
 [Run]
 Filename: "{app}\\${executable}"; Description: "启动动画管理服务"; Flags: nowait postinstall skipifsilent

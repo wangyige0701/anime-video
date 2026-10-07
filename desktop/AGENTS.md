@@ -38,6 +38,7 @@ desktop/
 
 - `tray::install()` 创建托盘图标和不可见的 1x1 GPUI 宿主窗口。宿主窗口用于维持应用事件循环，不能作为可见主窗口。
 - GPUI 创建前读取配置并注册 `application.appUserModelId`；开发环境读取仓库根 `config.yaml`，正式环境读取 EXE 同级 `server/config.yaml`。托盘创建完成后，在事件循环稳定后发送 Windows Runtime Toast 启动通知。应用标识快捷方式由安装程序注册，桌面端不创建快捷方式。
+- Toast 发送前记录 Windows 应用通知开关状态；带图标内容发送失败时使用无图片内容重试，通知开关被系统或策略禁用时仅记录明确原因，不能绕过 Windows 的用户设置。
 - 左键和右键都通过 `TrayIconEvent::Click` 打开或关闭同一个浮层。必须在 `MouseButtonState::Up` 时处理点击；在 `Down` 时创建窗口会与系统托盘的鼠标抬起和焦点切换竞争，导致浮层刚创建就因失焦关闭。
 - 浮层使用 `WindowKind::PopUp`。已有浮层再次收到托盘点击时直接关闭；浮层激活后失焦也直接关闭。
 - 打开浮层必须先使用缓存快照立即渲染，再异步刷新。不能把首次展示阻塞在 CLI 查询上，也不能每次打开时先显示无状态页面。

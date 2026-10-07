@@ -188,8 +188,12 @@ impl TrayPanel {
             let result = cx
                 .background_executor()
                 .spawn(async move {
-                    for service in services {
-                        cli::run_service_action(action, Some(service))?;
+                    if global && action == ServiceAction::Start {
+                        cli::run_service_action(action, None)?;
+                    } else {
+                        for service in services {
+                            cli::run_service_action(action, Some(service))?;
+                        }
                     }
                     cli::load_snapshot()
                 })

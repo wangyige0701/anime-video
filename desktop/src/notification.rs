@@ -1,50 +1,90 @@
 #[cfg(windows)]
-use tray_icon::TrayIcon;
+pub fn register_process_app_user_model_id(application_id: &str) -> bool {
+    match set_app_user_model_id(application_id) {
+        Ok(()) => true,
+        Err(error) => {
+            eprintln!("注册 Windows 应用标识失败: {error}");
+            false
+        }
+    }
+}
+
+#[cfg(not(windows))]
+pub fn register_process_app_user_model_id(_: &str) -> bool {
+    false
+}
 
 #[cfg(windows)]
-pub fn show_startup(icon: &TrayIcon) {
-    use windows::{
-        Win32::{
-            Foundation::{HINSTANCE, HWND},
-            System::LibraryLoader::GetModuleHandleW,
-            UI::{
-                Shell::{NIF_INFO, NIIF_USER, NIM_MODIFY, NOTIFYICONDATAW, Shell_NotifyIconW},
-                WindowsAndMessaging::LoadIconW,
-            },
-        },
-        core::PCWSTR,
-    };
+pub fn show_startup(application_id: &str) -> bool {
+    let application_id = application_id.to_string();
+    std::thread::spawn(move || show_startup_on_thread(&application_id))
+        .join()
+        .unwrap_or(false)
+}
 
-    let Ok(module) = (unsafe { GetModuleHandleW(PCWSTR::null()) }) else {
-        return;
-    };
-    let resource_id = PCWSTR(1 as *const u16);
-    let app_icon = unsafe { LoadIconW(Some(HINSTANCE(module.0)), resource_id) }.ok();
-    let mut notification = NOTIFYICONDATAW {
-        cbSize: std::mem::size_of::<NOTIFYICONDATAW>() as u32,
-        hWnd: HWND(icon.window_handle() as _),
-        // tray-icon allocates the first icon in a process with internal id 1.
-        uID: 1,
-        uFlags: NIF_INFO,
-        dwInfoFlags: NIIF_USER,
-        hBalloonIcon: app_icon.unwrap_or_default(),
-        ..Default::default()
-    };
-    copy_text("动画管理服务", &mut notification.szInfoTitle);
-    copy_text("应用已成功启动", &mut notification.szInfo);
+#[cfg(windows)]
+fn show_startup_on_thread(application_id: &str) -> bool {
+    use windows::Win32::System::WinRT::{RO_INIT_MULTITHREADED, RoInitialize, RoUninitialize};
+
+    let initialized = unsafe { RoInitialize(RO_INIT_MULTITHREADED) };
+    if let Err(error) = initialized {
+        eprintln!("初始化 Windows Runtime 失败: {error}");
+        return false;
+    }
+
+    let registration_error = set_app_user_model_id(application_id).err();
+    let result = show_toast(Some(application_id)).or_else(|first_error| {
+        if let Some(registration_error) = registration_error {
+            eprintln!("应用标识已注册或注册失败: {registration_error}");
+        }
+        eprintln!("首次创建 Toast 通知失败: {first_error}");
+        let _ = set_app_user_model_id(application_id);
+        show_toast(None)
+    });
 
     unsafe {
-        let _ = Shell_NotifyIconW(NIM_MODIFY, &notification);
+        RoUninitialize();
+    }
+
+    match result {
+        Ok(()) => true,
+        Err(error) => {
+            eprintln!("发送启动 Toast 通知失败: {error}");
+            false
+        }
     }
 }
 
 #[cfg(windows)]
-fn copy_text<const N: usize>(text: &str, target: &mut [u16; N]) {
-    let encoded: Vec<u16> = text.encode_utf16().collect();
-    let length = encoded.len().min(N.saturating_sub(1));
-    target[..length].copy_from_slice(&encoded[..length]);
-    target[length] = 0;
+fn set_app_user_model_id(application_id: &str) -> windows::core::Result<()> {
+    use windows::{Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID, core::HSTRING};
+
+    unsafe { SetCurrentProcessExplicitAppUserModelID(&HSTRING::from(application_id)) }
+}
+
+#[cfg(windows)]
+fn show_toast(application_id: Option<&str>) -> windows::core::Result<()> {
+    use windows::{
+        Data::Xml::Dom::XmlDocument,
+        UI::Notifications::{ToastNotification, ToastNotificationManager},
+        core::HSTRING,
+    };
+
+    let document = XmlDocument::new()?;
+    document.LoadXml(&HSTRING::from(
+        r#"<toast><visual><binding template="ToastGeneric"><text>动画管理服务</text><text>应用已成功启动</text></binding></visual></toast>"#,
+    ))?;
+    let toast = ToastNotification::CreateToastNotification(&document)?;
+    let notifier = match application_id {
+        Some(application_id) => {
+            ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(application_id))?
+        }
+        None => ToastNotificationManager::CreateToastNotifier()?,
+    };
+    notifier.Show(&toast)
 }
 
 #[cfg(not(windows))]
-pub fn show_startup(_: &tray_icon::TrayIcon) {}
+pub fn show_startup(_: &str) -> bool {
+    false
+}

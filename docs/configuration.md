@@ -22,6 +22,7 @@ hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 | 配置项 | 环境变量 | 启动参数 | 默认值 |
 | --- | --- | --- | --- |
 | `application.executableName` | `APPLICATION_EXECUTABLE_NAME` | `--application-executable-name` | `anime-video` |
+| `application.appUserModelId` | `APPLICATION_APP_USER_MODEL_ID` | `--application-app-user-model-id` | `com.wangyige.anime-video` |
 
 `application.executableName` 只用于发布构建脚本生成最终桌面程序文件名，脚本会自动追加 `.exe` 扩展名。
 

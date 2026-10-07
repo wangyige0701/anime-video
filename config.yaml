@@ -3,6 +3,9 @@ application:
     executableName:
         value: anime-video
         comment: 发布桌面程序文件名（不含扩展名）
+    appUserModelId:
+        value: com.wangyige.anime-video
+        comment: Windows Toast 通知使用的应用标识
 
 # Koa API 服务配置
 server:

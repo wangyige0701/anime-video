@@ -20,8 +20,9 @@ desktop/
 │   ├── tray.rs            # 托盘图标、隐藏宿主窗口、状态预取和浮层生命周期
 │   ├── panel.rs           # 浮层 UI、交互状态及服务/目录操作
 │   ├── position.rs        # 多显示器 DPI、托盘定位、置顶和显隐 Win32 适配
-│   ├── notification.rs    # Windows 启动通知及应用图标复用
+│   ├── notification.rs    # Windows Runtime Toast 启动通知
 │   ├── folder_picker.rs   # Windows IFileOpenDialog 目录选择器
+│   ├── config.rs          # 开发/正式环境配置文件定位与读取
 │   ├── cli.rs             # server CLI 调用、JSON 解析和桌面端领域类型
 │   ├── state.rs           # 跨浮层实例共享的状态与网页地址缓存
 │   └── assets.rs          # GPUI 文件资源加载器
@@ -35,7 +36,7 @@ desktop/
 ## 托盘与窗口生命周期
 
 - `tray::install()` 创建托盘图标和不可见的 1x1 GPUI 宿主窗口。宿主窗口用于维持应用事件循环，不能作为可见主窗口。
-- 托盘创建完成后发送一次 Windows 启动通知，通知标题和正文使用中文，并复用嵌入 EXE 的应用图标。
+- GPUI 创建前读取配置并注册 `application.appUserModelId`；开发环境读取仓库根 `config.yaml`，正式环境读取 EXE 同级 `server/config.yaml`。托盘创建完成后，在事件循环稳定后发送 Windows Runtime Toast 启动通知。应用标识快捷方式由安装程序注册，桌面端不创建快捷方式。
 - 左键和右键都通过 `TrayIconEvent::Click` 打开或关闭同一个浮层。必须在 `MouseButtonState::Up` 时处理点击；在 `Down` 时创建窗口会与系统托盘的鼠标抬起和焦点切换竞争，导致浮层刚创建就因失焦关闭。
 - 浮层使用 `WindowKind::PopUp`。已有浮层再次收到托盘点击时直接关闭；浮层激活后失焦也直接关闭。
 - 打开浮层必须先使用缓存快照立即渲染，再异步刷新。不能把首次展示阻塞在 CLI 查询上，也不能每次打开时先显示无状态页面。

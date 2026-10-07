@@ -1,4 +1,5 @@
 use crate::cli;
+use crate::config;
 use crate::notification;
 use crate::panel::{PANEL_WIDTH, TrayPanel, panel_height_for_directory_count};
 use crate::position;
@@ -7,6 +8,8 @@ use gpui::{
     App, AppContext, AsyncApp, Bounds, Context, Global, Render, Subscription, TitlebarOptions,
     Window, WindowHandle, WindowKind, WindowOptions, div, point, prelude::*, px, size,
 };
+#[cfg(windows)]
+use std::time::Duration;
 use tray_icon::{
     Icon, MouseButton, MouseButtonState, Rect, TrayIcon, TrayIconBuilder, TrayIconEvent,
 };
@@ -38,7 +41,9 @@ pub fn install(cx: &mut App) {
         .with_menu_on_right_click(false)
         .build()
         .expect("创建托盘图标失败");
-    notification::show_startup(&icon);
+
+    #[cfg(windows)]
+    schedule_startup_notification(cx);
 
     let host = cx
         .open_window(
@@ -93,6 +98,47 @@ pub fn install(cx: &mut App) {
     cx.spawn(async move |cx: &mut AsyncApp| {
         while let Ok(rect) = receiver.recv().await {
             let _ = cx.update(move |cx| toggle_panel(rect, cx));
+        }
+    })
+    .detach();
+}
+
+#[cfg(windows)]
+fn schedule_startup_notification(cx: &mut App) {
+    cx.spawn(async move |cx: &mut AsyncApp| {
+        // 等待 GPUI 事件循环启动后再发送 Toast。
+        cx.background_executor()
+            .timer(Duration::from_millis(800))
+            .await;
+
+        let application_id = match cx
+            .background_executor()
+            .spawn(async { config::load_app_user_model_id() })
+            .await
+        {
+            Ok(application_id) => application_id,
+            Err(error) => {
+                eprintln!("读取应用标识失败: {error}");
+                return;
+            }
+        };
+
+        for attempt in 0..4 {
+            let sent = cx
+                .background_executor()
+                .spawn({
+                    let application_id = application_id.clone();
+                    async move { notification::show_startup(&application_id) }
+                })
+                .await;
+            if sent {
+                return;
+            }
+            if attempt < 3 {
+                cx.background_executor()
+                    .timer(Duration::from_millis(700))
+                    .await;
+            }
         }
     })
     .detach();

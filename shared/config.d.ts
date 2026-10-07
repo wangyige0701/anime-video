@@ -7,6 +7,7 @@ export interface AppConfig {
 		 * 发布桌面程序文件名（不含扩展名）。
 		 */
 		executableName: string;
+		appUserModelId: string;
 	};
 
 	/**

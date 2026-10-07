@@ -20,11 +20,12 @@ desktop/
 │   ├── tray.rs            # 托盘图标、隐藏宿主窗口、状态预取和浮层生命周期
 │   ├── panel.rs           # 浮层 UI、交互状态及服务/目录操作
 │   ├── position.rs        # 多显示器 DPI、托盘定位、置顶和显隐 Win32 适配
+│   ├── notification.rs    # Windows 启动通知及应用图标复用
 │   ├── folder_picker.rs   # Windows IFileOpenDialog 目录选择器
 │   ├── cli.rs             # server CLI 调用、JSON 解析和桌面端领域类型
 │   ├── state.rs           # 跨浮层实例共享的状态与网页地址缓存
 │   └── assets.rs          # GPUI 文件资源加载器
-├── build.rs               # Windows EXE 图标资源嵌入
+├── build.rs               # Windows EXE 图标和版本资源嵌入
 ├── Cargo.toml
 └── Cargo.lock
 ```
@@ -34,6 +35,7 @@ desktop/
 ## 托盘与窗口生命周期
 
 - `tray::install()` 创建托盘图标和不可见的 1x1 GPUI 宿主窗口。宿主窗口用于维持应用事件循环，不能作为可见主窗口。
+- 托盘创建完成后发送一次 Windows 启动通知，通知标题和正文使用中文，并复用嵌入 EXE 的应用图标。
 - 左键和右键都通过 `TrayIconEvent::Click` 打开或关闭同一个浮层。必须在 `MouseButtonState::Up` 时处理点击；在 `Down` 时创建窗口会与系统托盘的鼠标抬起和焦点切换竞争，导致浮层刚创建就因失焦关闭。
 - 浮层使用 `WindowKind::PopUp`。已有浮层再次收到托盘点击时直接关闭；浮层激活后失焦也直接关闭。
 - 打开浮层必须先使用缓存快照立即渲染，再异步刷新。不能把首次展示阻塞在 CLI 查询上，也不能每次打开时先显示无状态页面。
@@ -70,6 +72,7 @@ desktop/
 ## CLI 边界
 
 - Debug 构建在仓库根目录执行 `pnpm run server cli <命令>`。该路径使用 server 的开发启动器和 TypeScript 源码。
+- 桌面端调用 `pnpm.cmd`、`node.exe` 和停止服务命令时必须设置 Windows `CREATE_NO_WINDOW`，避免发布托盘程序拉起控制台窗口。
 - Release 构建使用 `cargo build --release --manifest-path desktop/Cargo.toml`，生成 `desktop/target/release/desktop.exe`；根目录的 `build:desktop` 脚本根据 `config.yaml` 的 `application.executableName` 将它复制为最终 EXE，`install:runtime` 会将配置版本的 Node.js 安装到 `dist/runtime/node.exe`。完整发布运行时仍以托盘 EXE 所在目录为应用根，执行同级 `runtime/node.exe server/cli.js <命令>` 并设置 `NODE_ENV=production` 与内部标记 `ANIME_VIDEO_DESKTOP=1`，不依赖 PATH、pnpm 或 tsx。完整发布目录必须保持配置名称对应的 EXE、`runtime/node.exe` 和 `server/cli.js` 的相对布局。
 - `ANIME_VIDEO_ROOT` 可覆盖默认应用根目录；未设置时 Debug 构建以 `CARGO_MANIFEST_DIR` 的父目录为根，Release 构建以当前 EXE 所在目录为根。
 - 状态使用 `status --json`，目录使用 `dir list --json`，Web 地址使用 `config --json`。状态和目录查询彼此独立，当前并行执行以缩短首次加载时间。

@@ -3,6 +3,7 @@
 mod assets;
 mod cli;
 mod folder_picker;
+mod notification;
 mod panel;
 mod position;
 mod state;

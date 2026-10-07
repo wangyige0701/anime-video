@@ -5,6 +5,12 @@ use std::{
     process::{Command, Stdio},
 };
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Service {
     Api,
@@ -233,6 +239,7 @@ fn cli_command() -> Command {
         command
             .current_dir(application_root())
             .args(["run", "server", "cli"]);
+        hide_console(&mut command);
         return command;
     }
 
@@ -247,7 +254,13 @@ fn cli_command() -> Command {
         .env("NODE_ENV", "production")
         .env("ANIME_VIDEO_DESKTOP", "1")
         .arg(cli_entry);
+    hide_console(&mut command);
     command
+}
+
+fn hide_console(command: &mut Command) {
+    #[cfg(windows)]
+    command.creation_flags(CREATE_NO_WINDOW);
 }
 
 fn parse_json<T: for<'a> Deserialize<'a>>(output: &str) -> Result<T, String> {

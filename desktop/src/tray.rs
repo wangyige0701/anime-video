@@ -1,4 +1,5 @@
 use crate::cli;
+use crate::notification;
 use crate::panel::{PANEL_WIDTH, TrayPanel, panel_height_for_directory_count};
 use crate::position;
 use crate::state::CachedState;
@@ -37,6 +38,7 @@ pub fn install(cx: &mut App) {
         .with_menu_on_right_click(false)
         .build()
         .expect("创建托盘图标失败");
+    notification::show_startup(&icon);
 
     let host = cx
         .open_window(

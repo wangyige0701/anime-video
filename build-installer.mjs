@@ -25,10 +25,13 @@ const executableSource = resolve(distDirectory, `${executableName}.exe`);
 const serverSource = resolve(distDirectory, 'server');
 const runtimeSource = resolve(distDirectory, 'runtime');
 const hlsSource = resolve(rootDirectory, 'hls', 'build');
+const installerIconSource = resolve(rootDirectory, 'desktop', 'assets', 'icon.ico');
+const installerLanguageSource = resolve(rootDirectory, 'installer', 'ChineseSimplified.isl');
 const executableTarget = join(applicationDirectory, `${executableName}.exe`);
 const serverTarget = join(applicationDirectory, 'server');
 const runtimeTarget = join(applicationDirectory, 'runtime');
 const hlsTarget = join(serverTarget, 'hls');
+const installerLanguageTarget = join(stagingDirectory, 'ChineseSimplified.isl');
 
 await requireFile(executableSource, '桌面端 EXE');
 await requireDirectory(serverSource, '服务端发布目录');
@@ -37,10 +40,13 @@ await requireFile(join(hlsSource, 'hls.node'), 'HLS 原生模块');
 
 await rm(stagingDirectory, { recursive: true, force: true });
 await mkdir(applicationDirectory, { recursive: true });
+await requireFile(installerIconSource, '安装器图标');
+await requireFile(installerLanguageSource, '安装器中文语言文件');
 await copyFile(executableSource, executableTarget);
 await copyServerWithoutHls(serverSource, serverTarget);
 await cp(runtimeSource, runtimeTarget, { recursive: true });
 await mkdir(hlsTarget, { recursive: true });
+await copyFile(installerLanguageSource, installerLanguageTarget);
 
 for (const entry of await readdir(hlsSource, { withFileTypes: true })) {
 	if (!entry.isFile()) {
@@ -59,6 +65,8 @@ await writeFile(
 		executableName,
 		applicationId,
 		version: packageInfo.version,
+		iconPath: installerIconSource,
+		languagePath: installerLanguageTarget,
 	}),
 	'utf8',
 );
@@ -66,7 +74,7 @@ await writeFile(
 const compiler = await findInnoSetupCompiler();
 await run(compiler, [scriptPath]);
 await rm(stagingDirectory, { recursive: true, force: true });
-console.log(`安装包已生成到 ${join(distDirectory, `${executableName}-setup.exe`)}`);
+console.log(`安装包已生成到 ${join(distDirectory, '动画管理服务安装程序.exe')}`);
 
 async function requireFile(path, label) {
 	try {
@@ -93,6 +101,7 @@ async function copyServerWithoutHls(source, target) {
 async function findInnoSetupCompiler() {
 	const candidates = [
 		process.env.ISCC_PATH,
+		'D:\\DevTools\\InnoSetup\\ISCC.exe',
 		'C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe',
 		'C:\\Program Files\\Inno Setup 6\\ISCC.exe',
 		...(process.env.PATH ?? '')
@@ -129,35 +138,54 @@ function run(command, args) {
 	});
 }
 
-function createInnoScript({ executableName, applicationId, version }) {
+function createInnoScript({ executableName, applicationId, version, iconPath, languagePath }) {
 	const executable = `${executableName}.exe`;
 	return `; 由 build-installer.mjs 生成，勿直接修改
 [Setup]
 AppId=${applicationId}
 AppName=动画管理服务
 AppVersion=${version}
+AppComments=轻量级托盘服务管理工具
+SetupIconFile=${iconPath}
 AppPublisher=动画管理服务
 DefaultDirName={localappdata}\\Programs\\动画管理服务
 DefaultGroupName=动画管理服务
 DisableProgramGroupPage=yes
+DisableWelcomePage=no
+DisableDirPage=no
 PrivilegesRequired=lowest
 ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed=x64compatible
+WizardResizable=yes
+WizardSizePercent=110
+CloseApplications=yes
+RestartApplications=no
+ShowLanguageDialog=no
 OutputDir=${distDirectory}
-OutputBaseFilename=${executableName}-setup
+OutputBaseFilename=动画管理服务安装程序
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 UninstallDisplayName=动画管理服务
 
+[Languages]
+Name: "chinesesimp"; MessagesFile: "${languagePath}"
+
 [Files]
 Source: "${applicationDirectory}\\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[Tasks]
+Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加快捷方式:"; Flags: unchecked
+
 [Icons]
 Name: "{autoprograms}\\动画管理服务"; Filename: "{app}\\${executable}"; WorkingDir: "{app}"; IconFilename: "{app}\\${executable}"; AppUserModelID: "${applicationId}"
-Name: "{userdesktop}\\动画管理服务"; Filename: "{app}\\${executable}"; WorkingDir: "{app}"; IconFilename: "{app}\\${executable}"; AppUserModelID: "${applicationId}"
+Name: "{userdesktop}\\动画管理服务"; Filename: "{app}\\${executable}"; WorkingDir: "{app}"; IconFilename: "{app}\\${executable}"; AppUserModelID: "${applicationId}"; Tasks: desktopicon
 
 [Registry]
 Root: HKCU; Subkey: "Software\\Classes\\AppUserModelId\\${applicationId}"; ValueType: string; ValueName: "DisplayName"; ValueData: "动画管理服务"; Flags: uninsdeletekey
+
+[Run]
+Filename: "{app}\\${executable}"; Description: "启动动画管理服务"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"

@@ -13,19 +13,12 @@ const serverDir = dirname(fileURLToPath(import.meta.url));
 const repositoryDir = resolve(serverDir, '..');
 const distRootDir = resolve(serverDir, 'dist');
 const require = createRequire(import.meta.url);
-const nodeBuiltins = new Set([
-	...builtinModules,
-	...builtinModules.map((name) => `node:${name}`),
-]);
+const nodeBuiltins = new Set([...builtinModules, ...builtinModules.map((name) => `node:${name}`)]);
 const controllers = readdirSync(resolve(distRootDir, 'server/controller'))
 	.filter((name) => name.endsWith('.js'))
 	.reduce(
 		(prev, curr) => {
-			prev[`controller/${basename(curr, extname(curr))}`] = resolve(
-				distRootDir,
-				'server/controller',
-				curr,
-			);
+			prev[`controller/${basename(curr, extname(curr))}`] = resolve(distRootDir, 'server/controller', curr);
 			return prev;
 		},
 		{} as Record<string, string>,
@@ -34,7 +27,7 @@ const controllers = readdirSync(resolve(distRootDir, 'server/controller'))
 export default defineConfig({
 	build: {
 		target: 'node20',
-		outDir: resolve(repositoryDir, 'dist'),
+		outDir: resolve(repositoryDir, 'dist/server'),
 		ssr: true,
 		emptyOutDir: true,
 		emitAssets: true,
@@ -44,28 +37,16 @@ export default defineConfig({
 		assetsDir: '',
 		rolldownOptions: {
 			external: (id) => {
-				return (
-					nodeBuiltins.has(id) ||
-					id.startsWith('node:') ||
-					/\.(?:node|dll)$/i.test(id)
-				);
+				return nodeBuiltins.has(id) || id.startsWith('node:') || /\.(?:node|dll)$/i.test(id);
 			},
 			platform: 'node',
 			input: {
 				cli: resolve(distRootDir, 'server/cli.js'),
-				'daemon-entry': resolve(
-					distRootDir,
-					'server/cli/manager/daemon-entry.js',
-				),
+				'daemon-entry': resolve(distRootDir, 'server/cli/manager/daemon-entry.js'),
 				worker: resolve(distRootDir, 'server/cli/worker.js'),
 				...controllers,
-				'log-transport': resolve(
-					distRootDir,
-					'server/src/log-transport.js',
-				),
-				'thread-stream-worker': require.resolve(
-					'thread-stream/lib/worker.js',
-				),
+				'log-transport': resolve(distRootDir, 'server/src/log-transport.js'),
+				'thread-stream-worker': require.resolve('thread-stream/lib/worker.js'),
 			},
 			output: {
 				entryFileNames: '[name].js',
@@ -82,11 +63,7 @@ export default defineConfig({
 				},
 			},
 			onLog(level, log, defaultHandler) {
-				if (
-					level === 'warn' &&
-					log.code === 'EVAL' &&
-					log.id?.includes('node_modules/depd')
-				) {
+				if (level === 'warn' && log.code === 'EVAL' && log.id?.includes('node_modules/depd')) {
 					return;
 				}
 
@@ -94,12 +71,7 @@ export default defineConfig({
 			},
 		},
 	},
-	plugins: [
-		copyWebStaticRoot(config.web),
-		replaceRuntimePath(),
-		resolveHls(),
-		copyImportMetaAssets(['yaml']),
-	],
+	plugins: [copyWebStaticRoot(config.web), replaceRuntimePath(), resolveHls(), copyImportMetaAssets(['yaml'])],
 	resolve: {
 		alias: {
 			'~server': resolve(distRootDir, 'server'),

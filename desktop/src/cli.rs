@@ -199,7 +199,9 @@ pub fn delete_directory(index: usize) -> Result<(), String> {
 }
 
 pub fn log_directory(service: Service) -> PathBuf {
-    workspace_root().join("logs").join(service.log_component())
+    application_root()
+        .join("logs")
+        .join(service.log_component())
 }
 
 fn run_cli(args: &[&str]) -> Result<String, String> {
@@ -229,16 +231,21 @@ fn cli_command() -> Command {
         let executable = if cfg!(windows) { "pnpm.cmd" } else { "pnpm" };
         let mut command = Command::new(executable);
         command
-            .current_dir(workspace_root())
+            .current_dir(application_root())
             .args(["run", "server", "cli"]);
         return command;
     }
 
-    let executable = if cfg!(windows) { "node.exe" } else { "node" };
+    let root = application_root();
+    let executable = root
+        .join("runtime")
+        .join(if cfg!(windows) { "node.exe" } else { "node" });
+    let cli_entry = root.join("server").join("cli.js");
     let mut command = Command::new(executable);
     command
-        .current_dir(workspace_root().join("server"))
-        .arg("dist/cli.js");
+        .current_dir(root)
+        .env("NODE_ENV", "production")
+        .arg(cli_entry);
     command
 }
 
@@ -255,13 +262,21 @@ fn parse_json<T: for<'a> Deserialize<'a>>(output: &str) -> Result<T, String> {
         .map_err(|error| format!("无法读取服务状态: {error}"))
 }
 
-fn workspace_root() -> PathBuf {
+fn application_root() -> PathBuf {
     if let Ok(root) = env::var("ANIME_VIDEO_ROOT") {
         return PathBuf::from(root);
     }
 
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("desktop 必须位于工作区根目录下")
-        .to_path_buf()
+    if cfg!(debug_assertions) {
+        return Path::new(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("desktop 必须位于工作区根目录下")
+            .to_path_buf();
+    }
+
+    env::current_exe()
+        .ok()
+        .and_then(|executable| executable.parent().map(Path::to_path_buf))
+        .or_else(|| env::current_dir().ok())
+        .unwrap_or_else(|| PathBuf::from("."))
 }

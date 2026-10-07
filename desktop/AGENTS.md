@@ -70,7 +70,7 @@ desktop/
 ## CLI 边界
 
 - Debug 构建在仓库根目录执行 `pnpm run server cli <命令>`。该路径使用 server 的开发启动器和 TypeScript 源码。
-- Release 构建使用 `cargo build --release --manifest-path desktop/Cargo.toml`，生成 `desktop/target/release/desktop.exe`；根目录的 `build:desktop` 脚本会将它复制到 `dist/desktop.exe`，`install:runtime` 会将配置版本的 Node.js 安装到 `dist/runtime/node.exe`。完整发布运行时仍以托盘 EXE 所在目录为应用根，执行同级 `runtime/node.exe server/cli.js <命令>` 并设置 `NODE_ENV=production`，不依赖 PATH、pnpm 或 tsx。完整发布目录必须保持 `desktop.exe`、`runtime/node.exe` 和 `server/cli.js` 的相对布局。
+- Release 构建使用 `cargo build --release --manifest-path desktop/Cargo.toml`，生成 `desktop/target/release/desktop.exe`；根目录的 `build:desktop` 脚本根据 `config.yaml` 的 `application.executableName` 将它复制为最终 EXE，`install:runtime` 会将配置版本的 Node.js 安装到 `dist/runtime/node.exe`。完整发布运行时仍以托盘 EXE 所在目录为应用根，执行同级 `runtime/node.exe server/cli.js <命令>` 并设置 `NODE_ENV=production` 与内部标记 `ANIME_VIDEO_DESKTOP=1`，不依赖 PATH、pnpm 或 tsx。完整发布目录必须保持配置名称对应的 EXE、`runtime/node.exe` 和 `server/cli.js` 的相对布局。
 - `ANIME_VIDEO_ROOT` 可覆盖默认应用根目录；未设置时 Debug 构建以 `CARGO_MANIFEST_DIR` 的父目录为根，Release 构建以当前 EXE 所在目录为根。
 - 状态使用 `status --json`，目录使用 `dir list --json`，Web 地址使用 `config --json`。状态和目录查询彼此独立，当前并行执行以缩短首次加载时间。
 - CLI 可能在 stdout 前输出包管理器脚本文本；JSON 解析先尝试完整输出，再从末尾寻找以 `{` 或 `[` 开始的结构化行。改变 CLI 输出时必须同时验证该兼容逻辑。

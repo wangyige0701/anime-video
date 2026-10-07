@@ -102,7 +102,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 
 `DATA_FILE` 由 `server.videoConfigPrefix + server.dataFile` 生成，默认文件名为 `.video.json`。对应环境变量为 `SERVER_VIDEO_CONFIG_PREFIX` 和 `SERVER_DATA_FILE`。同名文件有两种不同用途：
 
-- `path.join(process.cwd(), DATA_FILE)` 保存允许扫描的视频根目录数组。
+- 通过桌面 EXE 启动并携带内部标记 `ANIME_VIDEO_DESKTOP=1` 时，全局目录白名单保存到用户数据目录中的 `DATA_FILE`；Windows 默认目录为 `%LOCALAPPDATA%\Anime Video`，可通过 `ANIME_VIDEO_DATA_DIR` 覆盖。直接运行 server 项目时使用 `getServerRoot()` 返回的服务目录。
 - 每个允许根目录下的 `DATA_FILE` 保存该根目录直接包含的所有 series 配置，内部继续嵌套 seasons 和 episodes 元数据。
 
 目录结构约定如下：

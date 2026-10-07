@@ -245,6 +245,7 @@ fn cli_command() -> Command {
     command
         .current_dir(root)
         .env("NODE_ENV", "production")
+        .env("ANIME_VIDEO_DESKTOP", "1")
         .arg(cli_entry);
     command
 }

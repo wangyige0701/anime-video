@@ -7,6 +7,39 @@ import { getServerRoot } from '~server/cli/manager/paths';
 
 const SERVER = __APP_CONFIG__.server;
 
+function getUserDataDirectory() {
+	const configuredDirectory = process.env.ANIME_VIDEO_DATA_DIR?.trim();
+	if (configuredDirectory) {
+		return path.resolve(configuredDirectory);
+	}
+
+	if (process.platform === 'win32') {
+		const localAppData = process.env.LOCALAPPDATA ?? process.env.APPDATA;
+		const userProfile = process.env.USERPROFILE ?? process.cwd();
+		return path.join(localAppData ?? path.join(userProfile, 'AppData', 'Local'), 'Anime Video');
+	}
+
+	if (process.platform === 'darwin') {
+		return path.join(process.env.HOME ?? process.cwd(), 'Library', 'Application Support', 'Anime Video');
+	}
+
+	const dataHome = process.env.XDG_DATA_HOME ?? path.join(process.env.HOME ?? process.cwd(), '.local', 'share');
+	return path.join(dataHome, 'anime-video');
+}
+
+function getDataDirectory() {
+	if (process.env.ANIME_VIDEO_DESKTOP === '1') {
+		return getUserDataDirectory();
+	}
+	return getServerRoot();
+}
+
+async function ensureDesktopDataDirectory() {
+	if (process.env.ANIME_VIDEO_DESKTOP === '1') {
+		await fs.mkdir(getDataDirectory(), { recursive: true });
+	}
+}
+
 type PickType<
 	T extends Record<string, any>,
 	K extends (keyof T)[],
@@ -52,12 +85,13 @@ export abstract class Common {
 	}
 
 	// 数据文件
-	private static __path = path.join(getServerRoot(), getDataFile());
+	private static __path = path.join(getDataDirectory(), getDataFile());
 
 	/**
 	 * 获取所有视频系列根目录配置数据
 	 */
 	public static async getDirectories() {
+		await ensureDesktopDataDirectory();
 		return await Data.instance<string[]>(this.__path, []).read();
 	}
 

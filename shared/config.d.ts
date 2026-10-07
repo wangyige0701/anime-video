@@ -1,5 +1,15 @@
 export interface AppConfig {
 	/**
+	 * 桌面应用配置。
+	 */
+	application: {
+		/**
+		 * 发布桌面程序文件名（不含扩展名）。
+		 */
+		executableName: string;
+	};
+
+	/**
 	 * 发布运行时配置。
 	 */
 	runtime: {

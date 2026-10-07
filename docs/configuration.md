@@ -1,6 +1,6 @@
 # 配置覆盖说明
 
-应用默认配置位于根目录 `config.yaml`，包含 `runtime`、`server`、`logging`、`web` 和 `hls` 五个一级类目。
+应用默认配置位于根目录 `config.yaml`，包含 `application`、`runtime`、`server`、`logging`、`web` 和 `hls` 六个一级类目。
 
 ## 覆盖优先级
 
@@ -16,6 +16,14 @@
 server.dataFileSaveDelay -> SERVER_DATA_FILE_SAVE_DELAY
 hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 ```
+
+## Application
+
+| 配置项 | 环境变量 | 启动参数 | 默认值 |
+| --- | --- | --- | --- |
+| `application.executableName` | `APPLICATION_EXECUTABLE_NAME` | `--application-executable-name` | `anime-video` |
+
+`application.executableName` 只用于发布构建脚本生成最终桌面程序文件名，脚本会自动追加 `.exe` 扩展名。
 
 ## Runtime
 
@@ -48,6 +56,8 @@ hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 | `server.allowedImageExtensions` | `SERVER_ALLOWED_IMAGE_EXTENSIONS` | `--server-allowed-image-extensions` | `.jpg`、`.jpeg`、`.png`、`.webp`、`.gif`                        |
 | `server.allowedVideoExtensions` | `SERVER_ALLOWED_VIDEO_EXTENSIONS` | `--server-allowed-video-extensions` | `.mp4`、`.mkv`、`.avi`、`.flv`、`.m4v`、`.mov`、`.webm`、`.wmv` |
 | `server.dataFileSaveDelay`      | `SERVER_DATA_FILE_SAVE_DELAY`     | `--server-data-file-save-delay`     | `500`                                                           |
+
+通过桌面 EXE 启动服务时，全局视频目录配置文件保存在用户数据目录中；Windows 默认目录为 `%LOCALAPPDATA%\Anime Video`，可通过 `ANIME_VIDEO_DATA_DIR` 覆盖。直接运行 server 项目时仍保存到 `getServerRoot()` 返回的服务目录。每个视频根目录下的 `.video.json` 仍用于保存该目录的媒体元数据。
 
 ## Web
 

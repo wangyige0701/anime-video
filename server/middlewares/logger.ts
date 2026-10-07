@@ -16,10 +16,16 @@ const LOGGING = __APP_CONFIG__.logging;
 const logDir = resolve(process.cwd(), LOGGING.directory);
 const moduleDir = fileURLToPath(new URL('.', import.meta.url));
 const sourceTransport = resolve(moduleDir, '../dist/log-transport.js');
-const compiledTransport = runtimePath(import.meta.url, '../log-transport.js');
-const logTransport = [sourceTransport, compiledTransport].find((candidate) =>
-	existsSync(candidate),
+const sourceBuildTransport = resolve(
+	moduleDir,
+	'../dist/server/src/log-transport.js',
 );
+const compiledTransport = runtimePath(import.meta.url, '../log-transport.js');
+const logTransport = [
+	compiledTransport,
+	sourceTransport,
+	sourceBuildTransport,
+].find((candidate) => existsSync(candidate));
 const threadStreamWorker = runtimePath(
 	import.meta.url,
 	'../thread-stream-worker.js',

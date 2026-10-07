@@ -113,13 +113,33 @@ async function handleConnection(socket: net.Socket) {
 		handled = true;
 		const line = buffer.slice(0, buffer.indexOf('\n'));
 		void enqueue(line)
-			.then((response) => socket.end(`${JSON.stringify(response)}\n`))
+			.then((response) => endResponse(socket, `${JSON.stringify(response)}\n`))
 			.catch((error) =>
-				socket.end(
+				endResponse(
+					socket,
 					`${JSON.stringify({ version: 1, managerId, requestId: '', ok: false, message: String(error) })}\n`,
 				),
-			);
+			)
+			.finally(() => {
+				const action = parseAction(line);
+				scheduleIdleShutdown(action === 'status' ? managerIdleTimeoutMs : 0);
+			});
 	});
+}
+
+function endResponse(socket: net.Socket, response: string) {
+	return new Promise<void>((resolve) => {
+		socket.end(response, resolve);
+	});
+}
+
+function parseAction(line: string) {
+	try {
+		const value = JSON.parse(line) as { action?: unknown };
+		return typeof value.action === 'string' ? value.action : null;
+	} catch {
+		return null;
+	}
 }
 
 function enqueue(line: string) {
@@ -322,7 +342,6 @@ async function stopService(record: ServiceRecord) {
 	// 子进程继续占用 Web 端口而 manager 已经返回失败。
 	if (!record.child) {
 		record.state = 'stopped';
-		scheduleIdleShutdown();
 		return;
 	}
 	record.stopRequested = true;
@@ -337,7 +356,6 @@ async function stopService(record: ServiceRecord) {
 	}
 	await waitForExit(child, 15_000);
 	record.state = 'stopped';
-	scheduleIdleShutdown();
 }
 
 async function restartService(record: ServiceRecord, argv: readonly string[]) {
@@ -428,15 +446,15 @@ async function shutdownManager() {
 	process.exit(0);
 }
 
-function scheduleIdleShutdown() {
-	// 服务全部停止后短暂保留 manager，复用后续 CLI 请求并避免频繁创建进程。
+function scheduleIdleShutdown(delayMs = managerIdleTimeoutMs) {
+	// status 探活短暂保留空闲 manager；变更命令完成后使用零延迟释放工作目录。
 	if ([...records.values()].some((record) => record.child !== null) || idleTimer) {
 		return;
 	}
 	idleTimer = setTimeout(() => {
 		idleTimer = null;
 		void shutdownManager();
-	}, managerIdleTimeoutMs);
+	}, delayMs);
 }
 
 function createRecord(service: ServiceName): ServiceRecord {

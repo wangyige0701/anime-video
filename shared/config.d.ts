@@ -1,5 +1,23 @@
 export interface AppConfig {
 	/**
+	 * 发布运行时配置。
+	 */
+	runtime: {
+		/**
+		 * 发布时下载的 Node.js 版本。
+		 */
+		nodeVersion: string;
+		/**
+		 * Node.js 发布包镜像地址。
+		 */
+		nodeMirror: string;
+		/**
+		 * Node.js 压缩包 SHA256；为空时从镜像校验文件读取。
+		 */
+		nodeSha256: string;
+	};
+
+	/**
 	 * Koa API 服务配置。
 	 */
 	server: {

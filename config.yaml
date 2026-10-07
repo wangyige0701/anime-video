@@ -38,6 +38,18 @@ server:
         value: 500
         comment: 数据文件保存防抖延迟（毫秒）
 
+# 发布运行时配置
+runtime:
+    nodeVersion:
+        value: 20.19.5
+        comment: 发布时下载的 Node.js 版本
+    nodeMirror:
+        value: https://npmmirror.com/mirrors/node/
+        comment: Node.js 发布包镜像地址
+    nodeSha256:
+        value: ''
+        comment: Node.js 压缩包 SHA256，可留空并从镜像校验文件读取
+
 # 日志落盘与缓冲配置
 logging:
     directory:

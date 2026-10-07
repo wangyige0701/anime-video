@@ -1,6 +1,6 @@
 # 配置覆盖说明
 
-应用默认配置位于根目录 `config.yaml`，包含 `server`、`logging`、`web` 和 `hls` 四个一级类目。
+应用默认配置位于根目录 `config.yaml`，包含 `runtime`、`server`、`logging`、`web` 和 `hls` 五个一级类目。
 
 ## 覆盖优先级
 
@@ -16,6 +16,16 @@
 server.dataFileSaveDelay -> SERVER_DATA_FILE_SAVE_DELAY
 hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 ```
+
+## Runtime
+
+| 配置项 | 环境变量 | 启动参数 | 默认值 |
+| --- | --- | --- | --- |
+| `runtime.nodeVersion` | `RUNTIME_NODE_VERSION` | `--runtime-node-version` | `20.19.5` |
+| `runtime.nodeMirror` | `RUNTIME_NODE_MIRROR` | `--runtime-node-mirror` | `https://npmmirror.com/mirrors/node/` |
+| `runtime.nodeSha256` | `RUNTIME_NODE_SHA256` | `--runtime-node-sha256` | 空值，从镜像 `SHASUMS256.txt` 读取 |
+
+运行时安装脚本只支持 Windows 构建，会根据版本和当前架构下载 Node.js ZIP，校验 SHA256 后将 `node.exe` 和许可证复制到 `dist/runtime/`。压缩包缓存在根目录 `.cache/node-runtime/`，不会提交到 Git。可通过 `pnpm run install:runtime` 单独执行。
 
 启动参数支持等号和空格两种写法：
 

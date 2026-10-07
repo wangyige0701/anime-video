@@ -3,13 +3,15 @@
 	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
-		"build": "node clear.mjs && pnpm --filter web run build && pnpm --filter server run build && pnpm run build:desktop",
+		"build": "node clear.mjs && pnpm --filter web run build && pnpm --filter server run build && pnpm run build:desktop && pnpm run install:runtime",
 		"build:desktop": "node build-desktop.mjs",
+		"install:runtime": "node runtime/install-node-runtime.mjs",
 		"web": "front",
 		"server": "back",
 		"build:log-transport": "pnpm --filter server run build:log-transport",
 		"move:www": "pnpm run web build && www.cmd",
-		"dev:desktop": "cargo run --manifest-path desktop/Cargo.toml"
+		"dev:desktop": "cargo run --manifest-path desktop/Cargo.toml",
+		"clear": "node clear.mjs"
 	},
 	"keywords": [],
 	"author": "",

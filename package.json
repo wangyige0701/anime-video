@@ -3,7 +3,7 @@
 	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
-		"build": "node clear.mjs && pnpm --filter web run build && pnpm --filter server run build && pnpm run build:desktop && pnpm run install:runtime",
+		"build": "node clear.mjs && pnpm --filter web run build && pnpm --filter server run build && pnpm run build:desktop && pnpm run install:runtime && pnpm run build:installer",
 		"build:desktop": "node build-desktop.mjs",
 		"build:installer": "node build-installer.mjs",
 		"install:runtime": "node runtime/install-node-runtime.mjs",

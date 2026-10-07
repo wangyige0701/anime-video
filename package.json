@@ -3,7 +3,8 @@
 	"version": "1.0.0",
 	"type": "module",
 	"scripts": {
-		"build": "node clear.mjs && pnpm --filter web run build && pnpm --filter server run build",
+		"build": "node clear.mjs && pnpm --filter web run build && pnpm --filter server run build && pnpm run build:desktop",
+		"build:desktop": "node build-desktop.mjs",
 		"web": "front",
 		"server": "back",
 		"build:log-transport": "pnpm --filter server run build:log-transport",

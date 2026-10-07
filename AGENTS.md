@@ -44,6 +44,7 @@ anime-video/
 ├── front.cmd               # Windows 下把参数转发给 web workspace 脚本
 ├── back.cmd                # Windows 下把参数转发给 server workspace 脚本
 ├── clear.mjs               # 根构建前清空 dist（包括其中的 Junction/符号链接）
+├── build-desktop.mjs       # 编译并复制桌面端发布 EXE
 ├── package.json            # workspace 根包和根级工具依赖
 ├── pnpm-workspace.yaml     # workspace 范围、依赖覆盖和安装策略
 ├── pnpm-lock.yaml          # 根包、server、web 共用的唯一锁文件
@@ -102,7 +103,7 @@ pnpm --dir hls install --ignore-workspace
 
 ### 脚本与过滤器
 
-根 `build` 脚本首先执行 `clear.mjs`，完整删除根 `dist/` 及其中的 Junction/符号链接，再依次构建 web 和 server；服务端发布产物输出到 `dist/server/`。根脚本 `web` 和 `server` 分别调用 `front.cmd`、`back.cmd`，再把后续参数转发给对应 workspace 包。`back.cmd` 对 `cli` 单独调用 `server/cli-launcher.mjs`，由启动器还原 Windows 下 `pnpm run` 产生的一层反斜杠转义，通过 Node 的 `--import tsx` 启动 TypeScript CLI，并在 Windows `uv_os_get_passwd` 因 `ENOMEM` 失败时启用当前用户信息兼容层；这也避免 CLI 参数再次经过 workspace 脚本转义。其他服务端脚本仍通过 workspace 转发。因此 Windows 下可使用：
+根 `build` 脚本首先执行 `clear.mjs`，完整删除根 `dist/` 及其中的 Junction/符号链接，再依次构建 web、server 和 desktop；服务端发布产物输出到 `dist/server/`，桌面端发布产物输出到 `dist/desktop.exe`。`build:desktop` 使用 Cargo 的 release 配置编译 `desktop/Cargo.toml`，再复制生成的 Windows 可执行文件。根脚本 `web` 和 `server` 分别调用 `front.cmd`、`back.cmd`，再把后续参数转发给对应 workspace 包。`back.cmd` 对 `cli` 单独调用 `server/cli-launcher.mjs`，由启动器还原 Windows 下 `pnpm run` 产生的一层反斜杠转义，通过 Node 的 `--import tsx` 启动 TypeScript CLI，并在 Windows `uv_os_get_passwd` 因 `ENOMEM` 失败时启用当前用户信息兼容层；这也避免 CLI 参数再次经过 workspace 脚本转义。其他服务端脚本仍通过 workspace 转发。因此 Windows 下可使用：
 
 ```powershell
 pnpm web dev

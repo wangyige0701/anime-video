@@ -103,7 +103,7 @@ async function findInnoSetupCompiler() {
 
 	for (const candidate of candidates) {
 		try {
-			await access(candidate, constants.X_OK);
+			await access(candidate, constants.F_OK);
 			return candidate;
 		} catch {}
 	}

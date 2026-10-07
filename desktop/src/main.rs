@@ -4,6 +4,7 @@ mod assets;
 mod cli;
 mod config;
 mod folder_picker;
+mod instance;
 mod logging;
 mod notification;
 mod panel;
@@ -34,6 +35,16 @@ fn main() {
             logging::error(format!("读取应用标识失败: {error}"));
         }
     }
+    let application_id =
+        config::load_app_user_model_id().unwrap_or_else(|_| "com.wangyige.anime-video".to_string());
+    notification::register_app_user_model_metadata(&application_id);
+    let _instance_guard = match instance::acquire(&application_id) {
+        instance::InstanceState::Acquired(guard) => guard,
+        instance::InstanceState::AlreadyRunning => {
+            notification::show_already_running(&application_id);
+            return;
+        }
+    };
     Application::new()
         .with_assets(assets::FileAssets)
         .run(|cx| {

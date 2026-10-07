@@ -21,9 +21,89 @@ pub fn register_process_app_user_model_id(_: &str) -> bool {
 }
 
 #[cfg(windows)]
+pub fn register_app_user_model_metadata(application_id: &str) -> bool {
+    use windows::{
+        Win32::System::Registry::{
+            HKEY, HKEY_CURRENT_USER, KEY_WRITE, REG_OPTION_NON_VOLATILE, RegCloseKey,
+            RegCreateKeyExW,
+        },
+        core::HSTRING,
+    };
+
+    let key_path = HSTRING::from(format!(
+        "Software\\Classes\\AppUserModelId\\{application_id}"
+    ));
+    let mut key = HKEY::default();
+    let status = unsafe {
+        RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            &key_path,
+            None,
+            &HSTRING::new(),
+            REG_OPTION_NON_VOLATILE,
+            KEY_WRITE,
+            None,
+            &mut key,
+            None,
+        )
+    };
+    if status.0 != 0 {
+        logging::error(format!("写入应用通知注册信息失败: {status:?}"));
+        return false;
+    }
+
+    let display_name = set_registry_string(&key, "DisplayName", "动画管理服务");
+    let icon_uri = startup_icon_uri()
+        .map(|uri| set_registry_string(&key, "IconUri", &uri))
+        .unwrap_or(true);
+    unsafe {
+        let _ = RegCloseKey(key);
+    }
+    let success = display_name && icon_uri;
+    if success {
+        logging::info("应用通知注册信息已写入");
+    }
+    success
+}
+
+#[cfg(windows)]
+fn set_registry_string(
+    key: &windows::Win32::System::Registry::HKEY,
+    name: &str,
+    value: &str,
+) -> bool {
+    use windows::Win32::System::Registry::{REG_SZ, RegSetValueExW};
+    use windows::core::HSTRING;
+
+    let data: Vec<u16> = value.encode_utf16().chain(std::iter::once(0)).collect();
+    let bytes = unsafe {
+        std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * size_of::<u16>())
+    };
+    let status = unsafe { RegSetValueExW(*key, &HSTRING::from(name), None, REG_SZ, Some(bytes)) };
+    if status.0 != 0 {
+        logging::error(format!("写入应用通知字段失败 {name}: {status:?}"));
+        return false;
+    }
+    true
+}
+
+#[cfg(not(windows))]
+pub fn register_app_user_model_metadata(_: &str) -> bool {
+    false
+}
+
+#[cfg(windows)]
 pub fn show_startup(application_id: &str) -> bool {
     let application_id = application_id.to_string();
     std::thread::spawn(move || show_startup_on_thread(&application_id))
+        .join()
+        .unwrap_or(false)
+}
+
+#[cfg(windows)]
+pub fn show_already_running(application_id: &str) -> bool {
+    let application_id = application_id.to_string();
+    std::thread::spawn(move || show_message_on_thread(&application_id, "应用已经启动"))
         .join()
         .unwrap_or(false)
 }
@@ -40,7 +120,7 @@ fn show_startup_on_thread(application_id: &str) -> bool {
     logging::info("Windows Runtime 初始化成功");
 
     let registration_error = set_app_user_model_id(application_id).err();
-    let result = show_toast(Some(application_id), true).or_else(|first_error| {
+    let result = show_toast(Some(application_id), false).or_else(|first_error| {
         if let Some(registration_error) = registration_error {
             logging::error(format!("应用标识注册失败: {registration_error:?}"));
         }
@@ -60,6 +140,55 @@ fn show_startup_on_thread(application_id: &str) -> bool {
             false
         }
     }
+}
+
+#[cfg(windows)]
+fn show_message_on_thread(application_id: &str, message: &str) -> bool {
+    use windows::Win32::System::WinRT::{RO_INIT_MULTITHREADED, RoInitialize, RoUninitialize};
+
+    if let Err(error) = unsafe { RoInitialize(RO_INIT_MULTITHREADED) } {
+        logging::error(format!("初始化 Windows Runtime 失败: {error:?}"));
+        return false;
+    }
+    let result = set_app_user_model_id(application_id)
+        .and_then(|_| show_toast_message(Some(application_id), message));
+    unsafe {
+        RoUninitialize();
+    }
+    match result {
+        Ok(()) => {
+            logging::info("已启动通知发送成功");
+            true
+        }
+        Err(error) => {
+            logging::error(format!("发送已启动通知失败: {error:?}"));
+            false
+        }
+    }
+}
+
+#[cfg(windows)]
+fn show_toast_message(application_id: Option<&str>, message: &str) -> windows::core::Result<()> {
+    use windows::{
+        Data::Xml::Dom::XmlDocument,
+        UI::Notifications::{ToastNotification, ToastNotificationManager},
+        core::HSTRING,
+    };
+
+    let document = XmlDocument::new()?;
+    let xml = format!(
+        r#"<toast duration="short"><visual><binding template="ToastGeneric"><text>动画管理服务</text><text>{message}</text></binding></visual></toast>"#
+    );
+    logging::info(format!("Toast 内容: {xml}"));
+    document.LoadXml(&HSTRING::from(xml))?;
+    let toast = ToastNotification::CreateToastNotification(&document)?;
+    let notifier = match application_id {
+        Some(application_id) => {
+            ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(application_id))?
+        }
+        None => ToastNotificationManager::CreateToastNotifier()?,
+    };
+    notifier.Show(&toast)
 }
 
 #[cfg(windows)]
@@ -144,5 +273,10 @@ fn percent_encode_uri_path(value: &str) -> String {
 
 #[cfg(not(windows))]
 pub fn show_startup(_: &str) -> bool {
+    false
+}
+
+#[cfg(not(windows))]
+pub fn show_already_running(_: &str) -> bool {
     false
 }

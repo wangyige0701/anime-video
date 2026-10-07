@@ -101,6 +101,8 @@ cargo check --offline
 cargo test --offline
 ```
 
+- 桌面端使用指定标识的 Windows 命名互斥体保证单实例；请求启动时不再创建新的长期进程，只发送一条“已启动”Toast 后立即退出。启动时会再次写入应用标识的通知注册信息，确保不依赖安装器的注册状态。
+
 涉及 server CLI 契约或启动链时，还要从仓库根目录执行对应真实命令，例如：
 
 ```powershell

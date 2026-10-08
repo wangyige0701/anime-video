@@ -12,11 +12,11 @@
 		"hls": true
 	},
 	"[javascript][typescript][vue][css][html][javascriptreact][typescriptreact][json]": {
-		"editor.defaultFormatter": "esbenp.prettier-vscode",
+		"editor.defaultFormatter": "oxc.oxc-vscode",
 		"editor.formatOnSave": true
 	},
 	"[vue]": {
-		"editor.defaultFormatter": "esbenp.prettier-vscode"
+		"editor.defaultFormatter": "oxc.oxc-vscode"
 	},
 	"[rust]": {
 		"editor.quickSuggestions": {

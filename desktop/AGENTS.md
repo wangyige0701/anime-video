@@ -22,6 +22,7 @@ desktop/
 │   ├── position.rs        # 多显示器 DPI、托盘定位、置顶和显隐 Win32 适配
 │   ├── notification.rs    # Windows Runtime Toast 启动通知
 │   ├── folder_picker.rs   # Windows IFileOpenDialog 目录选择器
+│   ├── instance.rs         # Windows 单实例命名互斥体
 │   ├── config.rs          # 开发/正式环境配置文件定位与读取
 │   ├── logging.rs         # 桌面端启动、命令执行和异常日志
 │   ├── cli.rs             # server CLI 调用、JSON 解析和桌面端领域类型
@@ -38,7 +39,7 @@ desktop/
 
 - `tray::install()` 创建托盘图标和不可见的 1x1 GPUI 宿主窗口。宿主窗口用于维持应用事件循环，不能作为可见主窗口。
 - GPUI 创建前读取配置并注册 `application.appUserModelId`；开发环境读取仓库根 `config.yaml`，正式环境读取 EXE 同级 `server/config.yaml`。托盘创建完成后，在事件循环稳定后发送 Windows Runtime Toast 启动通知。应用标识快捷方式由安装程序注册，桌面端不创建快捷方式。
-- Toast 发送前记录 Windows 应用通知开关状态；带图标内容发送失败时使用无图片内容重试，通知开关被系统或策略禁用时仅记录明确原因，不能绕过 Windows 的用户设置。
+- Toast 使用安装器注册的 AUMID，并在通知 XML 中使用应用目录下的 `icon.png` 作为 `appLogoOverride`；发送前记录 Windows 应用通知开关状态，不能绕过系统的勿扰模式或通知设置。
 - 左键和右键都通过 `TrayIconEvent::Click` 打开或关闭同一个浮层。必须在 `MouseButtonState::Up` 时处理点击；在 `Down` 时创建窗口会与系统托盘的鼠标抬起和焦点切换竞争，导致浮层刚创建就因失焦关闭。
 - 浮层使用 `WindowKind::PopUp`。已有浮层再次收到托盘点击时直接关闭；浮层激活后失焦也直接关闭。
 - 打开浮层必须先使用缓存快照立即渲染，再异步刷新。不能把首次展示阻塞在 CLI 查询上，也不能每次打开时先显示无状态页面。
@@ -101,7 +102,7 @@ cargo check --offline
 cargo test --offline
 ```
 
-- 桌面端使用指定标识的 Windows 命名互斥体保证单实例；请求启动时不再创建新的长期进程，只发送一条“已启动”Toast 后立即退出。启动时会再次写入应用标识的通知注册信息，确保不依赖安装器的注册状态。
+- 桌面端使用指定标识的 Windows 命名互斥体保证单实例；请求启动时不再创建新的长期进程，只发送一条“已启动”Toast 后立即退出。应用标识和快捷方式注册由安装器负责。
 
 涉及 server CLI 契约或启动链时，还要从仓库根目录执行对应真实命令，例如：
 

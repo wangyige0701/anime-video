@@ -1,5 +1,4 @@
 use crate::cli;
-use crate::config;
 use crate::logging;
 use crate::notification;
 use crate::panel::{PANEL_WIDTH, TrayPanel, panel_height_for_directory_count};
@@ -33,7 +32,7 @@ impl Render for TrayHost {
     }
 }
 
-pub fn install(cx: &mut App) {
+pub fn install(cx: &mut App, application_id: String) {
     logging::info("开始安装托盘图标和隐藏宿主窗口");
     let cache = CachedState::new();
     let icon = TrayIconBuilder::new()
@@ -46,7 +45,7 @@ pub fn install(cx: &mut App) {
     logging::info("托盘图标创建成功");
 
     #[cfg(windows)]
-    schedule_startup_notification(cx);
+    schedule_startup_notification(cx, application_id);
 
     let host = cx
         .open_window(
@@ -107,45 +106,23 @@ pub fn install(cx: &mut App) {
 }
 
 #[cfg(windows)]
-fn schedule_startup_notification(cx: &mut App) {
+fn schedule_startup_notification(cx: &mut App, application_id: String) {
     cx.spawn(async move |cx: &mut AsyncApp| {
         // 等待 GPUI 事件循环启动后再发送 Toast。
         cx.background_executor()
             .timer(Duration::from_millis(800))
             .await;
 
-        let application_id = match cx
+        logging::info("发送启动 Toast");
+        let sent = cx
             .background_executor()
-            .spawn(async { config::load_app_user_model_id() })
-            .await
-        {
-            Ok(application_id) => application_id,
-            Err(error) => {
-                logging::error(format!("读取应用标识失败: {error}"));
-                return;
-            }
-        };
-
-        for attempt in 0..4 {
-            logging::info(format!("发送启动 Toast，第 {} 次尝试", attempt + 1));
-            let sent = cx
-                .background_executor()
-                .spawn({
-                    let application_id = application_id.clone();
-                    async move { notification::show_startup(&application_id) }
-                })
-                .await;
-            if sent {
-                logging::info("启动 Toast 发送成功");
-                return;
-            }
-            if attempt < 3 {
-                cx.background_executor()
-                    .timer(Duration::from_millis(700))
-                    .await;
-            }
+            .spawn(async move { notification::show_startup(&application_id) })
+            .await;
+        if sent {
+            logging::info("启动 Toast 发送成功");
+        } else {
+            logging::error("启动 Toast 发送失败");
         }
-        logging::error("启动 Toast 发送失败，已达到重试次数");
     })
     .detach();
 }

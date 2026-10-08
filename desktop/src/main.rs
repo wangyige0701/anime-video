@@ -26,18 +26,17 @@ fn main() {
             .map(|path| path.display().to_string())
             .unwrap_or_else(|error| format!("读取失败: {error}")),
     ));
-    match config::load_app_user_model_id() {
+    let application_id = match config::load_app_user_model_id() {
         Ok(application_id) => {
             logging::info(format!("读取应用标识: {application_id}"));
-            notification::register_process_app_user_model_id(&application_id);
+            application_id
         }
         Err(error) => {
             logging::error(format!("读取应用标识失败: {error}"));
+            "com.wangyige.anime-video".to_string()
         }
-    }
-    let application_id =
-        config::load_app_user_model_id().unwrap_or_else(|_| "com.wangyige.anime-video".to_string());
-    notification::register_app_user_model_metadata(&application_id);
+    };
+    notification::register_process_app_user_model_id(&application_id);
     let _instance_guard = match instance::acquire(&application_id) {
         instance::InstanceState::Acquired(guard) => guard,
         instance::InstanceState::AlreadyRunning => {
@@ -47,7 +46,7 @@ fn main() {
     };
     Application::new()
         .with_assets(assets::FileAssets)
-        .run(|cx| {
-            tray::install(cx);
+        .run(move |cx| {
+            tray::install(cx, application_id);
         });
 }

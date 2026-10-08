@@ -70,13 +70,6 @@ fn log_path() -> PathBuf {
             .join("desktop.log");
     }
 
-    if let Ok(local_app_data) = env::var("LOCALAPPDATA") {
-        return PathBuf::from(local_app_data)
-            .join("Anime Video")
-            .join("logs")
-            .join("desktop.log");
-    }
-
     env::current_exe()
         .ok()
         .and_then(|path| path.parent().map(Path::to_path_buf))

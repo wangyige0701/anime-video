@@ -342,6 +342,12 @@ function finishPlayback() {
 	}
 	endHandled = true;
 	handleEnded();
+	if (!playerStore.canPlayNextEpisode) {
+		// 最后一集播放结束，退出全屏
+		if (document.fullscreenElement) {
+			document.exitFullscreen();
+		}
+	}
 }
 
 function handleSeeked() {

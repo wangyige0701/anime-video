@@ -47,6 +47,7 @@ export const usePlayerStore = defineStore('player', () => {
 	const lastSeriesId = ref('');
 	const lastSeasonId = ref('');
 	const lastEpisodeId = ref('');
+	const canPlayNextEpisode = ref(false);
 
 	let videoRequestVersion = 0;
 
@@ -279,6 +280,10 @@ export const usePlayerStore = defineStore('player', () => {
 		isFullScreen.value = fullScreen;
 	}
 
+	function setCanPlayNextEpisode(canPlay: boolean) {
+		canPlayNextEpisode.value = canPlay;
+	}
+
 	return {
 		initialize,
 		isPlaying,
@@ -315,6 +320,8 @@ export const usePlayerStore = defineStore('player', () => {
 		subtitleTracks,
 		/** 当前字幕轨道 */
 		subtitleTrackId,
+		/** 是否可以播放下一集 */
+		canPlayNextEpisode,
 		/** 设置视频信息 */
 		setVideo,
 		/** 设置当前 series 的 ID */
@@ -371,6 +378,8 @@ export const usePlayerStore = defineStore('player', () => {
 		setSubtitleTracks,
 		/** 重置字幕轨道可用状态 */
 		resetSubtitleTrackUseable,
+		/** 设置是否可以播放下一集 */
+		setCanPlayNextEpisode,
 	};
 });
 

@@ -58,3 +58,7 @@ export function useKeyboardAction(key: KeyboardAction, fn: Fn<[...any[]], any>) 
 export function getKeyboardAction(key: KeyboardAction) {
 	return bindingMap.get(key);
 }
+
+export function triggerKeyboardAction(key: KeyboardAction, ...args: any[]) {
+	bindingMap.get(key)?.(...args);
+}

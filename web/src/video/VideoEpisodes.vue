@@ -82,9 +82,12 @@ const currentEpisodeIndex = computed(() =>
 	),
 );
 const canPrev = computed(() => currentEpisodeIndex.value > 0);
-const canNext = computed(
-	() => currentEpisodeIndex.value >= 0 && currentEpisodeIndex.value < episodeEntries.value.length - 1,
-);
+const canNext = computed(() => {
+	const canPlayNextEpisode =
+		currentEpisodeIndex.value >= 0 && currentEpisodeIndex.value < episodeEntries.value.length - 1;
+	playerStore.setCanPlayNextEpisode(canPlayNextEpisode);
+	return canPlayNextEpisode;
+});
 
 watch(
 	() => playerStore.seasonId,

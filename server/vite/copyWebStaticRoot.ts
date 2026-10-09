@@ -4,7 +4,7 @@ import { basename, dirname, resolve } from 'node:path';
 import type { AppConfig } from '~shared/config';
 
 export function copyWebStaticRoot(webConfig: AppConfig['web']): Plugin {
-	const source = resolve(basename(import.meta.url), `../${webConfig.webBundleDir}`);
+	const source = resolve(basename(import.meta.url), '../../web/dist');
 	return {
 		name: 'copy-web-static-root',
 

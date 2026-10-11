@@ -12,7 +12,7 @@
 <script setup lang="ts">
 import Hls, { type ErrorData } from 'hls.js';
 import { useEventListener } from '@vueuse/core';
-import { createPromise } from '@wang-yige/utils';
+import { createPromise, isUndefined } from '@wang-yige/utils';
 import { usePlayerStore } from '@/stores/player';
 import { getMasterM3u8Url } from '~shared/server-route-config';
 import { takeVideoShotToClipboard } from '@/utils/videoShot';
@@ -439,8 +439,19 @@ onMounted(() => {
 			);
 		});
 		hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, (_, data) => {
+			if (activeHlsSourceVersion !== sourceVersion) {
+				return;
+			}
 			playerStore.setSubtitleTracks(
 				data.subtitleTracks.map((track) => {
+					if (track.default) {
+						playerStore.getSeasonSubtitleTrack().then((id) => {
+							if (activeHlsSourceVersion !== sourceVersion || !isUndefined(id)) {
+								return;
+							}
+							playerStore.setSeasonSubtitleTrack(track.id);
+						});
+					}
 					return {
 						id: track.id,
 						name: track.name || track.lang || '',

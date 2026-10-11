@@ -242,7 +242,7 @@ export const usePlayerStore = defineStore('player', () => {
 			return;
 		}
 		const storage = VideoInfoStorage.create(seriesId.value, seasonId.value, episodeId.value);
-		return storage.getSeason<number>(SUBTITLE_TRACK_STORAGE_KEY);
+		return await storage.getSeason<number>(SUBTITLE_TRACK_STORAGE_KEY);
 	}
 
 	function setSubtitleTracks(tracks: Array<{ id: number; name: string }>) {

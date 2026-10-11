@@ -40,6 +40,10 @@ definePage({
 	name: 'Detail',
 });
 
+const route = useRoute(WebRoute.DETAIL);
+const name = route.params.name;
+route.meta.setTitle!(name);
+
 let isUnmounted = false;
 const playerStore = usePlayerStore();
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;

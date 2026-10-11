@@ -10,6 +10,9 @@
 <script setup lang="ts">
 definePage({
 	name: 'Index',
+	meta: {
+		title: '动画管理服务',
+	},
 });
 </script>
 

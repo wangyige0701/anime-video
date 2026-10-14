@@ -45,6 +45,12 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		initialize.onLoading();
 		try {
 			const series = await getSeries();
+			const compareController = new Intl.Collator('zh-CN-u-co-pinyin', {
+				usage: 'sort',
+				sensitivity: 'base',
+				numeric: true,
+			});
+			series.sort((a, b) => compareController.compare(a.title, b.title));
 			for (const seriesItem of series) {
 				result.push(new Series(seriesItem));
 			}

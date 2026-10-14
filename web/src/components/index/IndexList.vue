@@ -48,6 +48,7 @@ const status = useVueStatusRef('loading', 'over');
 const datas = shallowReactive<Series[]>([]);
 const page = ref(1);
 const keyword = ref<string>((route.query.keyword as string) || '');
+let searchVersion = 0;
 
 watch(
 	() => route.query.keyword,
@@ -55,6 +56,8 @@ watch(
 		keyword.value = newValue as string;
 		datas.length = 0;
 		page.value = 1;
+		status.offOver();
+		searchVersion++;
 		getData();
 	},
 	{ flush: 'post' },
@@ -76,9 +79,13 @@ refreshEmitter.on('series', (series) => {
 });
 
 async function getData() {
+	const version = searchVersion;
 	status.onLoading();
 	try {
 		const data = await useVideoStore().pagination(page.value, props.pageSize, keyword.value);
+		if (version !== searchVersion) {
+			return;
+		}
 		if (!data.length) {
 			status.onOver();
 		} else {

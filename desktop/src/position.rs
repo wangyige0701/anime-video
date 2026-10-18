@@ -2,6 +2,9 @@ use gpui::{App, Bounds, DisplayId, Pixels, Window, point, px, size};
 use tray_icon::Rect;
 
 const TRAY_GAP: i32 = -2;
+pub const DIRECTORY_PANEL_WIDTH: f32 = 260.0;
+const DIRECTORY_PANEL_GAP: f32 = 8.0;
+const DIRECTORY_PANEL_MARGIN: f32 = 8.0;
 
 pub struct TrayPlacement {
     pub bounds: Bounds<Pixels>,
@@ -38,6 +41,40 @@ pub fn bring_to_front_and_align(window: &Window, tray_rect: Rect) {
 
 #[cfg(not(windows))]
 pub fn bring_to_front_and_align(_: &Window, _: Rect) {}
+
+#[cfg(windows)]
+pub fn set_topmost_without_activation(window: &Window) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use std::ffi::c_void;
+    use windows::Win32::{
+        Foundation::HWND,
+        UI::WindowsAndMessaging::{
+            HWND_TOPMOST, SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SetWindowPos,
+        },
+    };
+
+    let Ok(handle) = HasWindowHandle::window_handle(window) else {
+        return;
+    };
+    let RawWindowHandle::Win32(handle) = handle.as_raw() else {
+        return;
+    };
+    let hwnd = HWND(handle.hwnd.get() as *mut c_void);
+    let _ = unsafe {
+        SetWindowPos(
+            hwnd,
+            Some(HWND_TOPMOST),
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+        )
+    };
+}
+
+#[cfg(not(windows))]
+pub fn set_topmost_without_activation(_: &Window) {}
 
 #[cfg(windows)]
 pub fn set_topmost_handle(handle: Option<isize>, topmost: bool) {
@@ -196,6 +233,41 @@ pub fn beside_tray_icon(
 #[cfg(not(windows))]
 pub fn beside_tray_icon(_: Rect, panel_width: f32, panel_height: f32, cx: &App) -> TrayPlacement {
     centered(panel_width, panel_height, cx)
+}
+
+pub fn beside_directory_trigger(
+    window: &Window,
+    trigger_y: f32,
+    trigger_height: f32,
+    panel_height: f32,
+    cx: &App,
+) -> TrayPlacement {
+    let main_bounds = window.bounds();
+    let display = window.display(cx);
+    let display_bounds = display
+        .as_ref()
+        .map(|display| display.bounds())
+        .unwrap_or(main_bounds);
+    let right_x = main_bounds.right() + px(DIRECTORY_PANEL_GAP);
+    let left_x = main_bounds.left() - px(DIRECTORY_PANEL_GAP + DIRECTORY_PANEL_WIDTH);
+    let x =
+        if right_x + px(DIRECTORY_PANEL_WIDTH + DIRECTORY_PANEL_MARGIN) <= display_bounds.right() {
+            right_x
+        } else {
+            left_x.max(display_bounds.left() + px(DIRECTORY_PANEL_MARGIN))
+        };
+    let desired_y = main_bounds.top() + px(trigger_y + trigger_height / 2.0 - panel_height / 2.0);
+    let minimum_y = display_bounds.top() + px(DIRECTORY_PANEL_MARGIN);
+    let maximum_y = display_bounds.bottom() - px(DIRECTORY_PANEL_MARGIN + panel_height);
+    let y = desired_y.max(minimum_y).min(maximum_y);
+
+    TrayPlacement {
+        bounds: Bounds::new(
+            point(x, y),
+            size(px(DIRECTORY_PANEL_WIDTH), px(panel_height)),
+        ),
+        display_id: display.map(|display| display.id()),
+    }
 }
 
 fn centered(panel_width: f32, panel_height: f32, cx: &App) -> TrayPlacement {

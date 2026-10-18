@@ -43,9 +43,10 @@ anime-video dir list [--json]
 anime-video dir set "C:\videos" "D:\media"
 anime-video dir add "E:\anime" "F:\videos"
 anime-video dir del 0,2 4
+anime-video dir sort "F:\videos" "E:\anime"
 ```
 
-`dir` 不带子命令时显示目录管理帮助。`list` 默认输出带索引的目录表，`list --json` 输出可直接读取的目录数组 JSON。`set` 用一个或多个已存在的目录替换当前配置；`add` 保留现有配置并把一个或多个已存在且未配置的目录追加到末尾；`del` 按索引删除目录，索引可由空格或逗号分隔。Windows cmd 和 PowerShell 中的普通目录使用单个反斜杠；`"D:\\media"` 属于 JavaScript/JSON 转义形式，CLI 会将其作为格式错误拒绝。UNC 路径开头的双反斜杠除外。
+`dir` 不带子命令时显示目录管理帮助。`list` 默认输出带索引的目录表，`list --json` 输出可直接读取的目录数组 JSON。`set` 用一个或多个已存在的目录替换当前配置；`add` 保留现有配置并把一个或多个已存在且未配置的目录追加到末尾；`del` 按索引删除目录，索引可由空格或逗号分隔；`sort` 接收当前全部目录并按参数顺序保存。Windows cmd 和 PowerShell 中的普通目录使用单个反斜杠；`"D:\\media"` 属于 JavaScript/JSON 转义形式，CLI 会将其作为格式错误拒绝。UNC 路径开头的双反斜杠除外。
 
 ## 配置覆盖
 

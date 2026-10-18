@@ -205,6 +205,12 @@ pub fn delete_directory(index: usize) -> Result<(), String> {
     run_cli(&["dir", "del", &index]).map(|_| ())
 }
 
+pub fn sort_directories(directories: &[String]) -> Result<(), String> {
+    let mut args = vec!["dir", "sort"];
+    args.extend(directories.iter().map(String::as_str));
+    run_cli(&args).map(|_| ())
+}
+
 pub fn log_directory(service: Service) -> PathBuf {
     application_root()
         .join("logs")

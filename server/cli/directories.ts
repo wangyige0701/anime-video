@@ -59,6 +59,24 @@ export function addDirectoryCommands(program: Command) {
 			printDirectories(await Series.getDirectories());
 		});
 
+	command
+		.command('sort')
+		.description('按给定顺序保存视频根目录')
+		.argument('<directories...>', '按新顺序排列的全部已配置目录')
+		.action(async (directories: string[]) => {
+			const Series = await getSeries();
+			const configuredDirectories = await Series.getDirectories();
+			if (
+				directories.length !== configuredDirectories.length ||
+				new Set(directories).size !== configuredDirectories.length ||
+				directories.some((directory) => !configuredDirectories.includes(directory))
+			) {
+				throw new InvalidArgumentError('排序目录必须完整包含当前所有目录，且不能重复');
+			}
+			await Series.sortDirectories(directories);
+			printDirectories(await Series.getDirectories());
+		});
+
 	command.action(() => {
 		command.outputHelp();
 	});

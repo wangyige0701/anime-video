@@ -63,7 +63,7 @@ desktop/
 - 普通重启和刷新按钮使用 Segoe Fluent Icons 的刷新图标；加载状态统一使用 `assets/loading.svg` 并旋转。不要新增另一套无箭头圆环。当前动画周期为 1200ms。
 - Web 入口只在网页服务状态为 `running` 且缓存中已有 Web 地址时显示。地址来自 `config --json`，监听地址 `0.0.0.0`、`::` 和 `[::]` 在浏览器 URL 中转换为 `localhost`。
 - 日志按钮创建并打开仓库根 `logs/app` 或 `logs/web`。日志目录命名必须继续与 server 日志组件约定一致。
-- 目录区域按条目数增加浮层高度，最多直接展示 5 行，超过后滚动。调整行高、最小高度或可见行数时同步更新 `panel_height_for_directory_count()` 的测试。
+- 视频目录使用浅灰分区中的扁平单行展开触发区展示标题、紧随标题的目录数量与添加按钮，不再插入独立详情行或卡片；整行使用指针光标，悬浮或展开时以高对比浅色背景高亮并打开独立 Popup 详情面板，入口内容始终在分区内垂直居中。详情窗口的纵向中心与触发区中心对齐，并优先位于主面板右侧，当前显示器右侧空间不足时自动切换到左侧；不得通过扩大主窗口制造透明占位区域。鼠标从触发区移向详情窗口时保持显示，移出主面板和详情窗口后延迟关闭。详情面板支持查看完整路径、删除目录和拖拽排序，限制最大高度并在目录较多时滚动；目录列表最后一行不绘制多余的底部分隔线；主面板高度按固定区块实际高度计算，不为目录列表预留空白。添加、删除或排序完成后必须立即刷新标题数量、已展开的详情面板和缓存顺序；删除与排序期间详情面板保持显示，并在对应位置持续展示加载状态。
 
 ## 目录选择器
 
@@ -71,7 +71,7 @@ desktop/
 - COM 对话框必须在独立 `std::thread` 中以 `COINIT_APARTMENTTHREADED` 初始化，并在同一线程完成创建、显示、读取结果和 `CoUninitialize()`。
 - `dialog.Show(None)` 不绑定 GPUI Popup 的 HWND。对话框显示期间先取消面板置顶并隐藏面板，返回后再恢复显示和置顶，避免面板覆盖系统对话框。
 - 每次打开都通过 `SetFolder` 从系统“视频”目录开始，无法获取时回退到桌面；不能沿用上一次选择位置。
-- 用户取消返回 `Ok(None)`，不是错误。所选路径交给 `dir add`；删除仍使用目录索引调用 `dir del`，不直接写配置文件。
+- 用户取消返回 `Ok(None)`，不是错误。所选路径交给 `dir add`；删除仍使用目录索引调用 `dir del`，排序使用 `dir sort` 传递完整目录数组，不直接写配置文件。目录详情中的拖拽只绑定路径区域，操作按钮不参与拖拽；稳定的最终布局行负责命中检测，仅让被挤开的行内容通过 FLIP 位移动画过渡，避免动画位置反向触发换位。只有在详情面板内释放才提交新顺序，提交完成前禁止再次拖拽，拖出面板则恢复原顺序。
 
 ## CLI 边界
 
@@ -80,7 +80,7 @@ desktop/
 - Release 构建使用 `cargo build --release --manifest-path desktop/Cargo.toml`，生成 `desktop/target/release/desktop.exe`；根目录的 `build:desktop` 脚本根据 `config.yaml` 的 `application.executableName` 将它复制为最终 EXE，`install:runtime` 会将配置版本的 Node.js 安装到 `dist/runtime/node.exe`。`build:installer` 负责复制发布目录，并只将 `hls.node` 与 DLL 放入安装包中的 `server/hls`，使用中文现代向导输出 `dist/动画管理服务安装程序.exe`；安装器负责创建带 AUMID 的快捷方式，桌面端不在运行时创建快捷方式。完整发布运行时仍以托盘 EXE 所在目录为应用根，执行同级 `runtime/node.exe server/cli.js <命令>` 并设置 `NODE_ENV=production` 与内部标记 `ANIME_VIDEO_DESKTOP=1`，不依赖 PATH、pnpm 或 tsx。完整发布目录必须保持配置名称对应的 EXE、`runtime/node.exe` 和 `server/cli.js` 的相对布局。
 - `ANIME_VIDEO_ROOT` 可覆盖默认应用根目录；未设置时 Debug 构建以 `CARGO_MANIFEST_DIR` 的父目录为根，Release 构建以当前 EXE 所在目录为根。
 - 桌面端日志由 `logging.rs` 在启动最早期初始化：Debug 写入仓库根 `logs/desktop.log`，Release 写入 EXE 同级 `logs/desktop.log`，可用 `ANIME_VIDEO_DESKTOP_LOG_DIR` 覆盖。日志包含 EXE、配置和资源路径、AUMID/Toast Windows API 结果、每次 CLI 命令及其标准输出/错误/退出码，以及未捕获异常；正式版无控制台时必须通过该文件排查启动失败。
-- 状态使用 `status --json`，目录使用 `dir list --json`，Web 地址使用 `config --json`。状态和目录查询彼此独立，当前并行执行以缩短首次加载时间。
+- 状态使用 `status --json`，目录使用 `dir list --json`，排序使用 `dir sort`，Web 地址使用 `config --json`。状态和目录查询彼此独立，当前并行执行以缩短首次加载时间。
 - CLI 可能在 stdout 前输出包管理器脚本文本；JSON 解析先尝试完整输出，再从末尾寻找以 `{` 或 `[` 开始的结构化行。改变 CLI 输出时必须同时验证该兼容逻辑。
 - 新增桌面功能若需要 server 数据，优先扩展正式 CLI 契约并同步文档，不在桌面端读取 server 内部文件或复制配置解析逻辑。
 

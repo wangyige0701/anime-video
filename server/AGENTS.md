@@ -74,7 +74,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `app.ts`：开发入口，根据 `server` 或 `web` 参数在分支内动态导入并启动对应服务，不初始化无关模块。
 - `cli.ts`：Commander 命令入口，无参数时向 stdout 输出帮助并正常退出；CLI 的 `start/stop/restart/status` 通过 `cli/manager` 控制跨进程服务，`config --json` 输出当前生效配置，并注册目录管理子命令。
 - `cli-launcher.mjs`：pnpm 开发入口，还原 Windows `pnpm run` 产生的一层参数反斜杠转义，并预加载 `cli-userinfo-fallback.cjs` 处理 Windows `uv_os_get_passwd` 的 `ENOMEM` 系统故障，再通过 Node 的 `--import tsx` 在同一进程启动 `cli.ts`；manager/worker 继承加载参数，发布产物不使用该启动器。
-- `cli/directories.ts`：目录管理 CLI 子命令，负责目录参数校验、真实路径规范化和索引解析；通过 `Series` 读写目录配置并在变更后刷新系列缓存。
+- `cli/directories.ts`：目录管理 CLI 子命令，负责目录参数校验、真实路径规范化、索引解析和目录排序；通过 `Series` 读写目录配置并在变更后刷新系列缓存。
 - `cli/server.ts`：API 实现，创建 Koa 和装饰器路由扫描器，按顺序注册请求日志、错误、body、响应辅助和路由中间件。
 - `cli/web.ts`：静态 Web 实现，托管构建产物并提供 history fallback；相对静态目录基于该模块所在目录解析。
 - `cli/shutdown.ts`：注册进程信号处理，关闭 HTTP 连接并调用服务的关闭回调；独立开发入口的关闭回调会退出进程，未来管理 worker 需复用资源关闭步骤但由 worker 入口决定是否退出。

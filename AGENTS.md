@@ -181,7 +181,7 @@ pnpm --dir hls run build:q
 - Vite 开发服务由 `web` 的 `dev` 脚本启动，固定开发端口配置为 `5173`。
 - `server/cli/web.ts` 在 `3001` 提供静态资源与 history fallback。静态目录由 `config.yaml` 中的 `web.webBundleDir` 配置，相对路径基于 `server/cli/` 解析；当前没有根脚本自动把 `web/dist` 部署到该位置，修改构建或部署流程时必须显式维护这一步。
 
-分别执行开发脚本时，API、Vite 和静态 Web 运行在独立进程中。`server/app.ts` 按目标分支动态导入服务；`server/cli.ts` 通过常驻 manager 分别持有 server/web worker，跨终端复用进程句柄。`config --json` 输出合并覆盖后的完整生效配置；`dir` 子命令通过 `server/cli/directories.ts` 管理系列根目录，`list` 输出当前配置，`list --json` 输出目录数组 JSON，`set` 用空格分隔的目录参数替换配置，`add` 在现有配置末尾追加未配置的目录，`del` 接收空格或逗号分隔的索引并删除配置项。CLI 管理器按当前模块扩展名定位源码或保留目录结构的编译入口，构建布局约束见 `server/AGENTS.md`；完整发布构建、自动崩溃恢复和状态持久化仍待实现。端口和地址来自 `config.yaml`、`shared/server-route-config.ts`，调整时必须检查前端 URL 和测试。
+分别执行开发脚本时，API、Vite 和静态 Web 运行在独立进程中。`server/app.ts` 按目标分支动态导入服务；`server/cli.ts` 通过常驻 manager 分别持有 server/web worker，跨终端复用进程句柄。`config --json` 输出合并覆盖后的完整生效配置；`dir` 子命令通过 `server/cli/directories.ts` 管理系列根目录，`list` 输出当前配置，`list --json` 输出目录数组 JSON，`set` 用空格分隔的目录参数替换配置，`add` 在现有配置末尾追加未配置的目录，`del` 接收空格或逗号分隔的索引并删除配置项，`sort` 接收完整目录数组并按参数顺序保存。CLI 管理器按当前模块扩展名定位源码或保留目录结构的编译入口，构建布局约束见 `server/AGENTS.md`；完整发布构建、自动崩溃恢复和状态持久化仍待实现。端口和地址来自 `config.yaml`、`shared/server-route-config.ts`，调整时必须检查前端 URL 和测试。
 
 ## 代码格式要求
 

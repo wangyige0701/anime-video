@@ -165,7 +165,7 @@ fn preload_state(cache: CachedState, cx: &mut App) {
 fn toggle_panel(rect: Rect, cx: &mut App) {
     if let Some(panel) = cx.global::<TrayState>().panel {
         if panel
-            .update(cx, |_, window, _| window.remove_window())
+            .update(cx, |panel, window, cx| panel.close(window, cx))
             .is_ok()
         {
             cx.global_mut::<TrayState>().panel = None;

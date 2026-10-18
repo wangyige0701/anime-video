@@ -11,6 +11,7 @@ const seriesMock = vi.hoisted(() => ({
 	getDirectories: vi.fn(),
 	setDirectories: vi.fn(),
 	addDirectories: vi.fn(),
+	sortDirectories: vi.fn(),
 	updateSeries: vi.fn(),
 }));
 
@@ -67,5 +68,19 @@ describe('directory CLI argument validation', () => {
 		expect(seriesMock.addDirectories).toHaveBeenCalledWith(normalizedDirectory);
 		expect(seriesMock.setDirectories).not.toHaveBeenCalled();
 		expect(seriesMock.updateSeries).toHaveBeenCalledOnce();
+	});
+
+	it('保存完整目录数组的排序结果', async () => {
+		const directories = [path.resolve('first'), path.resolve('second')];
+		seriesMock.getDirectories.mockResolvedValue(directories);
+		seriesMock.sortDirectories.mockResolvedValue(undefined);
+		vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+		const program = new Command();
+		addDirectoryCommands(program);
+		await program.parseAsync(['node', 'test', 'dir', 'sort', directories[1], directories[0]]);
+
+		expect(seriesMock.sortDirectories).toHaveBeenCalledWith([directories[1], directories[0]]);
+		expect(seriesMock.setDirectories).not.toHaveBeenCalled();
 	});
 });

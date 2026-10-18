@@ -128,6 +128,7 @@ defineExpose({
 	color: inherit;
 	border-radius: token.$radius-ex-sm;
 	border: 1px solid var(--editor-border-color, transparent);
+	padding-left: 5px;
 	transition: border-color 0.2s ease;
 	position: relative;
 	&:has(.content[contenteditable='true'], .content[data-modify='true']) {
@@ -140,6 +141,7 @@ defineExpose({
 	padding: 0;
 	outline: none;
 	border: none;
+	white-space: pre-wrap;
 	&[contenteditable='true'],
 	&[data-modify='true'],
 	&[data-loading='true'] {

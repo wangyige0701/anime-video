@@ -44,17 +44,13 @@ type PickType<
 	T extends Record<string, any>,
 	K extends (keyof T)[],
 	U extends Record<string, any> = {},
-> = K['length'] extends 0
-	? U
-	: PickType<T, RestElements<K>, U & { [P in K[0]]: T[P] }>;
+> = K['length'] extends 0 ? U : PickType<T, RestElements<K>, U & { [P in K[0]]: T[P] }>;
 
 type OmitType<
 	T extends Record<string, any>,
 	K extends (keyof T)[],
 	U extends Record<string, any> = T,
-> = K['length'] extends 0
-	? U
-	: OmitType<T, RestElements<K>, K[0] extends keyof T ? Omit<T, K[0]> : U>;
+> = K['length'] extends 0 ? U : OmitType<T, RestElements<K>, K[0] extends keyof T ? Omit<T, K[0]> : U>;
 
 export abstract class Common {
 	// 缓存处理
@@ -102,11 +98,7 @@ export abstract class Common {
 	 */
 	public static async setDirectories(...directories: string[]) {
 		const data = await this.getDirectories();
-		data.splice(
-			0,
-			data.length,
-			...directories.map((item) => path.resolve(item)),
-		);
+		data.splice(0, data.length, ...directories.map((item) => path.resolve(item)));
 		await Data.instance<string[]>(this.__path, []).save();
 	}
 
@@ -139,6 +131,21 @@ export abstract class Common {
 	}
 
 	/**
+	 * 对视频系列目录配置数据进行排序
+	 * @param directories 视频系列目录配置数据
+	 * @returns 排序后的视频系列目录配置数据
+	 */
+	public static async sortDirectories(directories: string[]) {
+		const data = await this.getDirectories();
+		const target = [...new Set(directories)];
+		if (target.length !== data.length || !target.every((item) => data.includes(item))) {
+			throw new Error('目录配置数据不完整');
+		}
+		data.sort((a, b) => target.indexOf(a) - target.indexOf(b));
+		await Data.instance<string[]>(this.__path, []).save();
+	}
+
+	/**
 	 * 解析真实路径；不存在的叶子节点会基于最近的可解析祖先重建路径。
 	 *
 	 * 例子：
@@ -154,10 +161,7 @@ export abstract class Common {
 		const missingSegments: string[] = [];
 		while (true) {
 			try {
-				return path.join(
-					await fs.realpath(currentDirectory),
-					...missingSegments,
-				);
+				return path.join(await fs.realpath(currentDirectory), ...missingSegments);
 			} catch {
 				const parentDirectory = path.dirname(currentDirectory);
 				if (parentDirectory === currentDirectory) {
@@ -181,11 +185,7 @@ export abstract class Common {
 		for (const item of directories) {
 			const rootDirectory = await Common.resolveRealPath(item);
 			const relativePath = path.relative(rootDirectory, handleDirectory);
-			if (
-				relativePath === '' ||
-				(!relativePath.startsWith(`..${path.sep}`) &&
-					!path.isAbsolute(relativePath))
-			) {
+			if (relativePath === '' || (!relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath))) {
 				return true;
 			}
 		}
@@ -202,10 +202,7 @@ export abstract class Common {
 	/**
 	 * 从对象中提取指定属性
 	 */
-	public static pick<T extends Record<string, any>, K extends (keyof T)[]>(
-		obj: T,
-		keys: K,
-	) {
+	public static pick<T extends Record<string, any>, K extends (keyof T)[]>(obj: T, keys: K) {
 		return keys.reduce((prev, cur) => {
 			prev[cur] = obj[cur];
 			return prev;
@@ -215,10 +212,7 @@ export abstract class Common {
 	/**
 	 * 从对象中移除指定属性
 	 */
-	public static omit<T extends Record<string, any>, K extends (keyof T)[]>(
-		obj: T,
-		keys: K,
-	) {
+	public static omit<T extends Record<string, any>, K extends (keyof T)[]>(obj: T, keys: K) {
 		return Object.keys(obj).reduce((prev, cur) => {
 			if (!keys.includes(cur)) {
 				prev[cur as keyof T] = obj[cur];

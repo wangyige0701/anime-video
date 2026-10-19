@@ -4,6 +4,7 @@ node_modules
 streamer/build
 dist
 .cache
+.tmp
 
 *.mp4
 

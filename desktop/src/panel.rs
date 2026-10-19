@@ -845,9 +845,32 @@ impl TrayPanel {
         let directories = self.directories.clone();
         let (sorting, removing_directory) = self.directory_operation_state();
         let panel_height = directory_panel_height(directories.len());
+        let main_window = self.main_window;
         let _ = directory_window.update(cx, move |panel, window, cx| {
             panel.replace_directories(directories, sorting, removing_directory, cx);
             window.resize(size(px(position::DIRECTORY_PANEL_WIDTH), px(panel_height)));
+        });
+        cx.defer(move |cx| {
+            let placement = main_window
+                .update(cx, |_, main_window, cx| {
+                    position::beside_directory_trigger(
+                        main_window,
+                        HEADER_HEIGHT
+                            + GLOBAL_CONTROL_HEIGHT
+                            + STATUS_HEIGHT
+                            + SERVICE_ROW_HEIGHT * 2.0
+                            + DIRECTORY_TRIGGER_INSET,
+                        DIRECTORY_TRIGGER_HEIGHT,
+                        panel_height,
+                        cx,
+                    )
+                })
+                .ok();
+            if let Some(placement) = placement {
+                let _ = directory_window.update(cx, |_, window, _| {
+                    position::move_window_to(window, placement.bounds.origin);
+                });
+            }
         });
     }
 

@@ -1,10 +1,11 @@
-use gpui::{App, Bounds, DisplayId, Pixels, Window, point, px, size};
+use gpui::{App, Bounds, DisplayId, Pixels, Point, Window, point, px, size};
 use tray_icon::Rect;
 
 const TRAY_GAP: i32 = -2;
 pub const DIRECTORY_PANEL_WIDTH: f32 = 260.0;
 const DIRECTORY_PANEL_GAP: f32 = 8.0;
 const DIRECTORY_PANEL_MARGIN: f32 = 8.0;
+const DIRECTORY_PANEL_BOTTOM_GAP: f32 = 8.0;
 
 pub struct TrayPlacement {
     pub bounds: Bounds<Pixels>,
@@ -75,6 +76,41 @@ pub fn set_topmost_without_activation(window: &Window) {
 
 #[cfg(not(windows))]
 pub fn set_topmost_without_activation(_: &Window) {}
+
+#[cfg(windows)]
+pub fn move_window_to(window: &Window, origin: Point<Pixels>) {
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    use std::ffi::c_void;
+    use windows::Win32::{
+        Foundation::HWND,
+        UI::WindowsAndMessaging::{SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER, SetWindowPos},
+    };
+
+    let Ok(handle) = HasWindowHandle::window_handle(window) else {
+        return;
+    };
+    let RawWindowHandle::Win32(handle) = handle.as_raw() else {
+        return;
+    };
+    let hwnd = HWND(handle.hwnd.get() as *mut c_void);
+    let scale_factor = window.scale_factor();
+    let x = (f32::from(origin.x) * scale_factor).round() as i32;
+    let y = (f32::from(origin.y) * scale_factor).round() as i32;
+    let _ = unsafe {
+        SetWindowPos(
+            hwnd,
+            None,
+            x,
+            y,
+            0,
+            0,
+            SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER,
+        )
+    };
+}
+
+#[cfg(not(windows))]
+pub fn move_window_to(_: &Window, _: Point<Pixels>) {}
 
 #[cfg(windows)]
 pub fn set_topmost_handle(handle: Option<isize>, topmost: bool) {
@@ -258,8 +294,10 @@ pub fn beside_directory_trigger(
         };
     let desired_y = main_bounds.top() + px(trigger_y + trigger_height / 2.0 - panel_height / 2.0);
     let minimum_y = display_bounds.top() + px(DIRECTORY_PANEL_MARGIN);
-    let maximum_y = display_bounds.bottom() - px(DIRECTORY_PANEL_MARGIN + panel_height);
-    let y = desired_y.max(minimum_y).min(maximum_y);
+    let display_maximum_y = display_bounds.bottom() - px(DIRECTORY_PANEL_MARGIN + panel_height);
+    let main_maximum_y = main_bounds.bottom() - px(DIRECTORY_PANEL_BOTTOM_GAP + panel_height);
+    let maximum_y = display_maximum_y.min(main_maximum_y);
+    let y = desired_y.max(minimum_y).min(maximum_y.max(minimum_y));
 
     TrayPlacement {
         bounds: Bounds::new(

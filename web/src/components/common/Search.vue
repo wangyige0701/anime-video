@@ -61,6 +61,7 @@ function input() {
 
 .search {
 	--el-input-border-radius: var(--el-component-size);
+	--el-input-bg-color: #{map.get(token.$theme, 'd-3')};
 	width: 450px;
 }
 </style>

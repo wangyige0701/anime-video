@@ -140,9 +140,13 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		const start = (page - 1) * pageSize;
 		const end = start + pageSize;
 		if (keyword) {
+			const target = keyword.toLocaleLowerCase();
 			return [...this.cache.values()]
 				.filter((series) => {
-					return series.title.includes(keyword) || series.description.includes(keyword);
+					return (
+						series.title.toLocaleLowerCase().includes(target) ||
+						series.description.toLocaleLowerCase().includes(target)
+					);
 				})
 				.slice(start, end);
 		}

@@ -88,6 +88,7 @@ const emit = defineEmits<{
 
 const KEYBOARD_VOLUME_STEP = 10;
 const GESTURE_VOLUME_STEP = 1;
+const SEEK_STEP_SECONDS = 5;
 const playerStore = usePlayerStore();
 const videoCoreRef = useTemplateRef('videoCoreRef');
 const videoMask = useTemplateRef('videoMask');
@@ -119,6 +120,14 @@ const {
 useKeyboardAction(KeyboardAction.VolumeUp, () => volumeUp(KEYBOARD_VOLUME_STEP));
 useKeyboardAction(KeyboardAction.VolumeDown, () => volumeDown(KEYBOARD_VOLUME_STEP));
 useKeyboardAction(KeyboardAction.ToggleFullscreen, toggleFullscreen);
+useKeyboardAction(KeyboardAction.SeekForward, () => {
+	playerStore.seek(Math.min(playerStore.duration, playerStore.currentTime + SEEK_STEP_SECONDS));
+	playerStore.play();
+});
+useKeyboardAction(KeyboardAction.SeekBackward, () => {
+	playerStore.seek(Math.max(0, playerStore.currentTime - SEEK_STEP_SECONDS));
+	playerStore.play();
+});
 
 useVideoControllerActivity({
 	container: videoMask,

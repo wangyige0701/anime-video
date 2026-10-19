@@ -22,6 +22,10 @@ export enum KeyboardAction {
 	Shot = 'shot',
 	/** 全屏切换 */
 	ToggleFullscreen = 'toggleFullscreen',
+	/** 快进 */
+	SeekForward = 'seekForward',
+	/** 快退 */
+	SeekBackward = 'seekBackward',
 }
 
 type BindKeyboardActionEvents = {

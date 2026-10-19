@@ -25,4 +25,12 @@ export const KeyboardConfig: Array<{
 		action: KeyboardAction.VolumeDown,
 		keys: [{ key: 'ArrowDown' }],
 	},
+	{
+		action: KeyboardAction.SeekForward,
+		keys: [{ key: 'ArrowRight' }],
+	},
+	{
+		action: KeyboardAction.SeekBackward,
+		keys: [{ key: 'ArrowLeft' }],
+	},
 ];

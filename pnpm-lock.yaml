@@ -67,8 +67,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0
       koa-use-decorator-router:
-        specifier: ^1.2.1
-        version: 1.2.1(@koa/router@15.7.0(koa@3.2.1))(koa@3.2.1)(reflect-metadata@0.2.2)
+        specifier: 1.3.0
+        version: 1.3.0(@koa/router@15.7.0(koa@3.2.1))(koa@3.2.1)(reflect-metadata@0.2.2)
       koa2-connect-history-api-fallback:
         specifier: ^0.1.3
         version: 0.1.3
@@ -1691,8 +1691,8 @@ packages:
     resolution: {integrity: sha512-UqyYyH5YEXaJrf9S8E23GoJFQZXkBVJ9zYYMPGz919MSX1KuvAcycIuS0ci150HCoPf4XQVhQ84Qf8xRPWxFaQ==}
     engines: {node: '>= 7.6.0'}
 
-  koa-use-decorator-router@1.2.1:
-    resolution: {integrity: sha512-IyX0qkFHy3L5YkWfBCw83A6FTraFit7gUhPWzbyHcwVfnVztxuexv+krkIr5LXF/T/xbgO8Q9wXaJo09vDv2qQ==}
+  koa-use-decorator-router@1.3.0:
+    resolution: {integrity: sha512-HDRip6W3lCwrDw+fvUNr7TYcTaqogk/9isjyxI6EAuJ3TLzZuu4YneC44RKeeXtDT+7iYydSctj+ruinZJTkmw==}
     peerDependencies:
       '@koa/router': '>=10.0.0'
       koa: '>=2.0.0'
@@ -3871,7 +3871,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  koa-use-decorator-router@1.2.1(@koa/router@15.7.0(koa@3.2.1))(koa@3.2.1)(reflect-metadata@0.2.2):
+  koa-use-decorator-router@1.3.0(@koa/router@15.7.0(koa@3.2.1))(koa@3.2.1)(reflect-metadata@0.2.2):
     dependencies:
       '@koa/router': 15.7.0(koa@3.2.1)
       koa: 3.2.1

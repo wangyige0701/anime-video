@@ -343,6 +343,7 @@ const videoRef = useTemplateRef('videoRef');
 - 新实现替换旧实现后，应删除或修正过时描述，不能保留互相冲突的方案。
 - 纯局部实现没有改变架构结论时可以不增加条目，但必须确认本文档仍准确。
 - 提交前应对照实际代码复核文档，尤其关注新增 hook 的清理方式、组件公开接口、事件流、缓存策略和主题变量。
+- 同一次改动还必须在 `docs/changes/web/` 新增变更记录、更新 `docs/changes/INDEX.md`；子功能细节超过约 40 行说明时写入 `docs/modules/web/`，本文件只保留摘要和链接。规范见 `docs/changes/README.md`。
 
 ## 验证要求
 

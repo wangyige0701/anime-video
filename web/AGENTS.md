@@ -92,7 +92,7 @@
 
 图片和类型的 `add/remove/set` 方法会把调用方传入数组直接作为当前本地值，同时把操作类型传给 API；调用方必须传入期望展示的完整目标数组，不能假设 data 类会在旧数组上自动拼接或删除。`updateSort()` 只更新实体的 sort 字段，不会自动重排已挂载的 seasons/episodes 数组。
 
-剧集拖拽排序以 `updateSort()` 的布尔返回值判断服务端是否成功，成功后必须对同季其余集调用 `syncSort()` 对齐本地 `sort`，再通过 `season.setEpisodes()` 回写数组；列表必须先复制为本地镜像，不能把 `season.episodes` 直接交给拖拽库。实现细节见 `docs/modules/web/detail-episode-sort.md`。
+季与集的拖拽排序遵循同一套约定：以 `updateSort()` 的布尔返回值判断服务端是否成功，成功后对同容器其余项调用 `syncSort()` 对齐本地 `sort`，再通过 `series.setSeasons()` / `season.setEpisodes()` 回写关系数组；列表必须先复制为本地镜像，不能把 `series.seasons` / `season.episodes` 直接交给拖拽库。实现细节见 `docs/modules/web/detail-episode-sort.md` 与 `docs/modules/web/detail-season-sort.md`。
 
 读取 API 当前配置失败重试 2 次、间隔 500ms；刷新和字段写入 API 使用 `AxiosRequest.Single.PREV` 单请求策略。变更重试或并发策略时应在 API 层统一处理，领域对象继续负责响应式状态、乐观更新和回滚。
 

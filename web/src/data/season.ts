@@ -98,16 +98,34 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	// endregion
 
 	// region 更新排序
+	/**
+	 * 更新服务端排序值。
+	 *
+	 * @returns 请求是否成功；失败时已回滚本地 sort，调用方可据此恢复列表顺序
+	 */
 	public async updateSort(sort: number) {
 		const oldValue = this._sort.value;
 		this._sort.value = sort;
 		this.useStatus.onSort();
 		try {
 			await updateSeasonSort(this.id, sort);
+			return true;
 		} catch (error) {
 			this._sort.value = oldValue;
+			return false;
+		} finally {
+			this.useStatus.offSort();
 		}
-		this.useStatus.offSort();
+	}
+
+	/**
+	 * 仅同步本地 sort，不发起请求。
+	 *
+	 * 拖拽排序时服务端会把区间内其它季 ±1 平移，客户端据此对齐本地字段，
+	 * 避免排序字段与界面顺序长期不一致。
+	 */
+	public syncSort(sort: number) {
+		this._sort.value = sort;
 	}
 	// endregion
 }

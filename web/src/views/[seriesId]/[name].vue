@@ -9,8 +9,8 @@
 			</div>
 		</div>
 
-		<el-collapse accordion class="list" v-model="activeSeasonId">
-			<template v-for="season in series.value.seasons" :key="season.id">
+		<el-collapse ref="listRef" v-loading="status.sorting" accordion class="list" v-model="activeSeasonId">
+			<template v-for="season in seasons" :key="season.id">
 				<DetailSeason
 					:season="season"
 					:active-episode-id="activeEpisodeId"
@@ -35,6 +35,7 @@ import router from '@/router';
 import VideoBox from '@/components/detail/VideoBox.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { usePlayerStore } from '@/stores/player';
+import { useDraggable } from 'vue-draggable-plus';
 
 definePage({
 	name: 'Detail',
@@ -47,12 +48,81 @@ route.meta.setTitle!(name);
 let isUnmounted = false;
 const playerStore = usePlayerStore();
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
-const status = useVueStatusRef('waiting').onWaiting();
+const status = useVueStatusRef('waiting', 'sorting').onWaiting();
 const videoBoxRef = useTemplateRef('videoBoxRef');
 const series = shallowReactive<{ value: Series }>({ value: {} as Series });
 const activeSeasonId = ref<string>('');
 const activeEpisodeId = ref<string>('');
 const lastEpisodeId = ref<string>('');
+
+const listRef = useTemplateRef<ComponentPublicInstance>('listRef');
+/**
+ * 季列表的本地镜像：series.value.seasons 是 customRef，原地调整不会触发更新，
+ * 且关系数组不允许原地修改，因此拖拽在镜像上完成，成功后再通过 setSeasons() 回写。
+ *
+ * 使用 shallowRef 而非 ref：ref 会把领域对象包成 Proxy 并丢失私有字段类型。
+ */
+const seasons = shallowRef<Season[]>([]);
+/** 拖拽前的顺序快照，仅在提交失败时用于恢复 */
+let seasonSnapshot: Season[] = [];
+
+watch(
+	() => series.value.seasons,
+	(list) => {
+		// 原地替换保持数组引用不变，避免拖拽实例持有过期数组
+		seasons.value.splice(0, seasons.value.length, ...(list ?? []));
+		triggerRef(seasons);
+	},
+	{ immediate: true },
+);
+
+// el-collapse 的模板 ref 是组件实例，拖拽需要挂到它的根元素上
+useDraggable(
+	computed(() => listRef.value?.$el as HTMLElement | undefined),
+	seasons,
+	{
+		animation: 180,
+		handle: '.season-handle',
+		ghostClass: 'season-ghost',
+		onStart() {
+			seasonSnapshot = [...seasons.value];
+		},
+		onEnd(event) {
+			// 拖拽库原地调整数组，shallowRef 不会自动追踪，这里显式触发重渲染
+			triggerRef(seasons);
+			void commitSeasonSort(event.oldIndex, event.newIndex);
+		},
+	},
+);
+
+/**
+ * 提交季排序。服务端会按“移动到第 N 位”把区间内其它季 ±1 平移，
+ * 因此只提交被拖动的那一季，不能逐条提交。
+ */
+async function commitSeasonSort(oldIndex?: number, newIndex?: number) {
+	if (status.sorting || oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) {
+		return;
+	}
+	const moved = seasons.value[newIndex];
+	if (!moved) {
+		return;
+	}
+	status.onSorting();
+	try {
+		const success = await moved.updateSort(newIndex + 1);
+		if (!success) {
+			// updateSort 已回滚自身 sort，这里把本地顺序恢复成拖拽前的状态
+			seasons.value.splice(0, seasons.value.length, ...seasonSnapshot);
+			triggerRef(seasons);
+			return;
+		}
+		// 其余季的 sort 已被服务端平移，本地同步镜像避免字段与显示顺序长期不一致
+		seasons.value.forEach((season, index) => season.syncSort(index + 1));
+		series.value.setSeasons([...seasons.value]);
+	} finally {
+		status.offSorting();
+	}
+}
 
 provide(
 	DETAIL_SERIES_DATA,
@@ -137,8 +207,14 @@ onBeforeUnmount(() => {
 
 .list {
 	border: 0;
-	.season:not(:last-child) {
-		margin-bottom: 20px;
-	}
+	// 用 gap 代替 :not(:last-child) 的 margin，拖拽重排时不会因末尾元素变化产生位移抖动
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+// 拖动占位仅降低透明度，避免与季面板自身的样式叠加
+.season-ghost {
+	opacity: 0.5;
 }
 </style>

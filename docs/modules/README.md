@@ -17,6 +17,7 @@ docs/modules/
 ├── README.md              # 本规范与模块地图
 ├── web/
 │   ├── detail-episode-sort.md
+│   ├── detail-season-sort.md
 │   └── ...
 ├── server/
 ├── hls/
@@ -59,3 +60,4 @@ docs/modules/
 | 模块 | 文档 | 摘要 |
 | --- | --- | --- |
 | web | [detail-episode-sort.md](web/detail-episode-sort.md) | 详情页剧集拖拽排序：本地镜像、单条提交、失败回滚与季级加载态 |
+| web | [detail-season-sort.md](web/detail-season-sort.md) | 详情页季拖拽排序：与集层的差异、`el-collapse` 容器接入与列表级加载态 |

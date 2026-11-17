@@ -2,6 +2,8 @@
 	<el-collapse-item :name="props.season.id" class="season">
 		<template #title>
 			<div class="season-title">
+				<!-- 拖拽季顺序的手柄，独立拦截点击避免触发折叠面板的展开/收起 -->
+				<el-icon class="season-handle" :size="14" @click.stop><Rank /></el-icon>
 				<span class="title">{{ props.season.title }}</span>
 				<span class="count">（共 {{ seasonCount }} 集）</span>
 			</div>
@@ -243,7 +245,9 @@ async function commitSort(oldIndex?: number, newIndex?: number) {
 	}
 }
 
-.drag-handle {
+// 季与集两级手柄共用同一套视觉，作用是弱化手柄、悬停时提亮
+.drag-handle,
+.season-handle {
 	cursor: grab;
 	opacity: 0.5;
 	&:hover {

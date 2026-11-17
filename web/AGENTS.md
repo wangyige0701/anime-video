@@ -324,6 +324,8 @@ const videoRef = useTemplateRef('videoRef');
 ## 样式与主题
 
 - 组件样式默认使用现有 scoped SCSS、`@/scss/token.scss` 和 `sass:map` 访问主题值。
+- 样式必须以尽可能少的代码实现目标效果：优先复用现有容器结构、已有类、Element Plus 能力和主题 token，不新增装饰性过渡、阴影、渐变、多层包裹或仅用一次的类。出现“为了好看”而增加的样式一律视为过度设计。
+- 只有当现有 DOM 结构无法承载交互或布局时，才允许新增元素或类；新增前先确认能否用现有选择器、属性选择器或样式复用完成。
 - 视觉调整应延续现有布局、间距、圆角、加载反馈和 Element Plus 使用方式，避免为单一功能增加大面积装饰、复杂动画或过多层级。
 - 需要让某个模块随主题变化时，新增颜色必须先在 `src/scss/mixin/themes.scss` 的 `themes()` 中声明对应 CSS 变量，并同步加入 `$theme` 映射；组件内再通过 `map.get(token.$theme, '变量名')` 使用。
 - 播放器居中音量 HUD 的背景、边框和投影分别使用 `video-volume-tip-bg`、`video-volume-tip-border`、`video-volume-tip-shadow`，各主题根据主色生成对应的半透明层次。

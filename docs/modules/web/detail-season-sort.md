@@ -48,8 +48,9 @@ series.seasons ──watch（原地 splice + triggerRef）──> seasons 本地
 ## 4. 关键约束
 
 - 拖拽元素的 `:key` 必须是 `season.id`；`DetailSeason` 的根节点就是 `el-collapse-item`，`v-for` 外层用 `<template>` 包裹，不能再套一层 `div`，否则 SortableJS 的容器子节点与数据下标会错位。
+- 必须传 `clone: (season) => season`。拖拽库默认的 clone 用 JSON 深拷贝被拖拽项，而 `Season` / `Episode` 实例内部持有 `Ref`（存在循环引用），会在 `onStart` 抛出 `Converting circular structure to JSON`，并导致用户 `onStart` 不被执行、失败快照丢失。
+- 手柄必须 `@click.stop`，否则点击手柄会冒泡到折叠面板头部，触发展开/收起；热区固定 24×24（图标 16px + 负外边距抵消留白），既好抓又不改变头部排版。
 - `useDraggable` 的第一个参数必须是**真实 DOM 元素**。`el-collapse` 的模板 ref 是组件实例，需传 `computed(() => listRef.value?.$el)`；库内部对非 HTMLElement 值会取 `$el`，但类型层面不能直接传组件实例。
-- 手柄必须 `@click.stop`，否则点击手柄会冒泡到折叠面板头部，触发展开/收起。
 - 列表间距使用 `gap` 而不是 `:not(:last-child)` 的 `margin`：拖拽重排时“最后一个元素”会变，margin 方案会让整列产生跳动。
 - 加载遮罩由 `v-loading` 注入到 `.el-collapse` 内部，它同样是容器的子节点，但不带手柄类名，不会成为可拖拽项；遮罩本身拦截指针事件，排序期间无法再次发起拖拽。
 

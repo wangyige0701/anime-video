@@ -3,7 +3,7 @@
 		<template #title>
 			<div class="season-title">
 				<!-- 拖拽季顺序的手柄，独立拦截点击避免触发折叠面板的展开/收起 -->
-				<el-icon class="season-handle" :size="14" @click.stop><Rank /></el-icon>
+				<el-icon class="season-handle" :size="16" @click.stop><Rank /></el-icon>
 				<span class="title">{{ props.season.title }}</span>
 				<span class="count">（共 {{ seasonCount }} 集）</span>
 			</div>
@@ -20,7 +20,7 @@
 					>
 						<span class="index">
 							<!-- 手柄独立拦截点击，避免拖动结束时误触发播放 -->
-							<el-icon class="drag-handle" :size="14" @click.stop><Rank /></el-icon>
+							<el-icon class="drag-handle" :size="16" @click.stop><Rank /></el-icon>
 							第 {{ index + 1 }} 集
 						</span>
 						<span class="title">{{ episode.title }}</span>
@@ -89,6 +89,8 @@ useDraggable(episodesRef, episodes, {
 	animation: 180,
 	handle: '.drag-handle',
 	ghostClass: 'episode-ghost',
+	// 默认 clone 会 JSON 深拷贝被拖拽项，Episode 实例含 Ref 循环引用会抛错，拖拽只需要原对象
+	clone: (episode) => episode,
 	onStart() {
 		orderSnapshot = [...episodes.value];
 	},
@@ -245,13 +247,22 @@ async function commitSort(oldIndex?: number, newIndex?: number) {
 	}
 }
 
-// 季与集两级手柄共用同一套视觉，作用是弱化手柄、悬停时提亮
+// 季与集两级手柄共用同一套视觉：热区 24px、图标 16px，负外边距抵消留白不影响排版
 .drag-handle,
 .season-handle {
 	cursor: grab;
 	opacity: 0.5;
+	width: 24px;
+	height: 24px;
+	margin: -4px;
+	border-radius: 4px;
+	user-select: none;
 	&:hover {
 		opacity: 1;
+		color: token.$text-color-primary;
+	}
+	&:active {
+		cursor: grabbing;
 	}
 }
 

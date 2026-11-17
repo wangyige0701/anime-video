@@ -60,7 +60,8 @@ props.season.episodes ──watch（原地 splice + triggerRef）──> episode
 ## 5. 关键约束
 
 - `v-for` 的 `:key` 必须是 `episode.id`，否则 SortableJS 移动 DOM 后 Vue 重渲染会回弹。
-- 手柄 `Rank` 图标必须阻止点击冒泡，卡片点击用于播放。
+- 手柄 `Rank` 图标必须阻止点击冒泡，卡片点击用于播放；热区固定 24×24（图标 16px + 负外边距），与季手柄共用同一套样式。
+- 必须传 `clone: (episode) => episode`。拖拽库默认 clone 用 JSON 深拷贝被拖拽项，`Episode` 实例持有 `Ref` 会抛 `Converting circular structure to JSON`，并让用户 `onStart` 不执行、失败快照失效。
 - 拖拽动画只用 SortableJS 的 `animation`；不要再给同一列表加 `<TransitionGroup>` 的 `move`，两套 FLIP 会叠加。
 - 本地镜像在 `watch` 中原地替换，保持数组引用不变，避免拖拽实例持有过期数组；`shallowRef` 的原地修改必须手动 `triggerRef()`。
 - 样式只保留交互必需的 `cursor` 与透明度，占位块仅半透明，遵循 `web/AGENTS.md` 的最小样式约定。

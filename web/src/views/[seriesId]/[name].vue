@@ -84,6 +84,9 @@ useDraggable(
 		animation: 180,
 		handle: '.season-handle',
 		ghostClass: 'season-ghost',
+		// 默认 clone 会 JSON 深拷贝被拖拽项，而 Season 实例含 Ref 等循环引用会直接抛错，
+		// 拖拽只需要原对象引用，这里原样返回
+		clone: (season) => season,
 		onStart() {
 			seasonSnapshot = [...seasons.value];
 		},

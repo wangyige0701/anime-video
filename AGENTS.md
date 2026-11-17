@@ -94,6 +94,16 @@ pnpm install
 - `allowBuilds` 只明确允许 `@parcel/watcher` 与 `esbuild` 的安装构建脚本。
 - `minimumReleaseAge` 当前为 `0`，没有新增包发布时间等待限制。
 
+依赖的新增、删除、升级、降级必须通过 pnpm 命令执行，禁止手工编辑 `package.json`、`pnpm-lock.yaml` 中的依赖条目：
+
+```powershell
+pnpm --filter web add vue-draggable-plus
+pnpm --filter web remove <包名>
+pnpm --filter server update <包名>
+```
+
+手工编辑会导致锁文件与声明不一致、importer 归属错误或 overrides/peer 解析失效。`pnpm-workspace.yaml` 的 `overrides`、`peerDependencyRules`、`allowBuilds`、`minimumReleaseAge` 属于仓库级安装策略，允许直接修改，但改完必须在仓库根目录重新执行 `pnpm install` 并提交同一份锁文件。
+
 `hls/` 不属于 workspace，拥有自己的 `package.json` 和 `pnpm-lock.yaml`。安装或更新原生扩展依赖必须在该目录独立执行：
 
 ```powershell

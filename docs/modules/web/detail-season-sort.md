@@ -41,7 +41,8 @@ series.seasons ──watch（原地 splice + triggerRef）──> seasons 本地
         └────────────────────────────────────────┘
 ```
 
-- 服务端 `Series.doUpdateSeasonSort` 与剧集同构：只接收“移动到第 N 位”，区间内其余季 ±1 平移，因此只提交被拖动的那一季。
+- 服务端 `Series.doUpdateSeasonSort` 与剧集同构：只接收“移动到第 N 位”，按当前 `sort` 推导顺序、移动目标季、全量重编号 1..n，并原地重排缓存数组。重编号一步修掉了历史 `sort` 空洞，也避免“新位置恰好等于旧 `sort`”时请求空转。
+- **必须重排缓存数组**：`Series._seasons` 是初始化时排序一次的数组，只改 `sort` 不重排会让接口继续返回旧顺序，刷新后表现为“排序没保存”。
 - `onSorting()` 挂在详情页的 `status`（`useVueStatusRef('waiting', 'sorting')`）上，与页面等待态共用一个实例。
 
 ## 4. 关键约束

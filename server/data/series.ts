@@ -572,46 +572,42 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.registerStatus();
 	}
 
-	public async updateSeasonSort(getOldSort: () => Promise<number>, newSort: number) {
-		// 旧排序值必须在队列内读取，否则并发请求会使用过期位置覆盖前一项的调整结果。
-		const task = this.seasonSortQueue.then(async () => this.doUpdateSeasonSort(await getOldSort(), newSort));
+	public async updateSeasonSort(getTarget: () => Season | Promise<Season>, position: number) {
+		// 目标季必须在队列内解析，否则并发请求会使用过期位置覆盖前一项的调整结果。
+		const task = this.seasonSortQueue.then(async () => this.doUpdateSeasonSort(await getTarget(), position));
 		this.seasonSortQueue = task.catch(() => {});
 		return await task;
 	}
 
-	private async doUpdateSeasonSort(oldSort: number, newSort: number) {
-		if (oldSort === newSort) {
+	/**
+	 * 按“移动到第 N 位”重排季顺序。
+	 *
+	 * 不能依赖新旧 sort 值做区间平移：历史数据的 sort 可能存在空洞或重复，
+	 * 一旦客户端顺序与 sort 顺序不一致，`oldSort === newSort` 会让请求空转。
+	 * 这里改为按当前 sort 推导顺序、移动目标项、再统一重编号，
+	 * 并原地重排缓存数组，保证后续接口返回的顺序与落库顺序一致。
+	 */
+	private async doUpdateSeasonSort(target: Season, position: number) {
+		const seasons = await this.seasons;
+		if (!seasons.length) {
 			return;
 		}
-		const seasons = await this.seasons;
-		if (newSort < 1) {
-			newSort = 1;
+		const entries = await Promise.all(seasons.map(async (season) => ({ season, sort: await season.sort })));
+		entries.sort((a, b) => a.sort - b.sort);
+		const ordered = entries.map((item) => item.season);
+		const current = ordered.indexOf(target);
+		if (current === -1) {
+			return;
 		}
-		if (newSort > seasons.length) {
-			newSort = seasons.length;
+		const next = Math.min(Math.max(1, position), ordered.length) - 1;
+		if (next === current) {
+			return;
 		}
-		for (const season of seasons) {
-			const sort = await season.sort;
-			const minSort = Math.min(oldSort, newSort);
-			const maxSort = Math.max(oldSort, newSort);
-			if (sort < minSort) {
-				continue;
-			}
-			if (sort > maxSort) {
-				break;
-			}
-			if (sort === oldSort) {
-				await season.rewriteSort(newSort);
-				continue;
-			}
-			if (oldSort < newSort) {
-				// 其余项需要减一
-				await season.rewriteSort(sort - 1);
-			} else {
-				// 其余项需要加一
-				await season.rewriteSort(sort + 1);
-			}
+		ordered.splice(next, 0, ordered.splice(current, 1)[0]!);
+		for (let index = 0; index < ordered.length; index++) {
+			await ordered[index]!.rewriteSort(index + 1);
 		}
+		seasons.splice(0, seasons.length, ...ordered);
 	}
 	// endregion
 

@@ -4,6 +4,7 @@
 
 | 日期 | 模块 | 类型 | 标题 | 主要文件 | 记录 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-17 | server | 修复 | 排序写入后接口顺序滞后与二次拖拽空转 | `server/data/series.ts`、`server/data/season.ts`、`server/data/episode.ts` | [2026-11-17-sort-order-cache-sync](server/2026-11-17-sort-order-cache-sync.md) |
 | 2026-11-17 | web | 功能 | 详情页季支持拖拽排序 | `web/src/views/[seriesId]/[name].vue`、`web/src/components/detail/DetailSeason.vue`、`web/src/data/season.ts` | [2026-11-17-season-drag-sort](web/2026-11-17-season-drag-sort.md) |
 | 2026-11-17 | web | 功能 | 详情页剧集支持拖拽排序并显示季级加载状态 | `web/src/components/detail/DetailSeason.vue`、`web/src/data/episode.ts`、`web/package.json` | [2026-11-17-episode-drag-sort](web/2026-11-17-episode-drag-sort.md) |
 | 2026-11-17 | web | 文档 | 样式修改必须以最少代码实现 | `web/AGENTS.md`、`web/src/components/detail/DetailSeason.vue` | [2026-11-17-minimal-style-rule](web/2026-11-17-minimal-style-rule.md) |

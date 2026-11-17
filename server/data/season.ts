@@ -219,7 +219,7 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	 */
 	public async updateSort(sort: number) {
 		await this.promise;
-		await this.series.updateSeasonSort(() => this.sort, Math.max(1, sort));
+		await this.series.updateSeasonSort(() => this, Math.max(1, sort));
 	}
 
 	/**
@@ -236,46 +236,40 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.registerTitle();
 	}
 
-	public async updateEpisodeSort(getOldSort: () => Promise<number>, newSort: number) {
-		// 在真正执行时读取旧位置，保证并发调整按队列中的最新状态计算。
-		const task = this.episodeSortQueue.then(async () => this.doUpdateEpisodeSort(await getOldSort(), newSort));
+	public async updateEpisodeSort(getTarget: () => Episode | Promise<Episode>, position: number) {
+		// 目标集必须在队列内解析，保证并发调整按队列中的最新状态计算。
+		const task = this.episodeSortQueue.then(async () => this.doUpdateEpisodeSort(await getTarget(), position));
 		this.episodeSortQueue = task.catch(() => {});
 		return await task;
 	}
 
-	private async doUpdateEpisodeSort(oldSort: number, newSort: number) {
-		if (oldSort === newSort) {
+	/**
+	 * 按“移动到第 N 位”重排剧集顺序。
+	 *
+	 * 与季排序同理：不依赖新旧 sort 做区间平移，而是按当前 sort 推导顺序、
+	 * 移动目标集后统一重编号，并原地重排缓存数组，避免接口返回的顺序滞后于落库结果。
+	 */
+	private async doUpdateEpisodeSort(target: Episode, position: number) {
+		const episodes = await this.episodes;
+		if (!episodes.length) {
 			return;
 		}
-		const episodes = await this.episodes;
-		if (newSort < 1) {
-			newSort = 1;
+		const entries = await Promise.all(episodes.map(async (episode) => ({ episode, sort: await episode.sort })));
+		entries.sort((a, b) => a.sort - b.sort);
+		const ordered = entries.map((item) => item.episode);
+		const current = ordered.indexOf(target);
+		if (current === -1) {
+			return;
 		}
-		if (newSort > episodes.length) {
-			newSort = episodes.length;
+		const next = Math.min(Math.max(1, position), ordered.length) - 1;
+		if (next === current) {
+			return;
 		}
-		for (const episode of episodes) {
-			const sort = await episode.sort;
-			const minSort = Math.min(oldSort, newSort);
-			const maxSort = Math.max(oldSort, newSort);
-			if (sort < minSort) {
-				continue;
-			}
-			if (sort > maxSort) {
-				break;
-			}
-			if (sort === oldSort) {
-				await episode.rewriteSort(newSort);
-				continue;
-			}
-			if (oldSort < newSort) {
-				// 其余项需要减一
-				await episode.rewriteSort(sort - 1);
-			} else {
-				// 其余项需要加一
-				await episode.rewriteSort(sort + 1);
-			}
+		ordered.splice(next, 0, ordered.splice(current, 1)[0]!);
+		for (let index = 0; index < ordered.length; index++) {
+			await ordered[index]!.rewriteSort(index + 1);
 		}
+		episodes.splice(0, episodes.length, ...ordered);
 	}
 	// endregion
 

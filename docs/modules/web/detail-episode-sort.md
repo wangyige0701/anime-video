@@ -12,7 +12,7 @@
 
 | 层 | 持有者 | 说明 |
 | --- | --- | --- |
-| 服务端 | `.video.json` 中 `episodes[].sort` | 唯一持久顺序；`PUT /episode/:id/sort` 修改，区间内其余项 ±1 平移 |
+| 服务端 | `.video.json` 中 `episodes[].sort` | 唯一持久顺序；`PUT /episode/:id/sort` 提交目标位置，服务端重排后把整季 `sort` 重新编号为 1..n，并原地重排内存中的剧集数组 |
 | 数据层 | `Season.episodes`（`customRef`） | 通过 `setEpisodes()` 整体替换并触发依赖 |
 | 组件 | `episodes: ShallowRef<Episode[]>` | 拖拽用的本地镜像，元素保持原始实例 |
 
@@ -39,9 +39,17 @@ props.season.episodes ──watch（原地 splice + triggerRef）──> episode
         └────────────────────────────────────────┘
 ```
 
-- 只提交**被拖动的那一集**：服务端 `doUpdateEpisodeSort` 会平移区间内其他集，逐条提交会造成重复位移。
+- 只提交**被拖动的那一集**：服务端 `doUpdateEpisodeSort` 接收“移动到第 N 位”，按当前 `sort` 推导顺序、移动目标集后统一重编号，逐条提交会互相覆盖位置。
 - `onStart` 记录顺序快照；`updateSort()` 返回布尔值表示成功与否，组件据此决定是否回滚。
-- 成功后用 `syncSort()` 把其余集的本地 `sort` 对齐到 `index + 1`，避免字段与服务端顺序长期不一致。
+- 成功后用 `syncSort()` 把其余集的本地 `sort` 对齐到 `index + 1`，与服务端重编号结果一致。
+
+### 服务端顺序一致性
+
+旧实现只对区间内其它集做 ±1 平移，既不修正历史数据里的 `sort` 空洞，也不重排内存中的剧集数组，结果是：写入成功但接口仍按旧数组返回，刷新后顺序回退，之后再拖会算错位置。现在的约束：
+
+- 顺序一律以 `sort` 推导，不信任数组的物理顺序。
+- 重排后全量重编号 1..n，顺带修掉空洞与重复。
+- `episodes.splice(0, length, ...ordered)` 原地重排缓存数组，保证 `GET /season/:id` 与 `GET /seasons/:seriesId` 立即返回新顺序。
 
 ## 4. 加载态
 

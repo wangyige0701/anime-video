@@ -182,7 +182,7 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	// region 更新集数据
 	public async updateSort(sort: number) {
 		await this.promise;
-		await this.season.updateEpisodeSort(() => this.sort, Math.max(1, sort));
+		await this.season.updateEpisodeSort(() => this, Math.max(1, sort));
 		this.registerSort();
 	}
 

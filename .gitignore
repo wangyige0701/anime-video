@@ -20,3 +20,5 @@ server/www/
 # rust
 target/
 *.rs.bk
+
+.workbuddy

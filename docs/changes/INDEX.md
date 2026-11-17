@@ -4,6 +4,7 @@
 
 | 日期 | 模块 | 类型 | 标题 | 主要文件 | 记录 |
 | --- | --- | --- | --- | --- | --- |
+| 2026-11-17 | web | 功能 | 详情页剧集支持拖拽排序并显示季级加载状态 | `web/src/components/detail/DetailSeason.vue`、`web/src/data/episode.ts`、`web/package.json` | [2026-11-17-episode-drag-sort](web/2026-11-17-episode-drag-sort.md) |
 | 2026-11-17 | web | 文档 | 样式修改必须以最少代码实现 | `web/AGENTS.md`、`web/src/components/detail/DetailSeason.vue` | [2026-11-17-minimal-style-rule](web/2026-11-17-minimal-style-rule.md) |
 | 2026-11-17 | shared | 文档 | 依赖变更必须通过 pnpm 命令执行 | `AGENTS.md` | [2026-11-17-dependency-command-rule](shared/2026-11-17-dependency-command-rule.md) |
 | 2026-11-17 | shared | 文档 | 建立变更记录与模块文档规范 | `docs/changes/README.md`、`docs/modules/README.md`、根 `AGENTS.md`、`web/AGENTS.md` | [2026-11-17-docs-convention](shared/2026-11-17-docs-convention.md) |

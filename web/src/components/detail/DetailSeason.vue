@@ -6,15 +6,21 @@
 				<span class="count">（共 {{ seasonCount }} 集）</span>
 			</div>
 		</template>
-		<el-scrollbar :max-height="`calc(${maxEpisodeCount} * (0.875rem * 3) + (${maxEpisodeCount} - 1) * 10px)`">
-			<div class="episodes">
-				<template v-for="(episode, index) in props.season.episodes" :key="episode.id">
+		<div class="episode-panel" v-loading="status.sorting">
+			<el-scrollbar :max-height="`calc(${maxEpisodeCount} * (0.875rem * 3) + (${maxEpisodeCount} - 1) * 10px)`">
+				<div ref="episodesRef" class="episodes">
 					<div
+						v-for="(episode, index) in episodes"
+						:key="episode.id"
 						class="episode"
 						:class="{ active: props.activeEpisodeId === episode.id }"
 						@click.stop="$emit('play', episode)"
 					>
-						<span class="index">第 {{ index + 1 }} 集</span>
+						<span class="index">
+							<!-- 手柄独立拦截点击，避免拖动结束时误触发播放 -->
+							<el-icon class="drag-handle" :size="14" @click.stop><Rank /></el-icon>
+							第 {{ index + 1 }} 集
+						</span>
 						<span class="title">{{ episode.title }}</span>
 						<el-tooltip
 							v-if="episode.id === props.lastEpisodeId"
@@ -29,15 +35,18 @@
 							</el-icon>
 						</el-tooltip>
 					</div>
-				</template>
-			</div>
-		</el-scrollbar>
+				</div>
+			</el-scrollbar>
+		</div>
 	</el-collapse-item>
 </template>
 
 <script setup lang="ts">
 import type { Episode } from '@/data/episode';
 import type { Season } from '@/data/season';
+import { Rank } from '@element-plus/icons-vue';
+import { shallowRef, triggerRef } from 'vue';
+import { useDraggable } from 'vue-draggable-plus';
 
 const props = defineProps<{
 	season: Season;
@@ -50,6 +59,73 @@ defineEmits<{
 
 const maxEpisodeCount = 6;
 const seasonCount = computed(() => props.season.episodes.length);
+
+const status = useVueStatusRef('sorting');
+const episodesRef = useTemplateRef('episodesRef');
+/**
+ * 拖拽操作的本地镜像：season.episodes 是 customRef，原地 splice 不会触发更新，
+ * 因此排序必须在镜像数组上完成，成功后再通过 setEpisodes() 回写关系。
+ *
+ * 使用 shallowRef 而非 ref：ref 会把领域对象包成 Proxy 并丢失私有字段类型，
+ * shallowRef 只跟踪数组引用，元素保持原始实例。
+ */
+const episodes = shallowRef<Episode[]>([]);
+/** 拖拽前的顺序快照，仅在提交失败时用于恢复 */
+let orderSnapshot: Episode[] = [];
+
+watch(
+	() => props.season.episodes,
+	(list) => {
+		// 原地替换保持数组引用不变，避免拖拽实例持有过期数组
+		episodes.value.splice(0, episodes.value.length, ...list);
+		triggerRef(episodes);
+	},
+	{ immediate: true },
+);
+
+useDraggable(episodesRef, episodes, {
+	animation: 180,
+	handle: '.drag-handle',
+	ghostClass: 'episode-ghost',
+	onStart() {
+		orderSnapshot = [...episodes.value];
+	},
+	onEnd(event) {
+		// 拖拽库可能原地 splice 数组，shallowRef 不会自动追踪，这里显式触发序号重算
+		triggerRef(episodes);
+		void commitSort(event.oldIndex, event.newIndex);
+	},
+});
+
+/**
+ * 提交拖拽结果。服务端会按“移动到第 N 位”把区间内其它集 ±1 平移，
+ * 因此只提交被拖动的那一集，不能逐条提交。
+ */
+async function commitSort(oldIndex?: number, newIndex?: number) {
+	if (status.sorting || oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) {
+		return;
+	}
+	const moved = episodes.value[newIndex];
+	if (!moved) {
+		return;
+	}
+	const targetSort = newIndex + 1;
+	status.onSorting();
+	try {
+		const success = await moved.updateSort(targetSort);
+		if (!success) {
+			// 请求失败时 updateSort 已回滚自身 sort，这里把本地顺序恢复成拖拽前的状态
+			episodes.value.splice(0, episodes.value.length, ...orderSnapshot);
+			triggerRef(episodes);
+			return;
+		}
+		// 其余集的 sort 已被服务端平移，本地同步镜像避免字段与显示顺序长期不一致
+		episodes.value.forEach((episode, index) => episode.syncSort(index + 1));
+		props.season.setEpisodes([...episodes.value]);
+	} finally {
+		status.offSorting();
+	}
+}
 </script>
 
 <style scoped lang="scss">
@@ -149,6 +225,11 @@ const seasonCount = computed(() => props.season.episodes.length);
 	&.active {
 		background-color: map.get(token.$theme, 'd-2');
 	}
+	.index {
+		display: inline-flex;
+		align-items: center;
+		gap: 5px;
+	}
 	.title {
 		flex: 1;
 		word-break: break-all;
@@ -160,5 +241,18 @@ const seasonCount = computed(() => props.season.episodes.length);
 		right: 0.2rem;
 		color: map.get(token.$theme, 'l-9');
 	}
+}
+
+.drag-handle {
+	cursor: grab;
+	opacity: 0.5;
+	&:hover {
+		opacity: 1;
+	}
+}
+
+// 拖动占位仅降低透明度，避免与卡片自身的 hover 效果叠加
+.episode-ghost {
+	opacity: 0.5;
 }
 </style>

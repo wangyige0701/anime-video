@@ -58,4 +58,4 @@ docs/modules/
 
 | 模块 | 文档 | 摘要 |
 | --- | --- | --- |
-| — | 暂无 | 首个模块文档随对应功能一起提交 |
+| web | [detail-episode-sort.md](web/detail-episode-sort.md) | 详情页剧集拖拽排序：本地镜像、单条提交、失败回滚与季级加载态 |

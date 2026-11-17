@@ -196,11 +196,11 @@ Series 还负责 title、description、date、types、status 更新。`addTypes(
 
 ### 排序与并发更新
 
-Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排序由所属 Season 的 `episodeSortQueue` 串行处理。任务真正开始时才读取目标旧 sort，避免并发请求携带过期位置覆盖前一个更新。
+Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排序由所属 Season 的 `episodeSortQueue` 串行处理。任务真正开始时才解析目标实例，避免并发请求携带过期位置覆盖前一个更新。
 
-目标位置会限制在 `1..同级数量`。移动目标时，仅处理旧位置与新位置之间的同级项：目标写入新 sort，向后移动时其他项减 1，向前移动时其他项加 1。`rewriteSort()` 更新代理配置并重新注册 sort Promise。
+排序接口的 `sort` 参数语义是**目标位置**：`doUpdateSeasonSort` / `doUpdateEpisodeSort` 按当前 `sort` 推导同级顺序、把目标项移到 `1..同级数量` 内的目标位置，再把整组 `sort` 重编号为连续的 1..n，最后用 `splice` 原地重排内存数组。不要退回“只平移区间内其它项”的实现：它既不能修正历史 `sort` 空洞，也会让接口继续返回旧顺序，表现为刷新后排序回退。
 
-排序队列只保证同一父级内配置值的并发一致性。当前内存中的 seasons/episodes 数组不会在 `updateSort()` 后自动重新排序；重新扫描时 `getAllSeasons()` / `getAllEpisodes()` 才按最新 sort 生成排序结果。不要在排序 API 中绕过父级队列单独改一个 sort，否则会产生重复或空缺位置。
+内存数组必须与 `sort` 保持同序，`getAllSeasons()` / `getAllEpisodes()` 只在初始化时排序一次；排序后不重排数组会导致 `GET` 返回旧顺序，并使后续拖拽算出的目标位置与当前顺序错位。不要绕过父级队列单独改一个 `sort`，否则会产生重复或空缺位置。
 
 ### 数据接口边界
 

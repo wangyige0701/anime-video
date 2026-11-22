@@ -75,11 +75,17 @@
 
 刷新 API 的错误会向调用方传播，由 `GlobalActions.vue` 统一结束 loading 并显示失败消息。不要在 data 层新增另一套页面提示或悄悄保留一半刷新后的 cache；修改刷新顺序时必须同时考虑三类实例 cache、父子 bind cache 和 initialized 状态。
 
-### 分页与搜索
+### 分页、搜索与本地查询
 
-`Series.getSeriesByPage(page, pageSize, keyword?)` 必须先完成全局初始化，然后对 `Series.cache` 的插入顺序数组做本地切片：起点为 `(page - 1) * pageSize`，终点为 `start + pageSize`。
+`Series.getSeriesByPage(page, pageSize, keyword?, query?)` 必须先完成全局初始化，再取 `Series.cache` 的插入顺序数组交给 `utils/seriesQuery.ts` 的 `applySeriesQuery()` 完成关键词匹配、过滤与排序，最后用 `paginateSeries()` 本地切片。
 
-传入 keyword 时只用 `title.includes(keyword)` 或 `description.includes(keyword)` 做大小写敏感的本地包含匹配，再对过滤结果分页。当前实现不请求服务端分页、不返回 total，也不额外按 `sort` 排序。`IndexList.vue` 负责递增页码、追加结果，并在空页时标记结束；搜索词变化时清空现有列表并从第 1 页重新读取。
+- 关键词只匹配 `title` 与 `description`，比较前统一 `toLocaleLowerCase()`，因此大小写不敏感；接口不参与搜索。
+- `query` 携带 `sortMode`、`types`、`statuses`、`dateRange`，全部在前端本地生效，服务端只提供全量数据。
+- 默认 `sortMode` 为 `date`：月份倒序、同月按名称升序、无上线时间的条目排在最后；`name` 模式下整体按拼音名称排序。
+- `Series.querySeries()` 返回过滤排序后的完整列表，`Series.getAllSeries()` 返回未过滤的全量列表（供时间轴构建刻度），二者同样先完成初始化。
+- `IndexList.vue` 负责递增页码、追加结果，并在空页时标记结束；搜索词或过滤条件变化时清空现有列表并从第 1 页重新读取，且用请求版本号丢弃过期响应。
+
+首页过滤与排序的组件分层、状态持久化与时间轴交互见 `docs/modules/web/index-filter.md`；`shared/` 下的类型枚举与状态枚举同时作为过滤选项的数据源，新增类型或状态时不需要改前端过滤组件。
 
 ### 字段更新与请求状态
 
@@ -102,6 +108,26 @@
 - 不要直接修改 getter 返回字段或原地替换 `seasons` / `episodes`；关系更新必须调用 `setSeasons()` / `setEpisodes()` 以触发 customRef。
 - 新增实体更新方法时必须提供对应请求状态，并明确采用乐观更新还是成功后更新；失败路径不得把本地值留在未确认状态。
 - 修改初始化、详情或刷新逻辑后，至少验证并发初始化、首次进入详情、缓存详情、全量刷新、单系列刷新、搜索分页以及刷新后仍打开的详情视图。
+
+## 首页过滤与排序
+
+首页的过滤与排序全部在前端本地完成，状态集中在 `stores/indexFilter.ts`，判定规则集中在 `utils/seriesQuery.ts` 与 `utils/timeAxis.ts`（纯函数，均有单元测试）：
+
+- `IndexFilterBar.vue` 是底部固定高度的容器：左侧切换过滤方式（标签 / 状态 / 时间），中间是当前方式对应的过滤组件，右侧切换排序方式（上线时间 / 名称）。
+- 标签与状态共用 `IndexFilterOptions.vue`（多选标签组），选项直接来自 `~shared/series-types`、`~shared/series-status`。
+- 时间过滤由 `IndexFilterDate.vue`（触发器 + 浮层）与 `IndexTimeAxis.vue`（连续月份刻度、拖动划选）组成，划选逻辑在 `useTimeAxisSelection.ts`。
+- `IndexList.vue` 按 `sortMode` 决定渲染片段：按上线时间时用 `groupSeriesByMonth()` 展开成「通栏分割线 + 该月卡片」，按名称时是平铺列表。
+- 过滤栏使用 `position: sticky` 贴在滚动容器底部，浮层挂在 body 上，二者都不改变列表区域的高度；新增过滤组件时同样不能把布局撑开。
+
+状态写入 `localStorage`（键见 `config/constants.ts` 的 `INDEX_FILTER_STORAGE_KEY`），刷新页面后保持上次选择；读取时对过滤方式、排序方式、数组与时间范围逐项校验，脏数据回退到默认值。规则细节、状态流与已知限制见 `docs/modules/web/index-filter.md`。
+
+## 详情页文本编辑
+
+`components/common/TextEditor.vue` 是唯一的文本编辑组件，`showEditIcon` 默认 `false`：默认不渲染内置图标，由外层提供更稳定的编辑入口，需要内联编辑时才显式开启。
+
+- 剧情简介：编辑按钮在「剧情简介」标题右侧（`DetailDescription.vue`），通过组件暴露的 `edit()` 触发，不再跟随段落文本移动。
+- 季标题、集标题：`DetailSeason.vue` 内联使用 `TextEditor` 并开启 `showEditIcon`。两者都嵌在可点击区域里（折叠面板头部、点击即播放的集卡片），因此只在 `[contenteditable="true"]` 时阻止点击冒泡，非编辑态的展开与播放行为保持不变。
+- 三个入口都遵循同一写入流程：本地 trim 校验非空 → 调用领域对象 `updateTitle()` / `updateDescription()`（乐观更新 + 失败回滚）→ 由数据层的请求状态驱动加载态。组件内不直接调用 API。
 
 ## 播放器现有架构
 
@@ -358,3 +384,7 @@ const videoRef = useTemplateRef('videoRef');
 3. 涉及构建配置、样式资源或生产行为时执行 `npm run build`。
 4. 涉及交互时手动覆盖正常状态、加载状态、失败状态、快速连续操作、视频源切换和组件销毁。
 5. 涉及响应式布局或主题时检查主要桌面/移动尺寸及全部现有主题，确认没有重叠、溢出或主题失配。
+6. 在仓库根目录执行 `pnpm exec vitest run`，新增或修改的逻辑必须有对应用例（见根 `AGENTS.md` 的「测试用例要求」）。
+7. 以上全部通过后，按根 `AGENTS.md` 的「提交时机」立即提交这一批改动，不得留到下一批功能开发后再一起提交。
+
+纯逻辑（过滤、排序、分组、时间换算等）必须先抽到 `src/utils/` 下的纯函数模块并补测试，再写组件；测试放在仓库根目录 `test/web/`，以普通对象作为输入，不依赖 DOM、Pinia 或网络。组件只负责把状态接到这些函数上，避免把可测逻辑埋进模板事件里。

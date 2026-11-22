@@ -16,6 +16,7 @@ import {
 	removeSeriesDate,
 } from '@/api/series';
 import { getSeasons } from '@/api/season';
+import { applySeriesQuery, paginateSeries, type SeriesQuery } from '@/utils/seriesQuery';
 import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
@@ -135,22 +136,33 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		return await this.getSeriesDetail(seriesId);
 	}
 
-	public static async getSeriesByPage(page: number, pageSize: number, keyword?: string) {
+	public static async getSeriesByPage(
+		page: number,
+		pageSize: number,
+		keyword?: string,
+		query?: Partial<SeriesQuery>,
+	) {
+		const list = await this.querySeries(keyword, query);
+		return paginateSeries(list, page, pageSize);
+	}
+
+	/**
+	 * 获取全部系列（不含季集详情），供时间轴等需要完整范围的场景使用。
+	 */
+	public static async getAllSeries() {
 		await this.initialized();
-		const start = (page - 1) * pageSize;
-		const end = start + pageSize;
-		if (keyword) {
-			const target = keyword.toLocaleLowerCase();
-			return [...this.cache.values()]
-				.filter((series) => {
-					return (
-						series.title.toLocaleLowerCase().includes(target) ||
-						series.description.toLocaleLowerCase().includes(target)
-					);
-				})
-				.slice(start, end);
-		}
-		return [...this.cache.values()].slice(start, end);
+		return [...this.cache.values()];
+	}
+
+	/**
+	 * 按关键词、过滤条件与排序方式返回完整结果列表。
+	 *
+	 * 过滤和排序都在前端本地完成，接口只提供全量数据；
+	 * 分页交给 `getSeriesByPage()`，避免两处重复实现同一条流水线。
+	 */
+	public static async querySeries(keyword = '', query?: Partial<SeriesQuery>) {
+		const list = await this.getAllSeries();
+		return applySeriesQuery(list, keyword, query);
 	}
 
 	private _id: Ref<ISeries['id']> = ref('');

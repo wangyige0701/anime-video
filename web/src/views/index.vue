@@ -3,7 +3,9 @@
 		<div class="list">
 			<IndexList :page-size="40" />
 		</div>
-		<div class="types"></div>
+		<div class="filter">
+			<IndexFilterBar />
+		</div>
 	</div>
 </template>
 
@@ -18,23 +20,24 @@ definePage({
 
 <style scoped lang="scss">
 .index {
-	--type-bar-height: 45px;
-	--type-bar-gap: 5px;
+	--filter-bar-height: 45px;
+	--filter-bar-gap: 5px;
 	width: 100%;
 	flex: 1;
-	position: relative;
+	display: flex;
+	flex-direction: column;
 }
 
+// 过滤栏贴在滚动容器底部，列表再长也不需要滚到末尾才能操作过滤
 .list {
-	height: auto;
-	padding-bottom: calc(var(--type-bar-height) + var(--type-bar-gap) * 2);
+	flex: 1;
+	padding-bottom: 10px;
 }
 
-.types {
+.filter {
+	position: sticky;
+	bottom: var(--filter-bar-gap);
 	width: 100%;
-	height: var(--type-bar-height);
-	position: absolute;
-	left: 0;
-	bottom: 5px;
+	height: var(--filter-bar-height);
 }
 </style>

@@ -14,3 +14,6 @@ export const LAST_EPISODE_ID_FIELD = 'lastEpisodeId';
 export const LAST_SERIES_ID_STORAGE_KEY = 'lastSeriesId';
 
 export const PLAYBACK_RATES = [1, 2, 4] as const;
+
+/** 首页筛选与排序状态的本地存储键 */
+export const INDEX_FILTER_STORAGE_KEY = 'indexFilter';

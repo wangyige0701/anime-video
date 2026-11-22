@@ -83,9 +83,11 @@
 - `query` 携带 `sortMode`、`types`、`statuses`、`dateRange`，全部在前端本地生效，服务端只提供全量数据。
 - 默认 `sortMode` 为 `date`：月份倒序、同月按名称升序、无上线时间的条目排在最后；`name` 模式下整体按拼音名称排序。
 - `Series.querySeries()` 返回过滤排序后的完整列表，`Series.getAllSeries()` 返回未过滤的全量列表（供时间轴构建刻度），二者同样先完成初始化。
-- `IndexList.vue` 负责递增页码、追加结果，并在空页时标记结束；搜索词或过滤条件变化时清空现有列表并从第 1 页重新读取，且用请求版本号丢弃过期响应。
+- `IndexList.vue` 负责递增页码、追加结果，并在空页时标记结束；关键词（`keyword` prop）或过滤条件变化时清空现有列表并从第 1 页重新读取，且用请求版本号丢弃过期响应。
+- 搜索是独立路由 `/search/:keyword`（`views/search/[keyword].vue`），关键词走路径参数，刷新与分享都能还原结果；输入框的跳转方式由 `utils/search.ts` 的 `planSearchNavigation()` 决定（搜索页内 `replace`、其它页面 `push`、清空后回首页），搜索页卡片以 `replace` 打开详情，返回不会回到搜索页。
+- 卡片是 `components/index/SeriesCard.vue`，首页与搜索页共用，`replace` 属性控制 `router-link` 是否替换历史记录。
 
-首页过滤与排序的组件分层、状态持久化与时间轴交互见 `docs/modules/web/index-filter.md`；`shared/` 下的类型枚举与状态枚举同时作为过滤选项的数据源，新增类型或状态时不需要改前端过滤组件。
+首页过滤与排序的组件分层、状态持久化与时间轴交互见 `docs/modules/web/index-filter.md`，搜索路由与卡片复用见 `docs/modules/web/search.md`；`shared/` 下的类型枚举与状态枚举同时作为过滤选项的数据源，新增类型或状态时不需要改前端过滤组件。
 
 ### 字段更新与请求状态
 

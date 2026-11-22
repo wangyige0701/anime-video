@@ -7,30 +7,8 @@
 				<span class="line"></span>
 				<span class="count">{{ segment.count }} 部</span>
 			</div>
-			<router-link
-				v-else
-				class="item"
-				:to="{ name: WebRoute.DETAIL, params: { seriesId: segment.series.id, name: segment.series.name } }"
-			>
-				<div class="img-wrap">
-					<el-image
-						class="img"
-						:src="getImageUrl(getSeriesPath(segment.series.images[0] ?? ''))"
-						fit="cover"
-					></el-image>
-				</div>
-				<div class="name">
-					<el-tooltip
-						:content="segment.series.name"
-						placement="bottom"
-						:show-after="300"
-						:hide-after="0"
-						:enterable="false"
-					>
-						<span class="name-text">{{ segment.series.name }}</span>
-					</el-tooltip>
-				</div>
-			</router-link>
+			<!-- 卡片抽成 SeriesCard，首页与搜索页共用同一套模板与样式 -->
+			<SeriesCard v-else class="item" :series="segment.series" :replace="props.replace" />
 		</template>
 	</div>
 </template>
@@ -41,10 +19,7 @@ import { endReachedEmitter } from '@/events/end-reached';
 import { refreshEmitter } from '@/events/refresh';
 import { useIndexFilterStore } from '@/stores/indexFilter';
 import { useVideoStore } from '@/stores/video';
-import { getSeriesPath } from '@/utils/series';
 import { applySeriesQuery, groupSeriesByMonth } from '@/utils/seriesQuery';
-import { getImageUrl } from '~shared/server-route-config';
-import { WebRoute } from '~shared/web-route-config';
 
 /** 列表渲染片段：分割线或单个系列卡片 */
 type ListSegment =
@@ -54,18 +29,24 @@ type ListSegment =
 const props = withDefaults(
 	defineProps<{
 		pageSize?: number;
+		/** 关键词，首页为空；搜索页由路由参数传入 */
+		keyword?: string;
+		/** 跳转详情时是否替换历史记录，搜索结果页需要开启 */
+		replace?: boolean;
 	}>(),
 	{
 		pageSize: 20,
+		keyword: '',
+		replace: false,
 	},
 );
 
-const route = useRoute();
 const filter = useIndexFilterStore();
 const status = useVueStatusRef('loading', 'over');
 const datas = shallowReactive<Series[]>([]);
 const page = ref(1);
-const keyword = ref<string>((route.query.keyword as string) || '');
+/** 已生效的关键词，随 props 变化重新加载 */
+const keyword = ref(props.keyword);
 /** 请求版本号，用于丢弃过期响应（切换过滤条件或搜索词时可能并发） */
 let requestVersion = 0;
 
@@ -91,10 +72,11 @@ const segments = computed<ListSegment[]>(() => {
 	});
 });
 
+// 搜索页的关键词来自路由参数，变化后从第一页重新加载
 watch(
-	() => route.query.keyword,
-	(newValue) => {
-		keyword.value = (newValue as string) || '';
+	() => props.keyword,
+	(value) => {
+		keyword.value = value;
 		void reload();
 	},
 	{ flush: 'post' },
@@ -177,7 +159,6 @@ onBeforeMount(() => {
 <style scoped lang="scss">
 @use 'sass:map';
 @use '@/scss/token.scss' as token;
-@use '@/scss/mixin/image.scss' as image;
 
 .index-list {
 	--count: 8;
@@ -232,55 +213,6 @@ onBeforeMount(() => {
 		font-size: 0.6875rem;
 		line-height: 1;
 		color: map.get(token.$theme, 'l-3');
-	}
-}
-
-.item {
-	cursor: pointer;
-	display: block;
-	width: 100%;
-	min-width: 0;
-	.img-wrap {
-		@include image.image-wrap;
-		transition: box-shadow 0.3s ease;
-	}
-	.img {
-		@include image.image;
-		transition: transform 0.3s ease;
-	}
-	.name {
-		width: 100%;
-		color: token.$text-color-regular;
-		font-size: 0.875rem;
-		line-height: 1;
-		padding: 1em 5px;
-		text-align: center;
-		overflow: hidden;
-	}
-	.name-text {
-		display: inline-block;
-		width: 100%;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		transition:
-			filter 0.3s ease,
-			color 0.3s ease;
-	}
-	&:hover {
-		.img-wrap {
-			box-shadow:
-				0 0 4px 0 map.get(token.$theme, 'primary'),
-				0 0 8px 0 map.get(token.$theme, 'l-5'),
-				0 0 12px 0 map.get(token.$theme, 'l-9');
-		}
-		.img {
-			transform: scale(1.1);
-		}
-		.name-text {
-			color: token.$text-color-regular;
-			filter: drop-shadow(0 0 6px map.get(token.$theme, 'l-9'));
-		}
 	}
 }
 </style>

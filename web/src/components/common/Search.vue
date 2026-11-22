@@ -17,28 +17,42 @@
 import router from '@/router';
 import { debounce } from '@wang-yige/utils';
 import { WebRoute } from '~shared/web-route-config';
+import { planSearchNavigation } from '@/utils/search';
 
-const route = useRoute();
 const status = useVueStatusRef('composing');
 const keyword = ref('');
 
+// 搜索页的关键词在路径参数上；直接访问、前进后退或刷新时同步回输入框
+const routeKeyword = computed(() => {
+	const params = router.currentRoute.value.params as Record<string, string | string[] | undefined>;
+	const value = params.keyword;
+	return typeof value === 'string' ? value : '';
+});
 watch(
-	() => route.query.keyword,
-	(newValue) => {
-		keyword.value = newValue as string;
+	routeKeyword,
+	(value) => {
+		keyword.value = value;
 	},
+	{ immediate: true },
 );
 
+/**
+ * 进入搜索结果页。
+ *
+ * 具体用 push 还是 replace 由 `planSearchNavigation()` 决定，
+ * 组件只负责把计划翻译成路由调用。
+ */
 async function toSearch() {
-	if (router.currentRoute.value.name !== WebRoute.INDEX) {
-		await router.push({ name: WebRoute.INDEX, query: { keyword: keyword.value } });
-	} else {
-		if (!keyword.value) {
-			await router.replace({ query: {} });
-			return;
-		}
-		await router.replace({ query: { keyword: keyword.value } });
+	const plan = planSearchNavigation(router.currentRoute.value.name?.toString(), keyword.value);
+	if (!plan) {
+		return;
 	}
+	if (plan.kind === 'index') {
+		await router.replace({ name: WebRoute.INDEX });
+		return;
+	}
+	const location = { name: WebRoute.SEARCH, params: { keyword: plan.keyword } } as const;
+	await (plan.replace ? router.replace(location) : router.push(location));
 }
 
 const debounceSearch = debounce(toSearch, 300);

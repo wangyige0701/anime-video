@@ -113,11 +113,11 @@
 
 首页的过滤与排序全部在前端本地完成，状态集中在 `stores/indexFilter.ts`，判定规则集中在 `utils/seriesQuery.ts` 与 `utils/timeAxis.ts`（纯函数，均有单元测试）：
 
-- `IndexFilterBar.vue` 是底部固定高度的容器：左侧切换过滤方式（标签 / 状态 / 时间），中间是当前方式对应的过滤组件，右侧切换排序方式（上线时间 / 名称）。
-- 标签与状态共用 `IndexFilterOptions.vue`（多选标签组），选项直接来自 `~shared/series-types`、`~shared/series-status`。
-- 时间过滤由 `IndexFilterDate.vue`（触发器 + 浮层）与 `IndexTimeAxis.vue`（连续月份刻度、拖动划选）组成，划选逻辑在 `useTimeAxisSelection.ts`。
+- `IndexFilterBar.vue` 是底部固定高度的容器：左侧切换过滤方式（标签 / 状态 / 时间），中间是当前方式对应的过滤组件，右侧切换排序方式（上线时间 / 名称）。两个分段选择器上方各有 `group-label` 说明筛选/排序的是什么。
+- 标签与状态共用 `IndexFilterOptions.vue`（多选标签组），选项直接来自 `~shared/series-types`、`~shared/series-status`；标签超过一行时默认只显示一行，悬浮才向上浮出完整标签。
+- 时间过滤由 `IndexFilterDate.vue`（内联刻度条 + 清除按钮）与 `IndexTimeAxis.vue`（连续月份刻度、收起态概览条、悬浮展开完整轴、拖动划选）组成，划选逻辑在 `useTimeAxisSelection.ts`。
 - `IndexList.vue` 按 `sortMode` 决定渲染片段：按上线时间时用 `groupSeriesByMonth()` 展开成「通栏分割线 + 该月卡片」，按名称时是平铺列表。
-- 过滤栏使用 `position: sticky` 贴在滚动容器底部，浮层挂在 body 上，二者都不改变列表区域的高度；新增过滤组件时同样不能把布局撑开。
+- 过滤栏使用 `position: sticky` 贴在滚动容器底部，时间轴与标签展开时向上溢出并盖住列表，都不改变列表区域的高度；新增过滤组件时同样不能把布局撑开。
 
 状态写入 `localStorage`（键见 `config/constants.ts` 的 `INDEX_FILTER_STORAGE_KEY`），刷新页面后保持上次选择；读取时对过滤方式、排序方式、数组与时间范围逐项校验，脏数据回退到默认值。规则细节、状态流与已知限制见 `docs/modules/web/index-filter.md`。
 

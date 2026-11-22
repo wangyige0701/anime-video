@@ -20,7 +20,8 @@ definePage({
 
 <style scoped lang="scss">
 .index {
-	--filter-bar-height: 45px;
+	// 过滤栏需要容纳两个分段选择器上方的标签文案，高度比只放控件时更高
+	--filter-bar-height: 62px;
 	--filter-bar-gap: 5px;
 	width: 100%;
 	flex: 1;
@@ -39,5 +40,7 @@ definePage({
 	bottom: var(--filter-bar-gap);
 	width: 100%;
 	height: var(--filter-bar-height);
+	// 时间轴与标签在悬浮时向上展开，需要盖住列表内容
+	z-index: 2;
 }
 </style>

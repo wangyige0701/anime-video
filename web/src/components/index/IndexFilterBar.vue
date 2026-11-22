@@ -1,12 +1,16 @@
 <template>
 	<div class="filter-bar">
-		<el-segmented
-			class="switcher mode"
-			size="small"
-			:model-value="filter.mode"
-			:options="modeOptions"
-			@change="onModeChange"
-		/>
+		<!-- 标签文案说明该分段选择器筛选的是什么，避免只看到「标签/状态/时间」不知含义 -->
+		<div class="group">
+			<span class="group-label">筛选方式</span>
+			<el-segmented
+				class="switcher mode"
+				size="small"
+				:model-value="filter.mode"
+				:options="modeOptions"
+				@change="onModeChange"
+			/>
+		</div>
 
 		<div class="content">
 			<IndexFilterOptions
@@ -24,13 +28,16 @@
 			<IndexFilterDate v-else />
 		</div>
 
-		<el-segmented
-			class="switcher sort"
-			size="small"
-			:model-value="filter.sortMode"
-			:options="sortOptions"
-			@change="onSortChange"
-		/>
+		<div class="group">
+			<span class="group-label">排序方式</span>
+			<el-segmented
+				class="switcher sort"
+				size="small"
+				:model-value="filter.sortMode"
+				:options="sortOptions"
+				@change="onSortChange"
+			/>
+		</div>
 	</div>
 </template>
 
@@ -43,8 +50,8 @@ import { seriesTypes } from '~shared/series-types';
 /**
  * 首页底部过滤栏。
  *
- * 固定占据列表底部预留的高度，过滤组件在内部横向滚动，
- * 因此切换过滤方式、选中标签都不会改变视频列表区域的高度与位置。
+ * 固定占据列表底部预留的高度，过滤组件在内容区展开（向上浮出），
+ * 因此切换过滤方式、选中标签、展开时间轴都不会改变视频列表区域的高度与位置。
  */
 
 const filter = useIndexFilterStore();
@@ -86,7 +93,7 @@ function onSortChange(value: string | number | boolean) {
 	flex-wrap: nowrap;
 	align-items: center;
 	gap: 12px;
-	padding: 0 12px;
+	padding: 6px 12px;
 	background-color: map.get(token.$theme, 'sidebar-bg');
 	border-radius: 10px;
 	box-shadow: 0 0 0 1px map.get(token.$theme, 'd-3');
@@ -94,10 +101,29 @@ function onSortChange(value: string | number | boolean) {
 	backdrop-filter: blur(5px);
 }
 
+.group {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+}
+
+.group-label {
+	font-size: 0.6875rem;
+	line-height: 1;
+	padding-left: 2px;
+	color: map.get(token.$theme, 'l-6');
+}
+
 .content {
 	flex: 1;
 	min-width: 0;
-	overflow: hidden;
+	height: 100%;
+	display: flex;
+	flex-direction: row;
+	align-items: flex-end;
+	// 与两侧分段控件底边对齐，避免标签行比分段按钮低一截
+	padding-bottom: 4px;
 }
 
 .switcher {

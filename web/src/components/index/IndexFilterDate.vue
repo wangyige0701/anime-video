@@ -6,6 +6,9 @@
 		</div>
 		<span v-else class="empty">暂无可筛选的上线时间</span>
 
+		<!-- 收起状态也要能直接读到当前筛选的时间范围，不必再展开面板确认 -->
+		<span class="range" :class="{ active: !!filter.dateRange }">{{ rangeText }}</span>
+
 		<el-button
 			v-if="filter.dateRange"
 			class="clear"
@@ -26,7 +29,7 @@ import { useVideoStore } from '@/stores/video';
 import { refreshEmitter } from '@/events/refresh';
 import type { SeriesDateRange } from '@/utils/seriesQuery';
 import type { AxisMonth } from '@/utils/timeAxis';
-import { buildMonthAxis } from '@/utils/timeAxis';
+import { buildMonthAxis, formatAxisRange } from '@/utils/timeAxis';
 
 /**
  * 上线时间过滤入口。
@@ -34,10 +37,14 @@ import { buildMonthAxis } from '@/utils/timeAxis';
  * 刻度轴直接内联在过滤栏内容区：收起时只显示一条矮柱状概览，
  * 悬浮后向上展开成完整刻度轴（与浏览器控制台的时间轴一致），
  * 因此打开/收起都不会推挤视频列表，列表高度与滚动位置保持不变。
+ *
+ * 收起态也保留当前范围文案：时间轴只画位置，具体年月由文案说明。
  */
 const filter = useIndexFilterStore();
 const videoStore = useVideoStore();
 const axis = ref<AxisMonth[]>([]);
+
+const rangeText = computed(() => formatAxisRange(filter.dateRange, '全部时间'));
 
 /**
  * 重建时间轴刻度。
@@ -72,24 +79,37 @@ function onSelect(range: SeriesDateRange | null) {
 
 .date-filter {
 	width: 100%;
-	height: 20px;
+	height: 26px;
 	display: flex;
 	flex-direction: row;
 	flex-wrap: nowrap;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
 }
 
 .axis-host {
 	position: relative;
 	flex: 1;
 	min-width: 0;
-	height: 20px;
+	height: 26px;
+}
+
+.range {
+	flex: 0 0 auto;
+	font-size: 0.75rem;
+	line-height: 1;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	color: map.get(token.$theme, 'l-6');
+	&.active {
+		color: map.get(token.$theme, 'l-9');
+		font-weight: 500;
+	}
 }
 
 .empty {
 	flex: 1;
-	height: 20px;
+	height: 26px;
 	display: flex;
 	align-items: center;
 	padding-left: 4px;

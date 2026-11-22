@@ -117,7 +117,10 @@
 
 - `IndexFilterBar.vue` 是底部固定高度的容器：左侧切换过滤方式（标签 / 状态 / 时间），中间是当前方式对应的过滤组件，右侧切换排序方式（上线时间 / 名称）。两个分段选择器上方各有 `group-label` 说明筛选/排序的是什么。
 - 标签与状态共用 `IndexFilterOptions.vue`（多选标签组），选项直接来自 `~shared/series-types`、`~shared/series-status`；标签超过一行时默认只显示一行，悬浮才向上浮出完整标签。
-- 时间过滤由 `IndexFilterDate.vue`（内联刻度条 + 清除按钮）与 `IndexTimeAxis.vue`（连续月份刻度、收起态概览条、悬浮展开完整轴、拖动划选）组成，划选逻辑在 `useTimeAxisSelection.ts`。
+- 时间过滤由 `IndexFilterDate.vue`（内联刻度条 + 范围文案 + 清除按钮）与 `IndexTimeAxis.vue`（连续月份刻度、收起态概览条、悬浮展开完整面板、拖动划选、滚轮缩放）组成，划选逻辑在 `useTimeAxisSelection.ts`。
+- 时间轴维护**可见窗口** `AxisWindow { start, count }` 并只渲染窗口内月份：不要改回原生横向滚动，也不要硬编码刻度宽度（宽度 = `可视区宽度 / count`）。缩放用 `zoomAxisWindow()`（锚点为鼠标位置）、平移用 `panAxisWindow()`，两者都必须收敛在数据范围内。
+- 拖动必须保留 `setPointerCapture` 与 `pointerdown.preventDefault()`：否则浏览器会接管拖拽手势，出现「按下没反应 / 拖不出选区」；拖到可视区外沿时由 `onAutoPan` 按帧平移窗口。
+- 当前时间范围要同时出现在面板顶部与过滤栏右侧文案；取消筛选时文案回落到「全部时间」，不能让用户只能靠展开面板判断当前条件。
 - `IndexList.vue` 按 `sortMode` 决定渲染片段：按上线时间时用 `groupSeriesByMonth()` 展开成「通栏分割线 + 该月卡片」，按名称时是平铺列表。
 - 过滤栏使用 `position: sticky` 贴在滚动容器底部，时间轴与标签展开时向上溢出并盖住列表，都不改变列表区域的高度；新增过滤组件时同样不能把布局撑开。
 

@@ -119,6 +119,7 @@ function toggle(id: number) {
 }
 
 // 超过一行时悬浮展开，向上浮出完整标签，不推挤列表
+// 与时间轴面板保持一致：不透明深色底，避免透出封面干扰标签识读
 .filter-options.expanded .row {
 	position: absolute;
 	left: 0;
@@ -127,11 +128,12 @@ function toggle(id: number) {
 	max-height: none;
 	overflow: visible;
 	padding: 8px;
-	background-color: map.get(token.$theme, 'sidebar-bg');
-	border: 1px solid map.get(token.$theme, 'd-3');
+	background-color: map.get(token.$theme, 'd-8');
+	border: 1px solid map.get(token.$theme, 'd-5');
 	border-radius: 8px;
-	box-shadow: 0 -4px 16px map.get(token.$theme, 'd-4');
-	backdrop-filter: blur(8px);
+	box-shadow:
+		0 -10px 28px rgba(#000, 0.42),
+		0 0 0 1px rgba(#000, 0.24);
 }
 
 // 被裁掉的一侧加渐隐，提示还有更多标签可以悬浮查看

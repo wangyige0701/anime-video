@@ -26,8 +26,27 @@ export interface AxisYear {
 	span: number;
 }
 
-/** 单个月份刻度的宽度，必须与组件样式中的刻度宽度保持一致 */
+/** 单个月份刻度的默认宽度，用于计算默认可见月份数量 */
 export const AXIS_TICK_WIDTH = 34;
+
+/**
+ * 时间轴当前可见的月份窗口。
+ *
+ * 时间轴不再依赖原生横向滚动，而是只渲染窗口内的月份并拉伸填满可视区：
+ * 窗口越小单月刻度越宽（放大），窗口越大刻度越窄（缩小总范围）。
+ */
+export interface AxisWindow {
+	/** 窗口左端在完整轴中的下标 */
+	start: number;
+	/** 窗口包含的月份数量 */
+	count: number;
+}
+
+/** 滚轮每一档的缩放系数，1.25 大约是「一次滚轮少显示四分之一」 */
+export const AXIS_ZOOM_STEP = 1.25;
+
+/** 放大后至少保留的月份数量，太小会导致单月刻度宽到失去参照 */
+export const AXIS_MIN_VISIBLE_MONTHS = 6;
 
 /** 把 `YYYY-MM` 键转换为连续的月份序号，便于做区间补齐 */
 export function toMonthIndex(key: string): number {
@@ -132,12 +151,87 @@ export function rangeFromIndexes(axis: AxisMonth[], startIndex: number, endIndex
 }
 
 /**
- * 计算范围在时间轴上的像素位置，用于渲染选中区块。
+ * 把窗口收敛到完整轴范围内。
  *
- * 范围任一端落在轴外时返回 `null`，避免画出错位的色块。
+ * `count` 为 0（尚未测量宽度）时回退为全量，保证首帧也能渲染出全部刻度；
+ * 起点越界时贴住两侧，避免缩放后出现空白。
  */
-export function rangeToPixels(axis: AxisMonth[], range: SeriesDateRange | null) {
-	if (!range || !axis.length) {
+export function clampAxisWindow(window: AxisWindow, total: number): AxisWindow {
+	if (total <= 0) {
+		return { start: 0, count: 0 };
+	}
+	const count = Math.min(Math.max(Math.round(window.count) || total, 1), total);
+	const start = Math.min(Math.max(Math.round(window.start) || 0, 0), total - count);
+	return { start, count };
+}
+
+/**
+ * 计算初始可见窗口。
+ *
+ * 默认窗口宽度按「每格 34px」折算，并贴住最右侧，保持改造前「默认看最近月份」的习惯；
+ * 已有选中范围时把范围居中，刷新后仍能在轴上直接看到当前筛选位置。
+ */
+export function initialAxisWindow(
+	axis: AxisMonth[],
+	width: number,
+	range: SeriesDateRange | null,
+	tickWidth = AXIS_TICK_WIDTH,
+): AxisWindow {
+	const total = axis.length;
+	if (total <= 0 || width <= 0) {
+		return { start: 0, count: 0 };
+	}
+	const fit = Math.max(1, Math.floor(width / tickWidth));
+	const count = Math.min(Math.max(fit, Math.min(AXIS_MIN_VISIBLE_MONTHS, total)), total);
+	const fallback: AxisWindow = { start: total - count, count };
+	if (!range) {
+		return fallback;
+	}
+	const startIndex = axis.findIndex((item) => item.key === range.from);
+	const endIndex = axis.findIndex((item) => item.key === range.to);
+	if (startIndex < 0 || endIndex < 0) {
+		return fallback;
+	}
+	const center = (Math.min(startIndex, endIndex) + Math.max(startIndex, endIndex)) / 2;
+	return clampAxisWindow({ start: Math.round(center - (count - 1) / 2), count }, total);
+}
+
+/**
+ * 缩放可见窗口。
+ *
+ * `factor` 小于 1 表示放大（显示更少月份），大于 1 表示缩小；
+ * `anchor` 是缩放锚点在完整轴上的位置（可为小数，通常是鼠标所在处），
+ * 锚点前后的相对位置保持不变，因此滚轮缩放时指针下的月份不会跳动。
+ */
+export function zoomAxisWindow(window: AxisWindow, factor: number, anchor: number, total: number): AxisWindow {
+	if (total <= 0 || !Number.isFinite(factor) || factor <= 0) {
+		return clampAxisWindow(window, total);
+	}
+	const current = clampAxisWindow(window, total);
+	const minCount = Math.min(AXIS_MIN_VISIBLE_MONTHS, total);
+	const count = Math.min(Math.max(Math.round(current.count * factor), minCount), total);
+	if (count === current.count) {
+		return current;
+	}
+	const ratio = (anchor - current.start) / current.count;
+	return clampAxisWindow({ start: Math.round(anchor - ratio * count), count }, total);
+}
+
+/** 平移可见窗口，`delta` 为正表示向右（更晚的月份）移动 */
+export function panAxisWindow(window: AxisWindow, delta: number, total: number): AxisWindow {
+	const current = clampAxisWindow(window, total);
+	return clampAxisWindow({ start: current.start + delta, count: current.count }, total);
+}
+
+/**
+ * 计算选中范围在当前窗口内的色块位置。
+ *
+ * 返回值是相对可视区宽度的百分比（0 - 100），这样缩放时无需重新换算像素；
+ * 范围超出窗口时裁剪到窗口边缘，完全在窗口外时返回 `null`。
+ */
+export function rangeToBand(axis: AxisMonth[], window: AxisWindow, range: SeriesDateRange | null) {
+	const view = clampAxisWindow(window, axis.length);
+	if (!range || view.count <= 0) {
 		return null;
 	}
 	const startIndex = axis.findIndex((item) => item.key === range.from);
@@ -145,12 +239,35 @@ export function rangeToPixels(axis: AxisMonth[], range: SeriesDateRange | null) 
 	if (startIndex < 0 || endIndex < 0) {
 		return null;
 	}
-	const from = Math.min(startIndex, endIndex);
-	const to = Math.max(startIndex, endIndex);
+	const from = Math.max(Math.min(startIndex, endIndex), view.start);
+	const to = Math.min(Math.max(startIndex, endIndex), view.start + view.count - 1);
+	if (to < from) {
+		return null;
+	}
 	return {
-		left: from * AXIS_TICK_WIDTH,
-		width: (to - from + 1) * AXIS_TICK_WIDTH,
+		left: ((from - view.start) / view.count) * 100,
+		width: ((to - from + 1) / view.count) * 100,
 	};
+}
+
+/** 把时间范围格式化为文案：单月只显示一个月份，未选择时使用兜底文案 */
+export function formatAxisRange(range: SeriesDateRange | null, empty = '全部时间'): string {
+	if (!range) {
+		return empty;
+	}
+	return range.from === range.to ? range.from : `${range.from} ~ ${range.to}`;
+}
+
+/** 取窗口两端的月份组成「当前显示范围」文案 */
+export function formatAxisWindow(axis: AxisMonth[], window: AxisWindow): string {
+	const view = clampAxisWindow(window, axis.length);
+	const slice = axis.slice(view.start, view.start + view.count);
+	if (!slice.length) {
+		return '';
+	}
+	const first = slice[0].key;
+	const last = slice[slice.length - 1].key;
+	return first === last ? first : `${first} ~ ${last}`;
 }
 
 /** 判断某个刻度是否在选中范围内，供高亮样式使用 */

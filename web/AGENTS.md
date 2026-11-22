@@ -117,12 +117,14 @@
 
 - `IndexFilterBar.vue` 是底部固定高度的容器：左侧切换过滤方式（标签 / 状态 / 时间），中间是当前方式对应的过滤组件，右侧切换排序方式（上线时间 / 名称）。两个分段选择器上方各有 `group-label` 说明筛选/排序的是什么。
 - 标签与状态共用 `IndexFilterOptions.vue`（多选标签组），选项直接来自 `~shared/series-types`、`~shared/series-status`；标签超过一行时默认只显示一行，悬浮才向上浮出完整标签。
-- 时间过滤由 `IndexFilterDate.vue`（内联刻度条 + 清除按钮）与 `IndexTimeAxis.vue`（连续月份刻度、收起态波形概览、悬浮展开完整面板、拖动划选、滚轮缩放）组成，划选逻辑在 `useTimeAxisSelection.ts`。
+- 时间过滤由 `IndexFilterDate.vue`（内联刻度条 + 固定宽度操作位 + 文字「清除」按钮）与 `IndexTimeAxis.vue`（连续月份刻度、收起态波形概览、悬浮展开完整面板、拖动划选、滚轮缩放）组成，划选逻辑在 `useTimeAxisSelection.ts`。
 - 时间轴维护**可见窗口** `AxisWindow { start, count }` 并只渲染窗口内月份：不要改回原生横向滚动，也不要硬编码刻度宽度（宽度 = `可视区宽度 / count`）。缩放用 `zoomAxisWindow()`（锚点为鼠标位置）、平移用 `panAxisWindow()`，两者都必须收敛在数据范围内。
 - 拖动必须保留 `setPointerCapture` 与 `pointerdown.preventDefault()`：否则浏览器会接管拖拽手势，出现「按下没反应 / 拖不出选区」；拖到可视区外沿时由 `onAutoPan` 按帧平移窗口。
-- 当前时间范围文案在收起态必须**贴着选区块浮动**（轴上方 2px，`bandTipStyle()` 负责选区靠右时改右对齐，避免溢出），不能再挤到过滤栏右侧占用轴宽；未筛选时才回退成右侧「全部时间」。右侧文案与清除按钮始终占位（清除按钮用 `visibility` 隐藏），切换筛选状态不能让时间轴重新分格、刻度跳动。
+- 当前时间范围文案在收起态必须**贴着选区块浮动**（轴上方 2px，`bandTipStyle()` 负责选区靠右时改右对齐，避免溢出），不能再挤到过滤栏右侧占用轴宽；未筛选时才回退成右侧「全部时间」。右侧操作位固定 52px（未筛选放「全部时间」文字、筛选后换成「清除」文字按钮），切换筛选状态不能让时间轴重新分格或刻度跳动，也不能在轴与操作位之间留出没有刻度的空档。
+- 清除按钮用文字而不是图标，配色只用中性白描边 + 主题亮色文字与 `rgba(#fff, …)` 背景，不要在组件里复制某套主题的具体色值。
+- `IndexList.vue` 的月分割线是深色背景上的提示层：细线与文字都必须亮于背景（当前 `l-5` 线条与数量、`l-6` 月份标题），不要用 `d-*` 深色梯度。
 - 收起态柱体只能用白色半透明（选中月份纯白、空档月份更淡），不要用 `d-*` 深色：过滤栏底衬是浅紫半透明，深色柱体会被看成一道脏黑条纹。收起态也不需要深色轨道，靠一条 `rgba(#fff, 0.2)` 基线定位即可。
-- `IndexList.vue` 按 `sortMode` 决定渲染片段：按上线时间时用 `groupSeriesByMonth()` 展开成「通栏分割线 + 该月卡片」，按名称时是平铺列表。
+- `IndexList.vue` 按 `sortMode` 决定渲染片段：按上线时间时用 `groupSeriesByMonth()` 展开成「通栏分割线 + 该月卡片」，按名称时是平铺列表，此时不渲染分割线。
 - 过滤栏使用 `position: sticky` 贴在滚动容器底部，时间轴与标签展开时向上溢出并盖住列表，都不改变列表区域的高度；新增过滤组件时同样不能把布局撑开。
 
 状态写入 `localStorage`（键见 `config/constants.ts` 的 `INDEX_FILTER_STORAGE_KEY`），刷新页面后保持上次选择；读取时对过滤方式、排序方式、数组与时间范围逐项校验，脏数据回退到默认值。规则细节、状态流与已知限制见 `docs/modules/web/index-filter.md`。
@@ -319,13 +321,14 @@ tooltip 使用实现 `Measurable` 的 `virtualTrigger`，位置来源于鼠标�
 
 ## 首屏加载与全局遮罩
 
-全量系列数据请求期间，`App.vue` 显示全屏遮罩，状态来自 `videoStore.loading && !videoStore.initialized`（`Series.isLoading` / `Series.isInitialized` 的透传）。
+全量系列数据请求期间与路由切换（分包脚本下载）期间，都显示同一个全屏遮罩：`components/common/GlobalLoading.vue`。文案由 `App.vue` 计算——首屏数据未就绪显示「正在加载视频数据…」，否则路由切换中显示「正在加载页面…」。
 
 约束：
 
 - 入口链路（`main.ts`、`App.vue`、`stores/*`、`utils/*`）不得引入 `hls.js`，能力探测统一用 `@/utils/hls-support`。
 - 入口不要 `await` 非首屏必要的初始化。播放器偏好（音量、自动连播、字幕开关）在挂载后异步读取，字段是响应式的，晚到不影响正确性。
-- 任何新增的「首次加载」状态都要保证请求成功或失败后都能收敛，不允许出现只打开不关闭的分支。
+- 任何新增的「加载中」状态都要保证请求或导航成功、失败、被取消后都能收敛，不允许出现只打开不关闭的分支。路由切换的状态统一由 `router/loading.ts` 的 `loadingGuard` 维护（120ms 延迟 + `afterEach`/`onError` 收起），不要在组件里另写一套。
+- 遮罩只允许一层：新增加载来源时合并到 `GlobalLoading` 的文案判断里，不要新加固定定位的全屏层。
 
 首屏链路、失败处理、服务端扫描优化与实测数据见 [docs/modules/web/first-load.md](../docs/modules/web/first-load.md)。
 

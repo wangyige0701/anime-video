@@ -201,18 +201,19 @@ onBeforeMount(() => {
 	.label {
 		font-size: 0.8125rem;
 		line-height: 1;
-		// 分割线只作为分组提示，使用更暗的主题梯度，避免比卡片标题更抢眼
-		color: map.get(token.$theme, 'l-4');
+		// 分割线是分组提示，但要保证在深色背景上能直接读到，取主色偏亮的中间梯度
+		color: map.get(token.$theme, 'l-6');
 	}
 	.line {
 		flex: 1;
 		height: 1px;
-		background-color: map.get(token.$theme, 'd-3');
+		// 之前用 d-3 比背景更暗，几乎融进背景；改用亮于背景的主题梯度，细线也能看清
+		background-color: map.get(token.$theme, 'l-5');
 	}
 	.count {
 		font-size: 0.6875rem;
 		line-height: 1;
-		color: map.get(token.$theme, 'l-3');
+		color: map.get(token.$theme, 'l-5');
 	}
 }
 </style>

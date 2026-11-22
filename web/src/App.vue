@@ -25,20 +25,14 @@
 			</el-main>
 		</el-container>
 
-		<!-- 首次全量数据请求期间盖住空列表，避免先看到空白再突然填充 -->
-		<Transition name="global-loading">
-			<div v-if="initializing" class="global-loading" role="status" aria-live="polite">
-				<el-icon class="spinner is-loading" :size="28"><Loading /></el-icon>
-				<span class="tip">正在加载视频数据…</span>
-			</div>
-		</Transition>
+		<!-- 首次全量数据请求与路由分包下载共用同一层遮罩，只换提示文案 -->
+		<GlobalLoading :visible="!!loadingTip" :tip="loadingTip" />
 	</el-config-provider>
 </template>
 
 <script setup lang="ts">
 import type { ScrollbarDirection } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
-import { Loading } from '@element-plus/icons-vue';
 import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { WebRoute } from '~shared/web-route-config';
 import { useVideoStore } from './stores/video';
@@ -46,13 +40,27 @@ import { useDeviceStore } from './stores/device';
 import { endReachedEmitter } from './events/end-reached';
 import { useThemeStore } from './stores/theme';
 import { useSystemStore } from './stores/system';
+import { routeLoading } from './router/loading';
 
 useThemeStore().initialize();
 const systemStore = useSystemStore();
 const videoStore = useVideoStore();
 
-/** 首次加载：请求中且尚未完成初始化时显示遮罩 */
-const initializing = computed(() => videoStore.loading && !videoStore.initialized);
+/**
+ * 全局遮罩的提示文案。
+ *
+ * 首次进入时全量数据还在请求，此时优先提示数据加载；
+ * 数据就绪后切换路由，才提示页面（分包脚本）加载。
+ */
+const loadingTip = computed(() => {
+	if (videoStore.loading && !videoStore.initialized) {
+		return '正在加载视频数据…';
+	}
+	if (routeLoading.value) {
+		return '正在加载页面…';
+	}
+	return '';
+});
 
 function endReached(direction: ScrollbarDirection) {
 	endReachedEmitter.emit('endReached', { direction });
@@ -137,34 +145,5 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	flex: auto;
 	padding-top: calc(token.$main-padding + token.$header-height);
-}
-.global-loading {
-	position: fixed;
-	inset: 0;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: 12px;
-	background-color: map.get(token.$theme, 'loading-bg');
-	backdrop-filter: blur(4px);
-	z-index: 2000;
-	.tip {
-		font-size: 0.875rem;
-		color: map.get(token.$theme, 'l-9');
-	}
-	.spinner {
-		color: map.get(token.$theme, 'l-9');
-	}
-}
-
-.global-loading-enter-active,
-.global-loading-leave-active {
-	transition: opacity 0.25s ease;
-}
-
-.global-loading-enter-from,
-.global-loading-leave-to {
-	opacity: 0;
 }
 </style>

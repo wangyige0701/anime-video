@@ -6,31 +6,23 @@
 		</div>
 		<span v-else class="empty">暂无可筛选的上线时间</span>
 
-		<!-- 未选中时提示「全部时间」；选中后范围文案浮在轴的选区块上方，这里只留等宽占位，避免轴宽跳动 -->
-		<span class="range" :class="{ active: !!filter.dateRange }">{{ rangeText }}</span>
-
-		<!-- 清除按钮始终占位，未筛选时只隐藏不参与交互，切换筛选状态时轴宽保持稳定 -->
-		<el-button
-			class="clear"
-			:class="{ hidden: !filter.dateRange }"
-			text
-			size="small"
-			title="清除时间筛选"
-			@click="filter.setDateRange(null)"
-		>
-			<el-icon><CircleClose /></el-icon>
-		</el-button>
+		<!-- 右侧操作位固定宽度：未筛选提示「全部时间」，筛选后换成文字按钮，轴宽始终不变 -->
+		<div class="actions">
+			<span v-if="!filter.dateRange" class="hint">全部时间</span>
+			<button v-else type="button" class="clear" title="清除时间筛选" @click="filter.setDateRange(null)">
+				清除
+			</button>
+		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { CircleClose } from '@element-plus/icons-vue';
 import { useIndexFilterStore } from '@/stores/indexFilter';
 import { useVideoStore } from '@/stores/video';
 import { refreshEmitter } from '@/events/refresh';
 import type { SeriesDateRange } from '@/utils/seriesQuery';
 import type { AxisMonth } from '@/utils/timeAxis';
-import { buildMonthAxis, formatAxisRange } from '@/utils/timeAxis';
+import { buildMonthAxis } from '@/utils/timeAxis';
 
 /**
  * 上线时间过滤入口。
@@ -44,8 +36,6 @@ import { buildMonthAxis, formatAxisRange } from '@/utils/timeAxis';
 const filter = useIndexFilterStore();
 const videoStore = useVideoStore();
 const axis = ref<AxisMonth[]>([]);
-
-const rangeText = computed(() => formatAxisRange(filter.dateRange, '全部时间'));
 
 /**
  * 重建时间轴刻度。
@@ -95,21 +85,51 @@ function onSelect(range: SeriesDateRange | null) {
 	height: 26px;
 }
 
-.range {
+// 固定宽度的操作位：内容在「全部时间」与「清除」之间切换时轴宽不变，刻度不会重新分格
+.actions {
 	flex: 0 0 auto;
-	// 固定宽度：选中前后占位一致，时间轴不会因文案长短重新分格
-	width: 86px;
-	text-align: right;
-	font-size: 0.75rem;
+	width: 52px;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+}
+
+.hint {
+	font-size: 0.6875rem;
 	line-height: 1;
 	white-space: nowrap;
-	overflow: hidden;
-	font-variant-numeric: tabular-nums;
 	color: map.get(token.$theme, 'l-6');
-	transition: opacity 0.15s ease;
-	// 选中后范围文案已经在轴的选区块上方展示，这里只保留占位不重复显示
-	&.active {
-		opacity: 0;
+}
+
+.clear {
+	cursor: pointer;
+	height: 18px;
+	padding: 0 7px;
+	font-size: 0.6875rem;
+	line-height: 1;
+	white-space: nowrap;
+	font-family: inherit;
+	// 中性白描边 + 主题亮色文字，五套主题下都能读清，也不会抢过滤栏主色
+	color: map.get(token.$theme, 'l-9');
+	background-color: rgba(#fff, 0.12);
+	border: 1px solid rgba(#fff, 0.24);
+	border-radius: 4px;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease,
+		color 0.15s ease;
+	&:hover {
+		color: #fff;
+		background-color: rgba(#fff, 0.22);
+		border-color: rgba(#fff, 0.42);
+	}
+	&:active {
+		background-color: rgba(#000, 0.16);
+	}
+	&:focus-visible {
+		outline: 1px solid map.get(token.$theme, 'l-9');
+		outline-offset: 1px;
 	}
 }
 
@@ -121,20 +141,5 @@ function onSelect(range: SeriesDateRange | null) {
 	padding-left: 4px;
 	font-size: 0.75rem;
 	color: map.get(token.$theme, 'l-6');
-}
-
-.clear {
-	height: auto;
-	padding: 2px;
-	color: map.get(token.$theme, 'l-6');
-	background-color: transparent;
-	&:hover {
-		color: map.get(token.$theme, 'l-9');
-		background-color: transparent;
-	}
-	// 没有筛选时只隐藏，不改变布局，切换选中状态不会让时间轴重新分格
-	&.hidden {
-		visibility: hidden;
-	}
 }
 </style>

@@ -17,11 +17,7 @@
 			</el-icon>
 		</div>
 
-		<el-button
-			v-if="props.showEditIcon && props.editable && !status.editor && !props.disabled && !props.loading"
-			class="edit icon"
-			@click.stop="onEdit"
-		>
+		<el-button v-if="showIcon" class="edit icon" @click.stop="onEdit">
 			<el-icon size="inherit">
 				<Edit />
 			</el-icon>
@@ -45,12 +41,20 @@ const props = withDefaults(
 		 * 需要内联编辑时才显式开启。
 		 */
 		showEditIcon?: boolean;
+		/**
+		 * 是否强制隐藏编辑图标。
+		 *
+		 * 用于「进入编辑后入口应消失」的场景：外层通常把编辑态绑到该属性，
+		 * 编辑开始时图标隐藏，失焦保存完成后恢复。
+		 */
+		hideEditIcon?: boolean;
 	}>(),
 	{
 		loading: false,
 		disabled: false,
 		editable: true,
 		showEditIcon: false,
+		hideEditIcon: false,
 	},
 );
 const emit = defineEmits<{
@@ -58,10 +62,37 @@ const emit = defineEmits<{
 	(e: 'blur', value: string): void;
 }>();
 
+/**
+ * 编辑态双向绑定。
+ *
+ * 内部仍以 `status.editor` 为准，通过 watch 同步给父组件，
+ * 让外部入口（例如「剧情简介」标题旁的按钮）能跟随编辑状态显示或隐藏。
+ */
+const editing = defineModel<boolean>('editing', { default: false });
+
 let descriptionText: Text | null = null;
 let text = '';
 const editor = useTemplateRef('editor');
 const status = useVueStatusRef('editor');
+
+/** 图标是否可见：显式开启、未被强制隐藏、且不处于编辑/加载/禁用态 */
+const showIcon = computed(() => {
+	return (
+		props.showEditIcon &&
+		!props.hideEditIcon &&
+		props.editable &&
+		!status.editor &&
+		!props.disabled &&
+		!props.loading
+	);
+});
+
+watch(
+	() => status.editor,
+	(value) => {
+		editing.value = value;
+	},
+);
 
 function paster(e: ClipboardEvent) {
 	const text = e.clipboardData?.getData?.('text/plain');

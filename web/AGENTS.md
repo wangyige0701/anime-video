@@ -125,9 +125,9 @@
 
 ## 详情页文本编辑
 
-`components/common/TextEditor.vue` 是唯一的文本编辑组件，`showEditIcon` 默认 `false`：默认不渲染内置图标，由外层提供更稳定的编辑入口，需要内联编辑时才显式开启。
+`components/common/TextEditor.vue` 是唯一的文本编辑组件，`showEditIcon` 默认 `false`：默认不渲染内置图标，由外层提供更稳定的编辑入口，需要内联编辑时才显式开启。`hideEditIcon` 用于强制隐藏图标，配合 `v-model:editing` 暴露的编辑态，外层可以在「进入编辑或保存中」把入口收起来、保存完成后再显示。
 
-- 剧情简介：编辑按钮在「剧情简介」标题右侧（`DetailDescription.vue`），通过组件暴露的 `edit()` 触发，不再跟随段落文本移动。
+- 剧情简介：编辑按钮在「剧情简介」标题右侧（`DetailDescription.vue`），通过组件暴露的 `edit()` 触发，不再跟随段落文本移动；按钮用 `editing || status.modifyDescription` 控制显隐，编辑与保存期间图标隐藏。
 - 季标题、集标题：`DetailSeason.vue` 内联使用 `TextEditor` 并开启 `showEditIcon`。两者都嵌在可点击区域里（折叠面板头部、点击即播放的集卡片），因此只在 `[contenteditable="true"]` 时阻止点击冒泡，非编辑态的展开与播放行为保持不变。
 - 三个入口都遵循同一写入流程：本地 trim 校验非空 → 调用领域对象 `updateTitle()` / `updateDescription()`（乐观更新 + 失败回滚）→ 由数据层的请求状态驱动加载态。组件内不直接调用 API。
 

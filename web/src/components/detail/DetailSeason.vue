@@ -1,10 +1,16 @@
 <template>
 	<el-collapse-item :name="props.season.id" class="season">
 		<template #title>
-			<div class="season-title">
+			<div class="season-title" @click="stopEditClick">
 				<!-- 拖拽季顺序的手柄，独立拦截点击避免触发折叠面板的展开/收起 -->
 				<el-icon class="season-handle" :size="16" @click.stop><Rank /></el-icon>
-				<span class="title">{{ props.season.title }}</span>
+				<TextEditor
+					class="season-name"
+					:value="props.season.title"
+					:loading="props.season.titleRef"
+					show-edit-icon
+					@blur="updateSeasonTitle"
+				/>
 				<span class="count">（共 {{ seasonCount }} 集）</span>
 			</div>
 		</template>
@@ -23,7 +29,14 @@
 							<el-icon class="drag-handle" :size="16" @click.stop><Rank /></el-icon>
 							第 {{ index + 1 }} 集
 						</span>
-						<span class="title">{{ episode.title }}</span>
+						<div class="episode-title" @click="stopEditClick">
+							<TextEditor
+								:value="episode.title"
+								:loading="episode.titleRef"
+								show-edit-icon
+								@blur="updateEpisodeTitle(episode, $event)"
+							/>
+						</div>
 						<el-tooltip
 							v-if="episode.id === props.lastEpisodeId"
 							content="最后观看"
@@ -102,6 +115,50 @@ useDraggable(episodesRef, episodes, {
 });
 
 /**
+ * 提交季标题。
+ *
+ * 标题为空时只提示不落库；`updateTitle()` 内部采用乐观更新与失败回滚，
+ * 因此这里不需要额外处理异常。
+ */
+async function updateSeasonTitle(value: string) {
+	const title = value.trim();
+	if (!title) {
+		ElMessage.error('季标题不能为空');
+		return;
+	}
+	if (title === props.season.title) {
+		return;
+	}
+	await props.season.updateTitle(title);
+}
+
+/** 提交集标题，规则与季标题一致 */
+async function updateEpisodeTitle(episode: Episode, value: string) {
+	const title = value.trim();
+	if (!title) {
+		ElMessage.error('集标题不能为空');
+		return;
+	}
+	if (title === episode.title) {
+		return;
+	}
+	await episode.updateTitle(title);
+}
+
+/**
+ * 编辑态下阻止点击冒泡。
+ *
+ * 季标题位于折叠面板头部、集标题位于点击即播放的卡片内，
+ * 只有正在编辑时才需要拦截点击，否则保持原有的展开与播放行为。
+ */
+function stopEditClick(event: MouseEvent) {
+	const target = event.target as HTMLElement | null;
+	if (target?.closest('[contenteditable="true"]')) {
+		event.stopPropagation();
+	}
+}
+
+/**
  * 提交拖拽结果。服务端会按“移动到第 N 位”把区间内其它集 ±1 平移，
  * 因此只提交被拖动的那一集，不能逐条提交。
  */
@@ -174,9 +231,10 @@ async function commitSort(oldIndex?: number, newIndex?: number) {
 	align-items: center;
 	gap: 5px;
 	line-height: 1;
-	.title {
-		color: token.$text-color-primary;
+	// 季标题复用文本编辑器，字号与颜色在这里对齐原有标题样式
+	.season-name {
 		font-size: 1rem;
+		color: token.$text-color-primary;
 	}
 	.count {
 		color: token.$text-color-secondary;
@@ -234,8 +292,9 @@ async function commitSort(oldIndex?: number, newIndex?: number) {
 		align-items: center;
 		gap: 5px;
 	}
-	.title {
+	.episode-title {
 		flex: 1;
+		min-width: 0;
 		word-break: break-all;
 		color: token.$text-color-secondary;
 	}

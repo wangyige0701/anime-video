@@ -38,13 +38,19 @@ const props = withDefaults(
 		disabled?: boolean;
 		editable?: boolean;
 		value?: string;
+		/**
+		 * 是否显示内置编辑图标。
+		 *
+		 * 默认隐藏：多数场景由外层提供更合适的编辑入口（如标题旁的按钮），
+		 * 需要内联编辑时才显式开启。
+		 */
 		showEditIcon?: boolean;
 	}>(),
 	{
 		loading: false,
 		disabled: false,
 		editable: true,
-		showEditIcon: true,
+		showEditIcon: false,
 	},
 );
 const emit = defineEmits<{

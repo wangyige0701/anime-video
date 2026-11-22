@@ -57,9 +57,10 @@ docs/modules/
 
 ## 6. 模块地图
 
-| 模块 | 文档                                                 | 摘要                                                                 |
-| ---- | ---------------------------------------------------- | -------------------------------------------------------------------- |
-| web  | [detail-episode-sort.md](web/detail-episode-sort.md) | 详情页剧集拖拽排序：本地镜像、单条提交、失败回滚与季级加载态         |
-| web  | [detail-season-sort.md](web/detail-season-sort.md)   | 详情页季拖拽排序：与集层的差异、`el-collapse` 容器接入与列表级加载态 |
-| web  | [index-filter.md](web/index-filter.md)               | 首页本地过滤与排序：状态持久化、月分割线、时间轴划选与布局约束       |
-| web  | [search.md](web/search.md)                           | 搜索结果页：路径参数、跳转时的 push/replace 规则、卡片复用           |
+| 模块 | 文档                                                 | 摘要                                                                       |
+| ---- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| web  | [detail-episode-sort.md](web/detail-episode-sort.md) | 详情页剧集拖拽排序：本地镜像、单条提交、失败回滚与季级加载态               |
+| web  | [detail-season-sort.md](web/detail-season-sort.md)   | 详情页季拖拽排序：与集层的差异、`el-collapse` 容器接入与列表级加载态       |
+| web  | [first-load.md](web/first-load.md)                   | 首屏加载：全局遮罩状态、入口不能引入播放器库、服务端扫描并发与真实路径缓存 |
+| web  | [index-filter.md](web/index-filter.md)               | 首页本地过滤与排序：状态持久化、月分割线、时间轴划选与布局约束             |
+| web  | [search.md](web/search.md)                           | 搜索结果页：路径参数、跳转时的 push/replace 规则、卡片复用                 |

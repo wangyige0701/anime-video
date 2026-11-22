@@ -100,6 +100,7 @@ export abstract class Common {
 		const data = await this.getDirectories();
 		data.splice(0, data.length, ...directories.map((item) => path.resolve(item)));
 		await Data.instance<string[]>(this.__path, []).save();
+		Common.invalidateResolvedRoots();
 	}
 
 	/**
@@ -111,6 +112,7 @@ export abstract class Common {
 		const data = await this.getDirectories();
 		data.push(...directories.map((item) => path.resolve(item)));
 		await Data.instance<string[]>(this.__path, []).save();
+		Common.invalidateResolvedRoots();
 	}
 
 	/**
@@ -128,6 +130,7 @@ export abstract class Common {
 			}
 		}
 		await Data.instance<string[]>(this.__path, []).save();
+		Common.invalidateResolvedRoots();
 	}
 
 	/**
@@ -143,6 +146,7 @@ export abstract class Common {
 		}
 		data.sort((a, b) => target.indexOf(a) - target.indexOf(b));
 		await Data.instance<string[]>(this.__path, []).save();
+		Common.invalidateResolvedRoots();
 	}
 
 	/**
@@ -179,17 +183,41 @@ export abstract class Common {
 	 * @param directory 视频系列目录绝对路径
 	 */
 	public static async isAllowedDirectory(directory: string) {
-		const directories = await this.getDirectories();
 		// 已存在的资源使用真实路径；待创建文件则从真实祖先恢复路径，避免符号链接或 Junction 绕过限制。
 		const handleDirectory = await Common.resolveRealPath(directory);
-		for (const item of directories) {
-			const rootDirectory = await Common.resolveRealPath(item);
+		for (const rootDirectory of await Common.getResolvedRoots()) {
 			const relativePath = path.relative(rootDirectory, handleDirectory);
 			if (relativePath === '' || (!relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath))) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * 已解析的真实根目录缓存。
+	 *
+	 * 权限判断在首次扫描时会被每个系列调用两次，图片请求也会逐张调用；
+	 * 每次都重新 `realpath` 所有根目录会产生大量重复的系统调用。
+	 * 这里按「目录配置快照」缓存，配置通过 `set/add/del/sortDirectories` 变更时主动失效。
+	 */
+	private static resolvedRoots: { key: string; roots: string[] } | null = null;
+
+	/** 取当前目录配置对应的真实路径列表，配置未变化时复用缓存 */
+	private static async getResolvedRoots() {
+		const directories = await this.getDirectories();
+		const key = directories.join('\n');
+		if (this.resolvedRoots?.key === key) {
+			return this.resolvedRoots.roots;
+		}
+		const roots = await Promise.all(directories.map((item) => Common.resolveRealPath(item)));
+		this.resolvedRoots = { key, roots };
+		return roots;
+	}
+
+	/** 目录配置变更后丢弃真实路径缓存 */
+	private static invalidateResolvedRoots() {
+		this.resolvedRoots = null;
 	}
 
 	/**

@@ -2,6 +2,11 @@ import type { SeriesQuery } from '@/utils/seriesQuery';
 import { Series } from '@/data/series';
 
 export const useVideoStore = defineStore('video', () => {
+	/** 全量系列数据是否正在请求，首屏遮罩依赖它 */
+	const loading = computed(() => Series.isLoading);
+	/** 全量系列数据是否已经完成初始化 */
+	const initialized = computed(() => Series.isInitialized);
+
 	async function initialize() {
 		return await Series.initialized();
 	}
@@ -37,6 +42,8 @@ export const useVideoStore = defineStore('video', () => {
 	}
 
 	return {
+		loading,
+		initialized,
 		initialize,
 		getSeriesDetail,
 		refresh,

@@ -12,11 +12,13 @@ import {
 	DEFAULT_SUBTITLE_TRACK,
 } from '@/config/constants';
 import { VideoInfoStorage } from '@/utils/videoInfoStorage';
+import { isHlsSupported } from '@/utils/hls-support';
 import { isNumber } from '@wang-yige/utils';
-import Hls from 'hls.js';
 
 export const usePlayerStore = defineStore('player', () => {
-	const isSupportedHls = Hls.isSupported();
+	// 这里刻意不在顶层引入 `hls.js`：本 store 会被应用入口引用，
+	// 顶层引入会把近 600KB 的播放器库带进首屏产物。能力探测见 `@/utils/hls-support`。
+	const isSupportedHls = isHlsSupported();
 	let video = document.createElement('video');
 	const isSupportedNative = video.canPlayType('application/vnd.apple.mpegurl');
 	video.remove();

@@ -24,12 +24,21 @@
 				<Sidebar />
 			</el-main>
 		</el-container>
+
+		<!-- 首次全量数据请求期间盖住空列表，避免先看到空白再突然填充 -->
+		<Transition name="global-loading">
+			<div v-if="initializing" class="global-loading" role="status" aria-live="polite">
+				<el-icon class="spinner is-loading" :size="28"><Loading /></el-icon>
+				<span class="tip">正在加载视频数据…</span>
+			</div>
+		</Transition>
 	</el-config-provider>
 </template>
 
 <script setup lang="ts">
 import type { ScrollbarDirection } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
+import { Loading } from '@element-plus/icons-vue';
 import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { WebRoute } from '~shared/web-route-config';
 import { useVideoStore } from './stores/video';
@@ -40,6 +49,10 @@ import { useSystemStore } from './stores/system';
 
 useThemeStore().initialize();
 const systemStore = useSystemStore();
+const videoStore = useVideoStore();
+
+/** 首次加载：请求中且尚未完成初始化时显示遮罩 */
+const initializing = computed(() => videoStore.loading && !videoStore.initialized);
 
 function endReached(direction: ScrollbarDirection) {
 	endReachedEmitter.emit('endReached', { direction });
@@ -47,7 +60,7 @@ function endReached(direction: ScrollbarDirection) {
 
 onBeforeMount(async () => {
 	systemStore.start();
-	await useVideoStore().initialize();
+	await videoStore.initialize();
 });
 
 onBeforeUnmount(() => {
@@ -124,5 +137,34 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	flex: auto;
 	padding-top: calc(token.$main-padding + token.$header-height);
+}
+.global-loading {
+	position: fixed;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	background-color: map.get(token.$theme, 'loading-bg');
+	backdrop-filter: blur(4px);
+	z-index: 2000;
+	.tip {
+		font-size: 0.875rem;
+		color: map.get(token.$theme, 'l-9');
+	}
+	.spinner {
+		color: map.get(token.$theme, 'l-9');
+	}
+}
+
+.global-loading-enter-active,
+.global-loading-leave-active {
+	transition: opacity 0.25s ease;
+}
+
+.global-loading-enter-from,
+.global-loading-leave-to {
+	opacity: 0;
 }
 </style>

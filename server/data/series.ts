@@ -8,9 +8,18 @@ import { Data } from './data';
 import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
+import { mapWithConcurrency } from '~server/src/utils/concurrency';
 
 const SERVER = __APP_CONFIG__.server;
 const DATA_FILE = SERVER.videoConfigPrefix + SERVER.dataFile;
+
+/**
+ * 首次扫描的并发上限。
+ *
+ * 每个系列初始化都要读取数据文件、扫描图片目录，全串行时总耗时随系列数量线性增长；
+ * 并发过高又会一次占用过多文件句柄，8 路在本地磁盘上是较稳的折中。
+ */
+const SERIES_SCAN_CONCURRENCY = 8;
 
 type SeriesStore = Omit<ISeries, 'images'> & { images: SeriesImagesStoreStruct };
 
@@ -70,16 +79,25 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			const temp = [] as Series[];
 
 			// Dirent 可直接提供大多数目录项的类型，避免为每一个普通文件额外 stat 一次。
-			for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+			// 系列初始化是多次文件系统调用的组合，串行会让首次扫描耗时随系列数量线性增长，
+			// 因此按固定并发上限并行执行，结果顺序仍与目录顺序一致。
+			const entries = (await fs.readdir(directory, { withFileTypes: true })).filter((entry) => {
+				return entry.isDirectory() || entry.isSymbolicLink();
+			});
+			const initialized = await mapWithConcurrency(entries, SERIES_SCAN_CONCURRENCY, async (entry) => {
 				const entryPath = path.join(directory, entry.name);
 				// 符号链接仍回退到 stat，以保持此前可扫描链接目录的兼容行为。
-				if (!entry.isDirectory() && !(entry.isSymbolicLink() && (await isDirectory(entryPath)))) {
-					continue;
+				if (entry.isSymbolicLink() && !(await isDirectory(entryPath))) {
+					return null;
 				}
-
 				const series = new Series(directory, entry.name);
 				await series.getPromise();
-				temp.push(series);
+				return series;
+			});
+			for (const series of initialized) {
+				if (series) {
+					temp.push(series);
+				}
 			}
 
 			// 从原配置数据中移除不存在的系列数据
@@ -661,16 +679,23 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
 	 */
 	private async initialize(resolve: PromiseResolve<SeriesStore>, reject: PromiseReject) {
-		if (!(await Series.isAllowedDirectory(this.dataFile))) {
+		// 四个校验都是独立的文件系统调用，并行执行可少掉三次串行等待
+		const [dataFileAllowed, directoryExists, directoryIsDirectory, directoryAllowed] = await Promise.all([
+			Series.isAllowedDirectory(this.dataFile),
+			isFileExist(this.directory),
+			isDirectory(this.directory),
+			Series.isAllowedDirectory(this.directory),
+		]);
+		if (!dataFileAllowed) {
 			return reject(new Error(`系列数据文件 ${this.dataFile} 不被允许访问`));
 		}
-		if (!(await isFileExist(this.directory))) {
+		if (!directoryExists) {
 			return reject(new Error(`系列目录 ${this.directory} 不存在`));
 		}
-		if (!(await isDirectory(this.directory))) {
+		if (!directoryIsDirectory) {
 			return reject(new Error(`系列目录 ${this.directory} 不是一个文件夹`));
 		}
-		if (!(await Series.isAllowedDirectory(this.directory))) {
+		if (!directoryAllowed) {
 			return reject(new Error(`系列目录 ${this.directory} 不被允许访问`));
 		}
 

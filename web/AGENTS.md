@@ -230,6 +230,8 @@
 
 `VideoPlayer.vue` 只渲染一个 `<video>` 和加载遮罩。初始化时优先使用 hls.js；浏览器不支持 MSE HLS 时退回原生 HLS，二者都不可用时结束加载并报告错误。主 Hls 实例绑定 video 元素，当前配置限制前向缓冲、最大缓冲和缓冲字节，并启用 WebVTT 与 I-frame 图片缓存。
 
+`hls.js` 只能在详情页链路引入。`stores/player.ts` 被应用入口引用，其中的 HLS 能力探测必须用 `@/utils/hls-support`（复刻 `Hls.isSupported()` 的判定），禁止在 store、入口或通用工具里 `import Hls from 'hls.js'`，否则近 600KB 的播放器库会进入首屏产物。细节见 [docs/modules/web/first-load.md](../docs/modules/web/first-load.md)。
+
 视频源由 `playerStore.videoPath` 驱动。每次切换 source 都会递增 `sourceVersion`、重置预览图和媒体状态，再生成 master m3u8 URL。异步初始化、fatal error 和预览图结果必须核对 source 版本或当前 URL，旧视频的回调不得修改新视频状态。
 
 播放状态采用双向同步：store 的 `currentTime`、`isPlaying`、`volume`、`playbackRate`、字幕选择写入 video/Hls；video 的 `timeupdate`、`play`、`pause`、加载和错误事件写回 store。`isSyncingCurrentTime` 防止 currentTime 双向监听递归，`playRequestVersion` 防止过期的异步 `play()` 结果覆盖最新状态。
@@ -310,6 +312,18 @@ tooltip 使用实现 `Measurable` 的 `virtualTrigger`，位置来源于鼠标�
 - `VideoPlayer.vue` 销毁时继续负责销毁主 Hls 实例、取消动画帧并重置播放器状态。新增异步任务、监听器、定时器、对象 URL 或第三方实例时，必须在 source 切换和组件/作用域销毁的正确节点清理。
 
 预览图功能不得改变主视频加载、TS 缓冲、字幕、播放进度、截图、快捷键或自动连播逻辑。图片轨道不可用或请求失败时只隐藏预览，不得中断主视频播放。
+
+## 首屏加载与全局遮罩
+
+全量系列数据请求期间，`App.vue` 显示全屏遮罩，状态来自 `videoStore.loading && !videoStore.initialized`（`Series.isLoading` / `Series.isInitialized` 的透传）。
+
+约束：
+
+- 入口链路（`main.ts`、`App.vue`、`stores/*`、`utils/*`）不得引入 `hls.js`，能力探测统一用 `@/utils/hls-support`。
+- 入口不要 `await` 非首屏必要的初始化。播放器偏好（音量、自动连播、字幕开关）在挂载后异步读取，字段是响应式的，晚到不影响正确性。
+- 任何新增的「首次加载」状态都要保证请求成功或失败后都能收敛，不允许出现只打开不关闭的分支。
+
+首屏链路、失败处理、服务端扫描优化与实测数据见 [docs/modules/web/first-load.md](../docs/modules/web/first-load.md)。
 
 ## Vue 组件规范
 

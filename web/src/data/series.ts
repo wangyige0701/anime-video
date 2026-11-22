@@ -85,6 +85,16 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	}
 
 	/**
+	 * 是否正在请求全量系列数据。
+	 *
+	 * 首屏加载遮罩依赖该状态：请求期间即使已经有部分界面可渲染，
+	 * 也不应该让用户看到空列表再突然填充。
+	 */
+	public static get isLoading() {
+		return initialize.loading;
+	}
+
+	/**
 	 * 请求具体系列的详细信息，优先取缓存，没有则请求接口
 	 */
 	public static async getSeriesDetail(seriesId: string) {

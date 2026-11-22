@@ -1,0 +1,26 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+/**
+ * Element Plus 分段选择器的全局主题覆盖。
+ *
+ * 组件默认取 `--el-fill-color-*` 系列变量，在深色主题下会发白：
+ * - 未选中项的按压态 `--el-segmented-item-active-bg-color` 默认是 `--el-fill-color-darker`，
+ *   按下瞬间整块变成浅灰白，需要显式换成主题深色梯度；
+ * - 悬浮态同理，统一使用 `d-2`，保证只比底色亮一档。
+ */
+body {
+	.el-segmented {
+		--el-segmented-bg-color: #{map.get(token.$theme, 'd-3')};
+		--el-segmented-color: #{map.get(token.$theme, 'l-7')};
+		--el-segmented-item-selected-bg-color: #{map.get(token.$theme, 'primary')};
+		--el-segmented-item-selected-color: #fff;
+		--el-segmented-item-selected-disabled-bg-color: #{map.get(token.$theme, 'l-3')};
+		--el-segmented-item-hover-bg-color: #{map.get(token.$theme, 'd-2')};
+		--el-segmented-item-hover-color: #{map.get(token.$theme, 'l-9')};
+		--el-segmented-item-active-bg-color: #{map.get(token.$theme, 'd-4')};
+		--el-segmented-item-disabled-color: #{map.get(token.$theme, 'l-4')};
+		--el-segmented-padding: 2px;
+		--el-segmented-item-selected-box-shadow: none;
+	}
+}

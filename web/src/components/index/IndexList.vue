@@ -218,17 +218,18 @@ onBeforeMount(() => {
 	gap: 12px;
 	padding: 4px 2px;
 	.label {
-		font-size: 0.9375rem;
+		font-size: 0.8125rem;
 		line-height: 1;
-		color: token.$text-color-primary;
+		// 分割线只作为分组提示，使用次级文字色，避免比卡片标题更抢眼
+		color: map.get(token.$theme, 'l-7');
 	}
 	.line {
 		flex: 1;
 		height: 1px;
-		background-color: map.get(token.$theme, 'l-2');
+		background-color: map.get(token.$theme, 'd-3');
 	}
 	.count {
-		font-size: 0.75rem;
+		font-size: 0.6875rem;
 		line-height: 1;
 		color: map.get(token.$theme, 'l-6');
 	}

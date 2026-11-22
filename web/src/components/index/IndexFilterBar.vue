@@ -102,12 +102,5 @@ function onSortChange(value: string | number | boolean) {
 
 .switcher {
 	flex: 0 0 auto;
-	--el-segmented-bg-color: #{map.get(token.$theme, 'd-3')};
-	--el-segmented-color: #{map.get(token.$theme, 'l-7')};
-	--el-segmented-item-selected-bg-color: #{map.get(token.$theme, 'primary')};
-	--el-segmented-item-selected-color: #fff;
-	--el-segmented-item-hover-bg-color: #{map.get(token.$theme, 'd-2')};
-	--el-segmented-item-hover-color: #{map.get(token.$theme, 'l-9')};
-	--el-segmented-padding: 2px;
 }
 </style>

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { describe, it, expect } from 'vitest';
+import { afterAll, beforeAll, describe, it, expect } from 'vitest';
 import { Series } from '~server/data/series';
 import { Season } from '~server/data/season';
 import { Episode } from '~server/data/episode';
@@ -15,6 +15,38 @@ describe('Video Data Config', () => {
 	const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), './videos');
 	const configPath = path.join(process.cwd(), DATA_FILE);
 	const dataPath = path.resolve(dir, DATA_FILE);
+
+	// 夹具中的 mp4 占位文件和「第一季」目录都不会进 git（`*.mp4` 被忽略、目录无法单独跟踪），
+	// 这里在用例开始前补齐，结束后只清理本次新建的部分，保证干净检出也能跑通。
+	const seasonFixtureDirectory = path.join(dir, '视频1', '第一季');
+	const seasonFixtures = ['1.mp4', '2.mp4'].map((name) => path.join(seasonFixtureDirectory, name));
+	const createdFixtures: string[] = [];
+	let createdDirectory = false;
+
+	beforeAll(async () => {
+		try {
+			await fs.access(seasonFixtureDirectory);
+		} catch {
+			await fs.mkdir(seasonFixtureDirectory, { recursive: true });
+			createdDirectory = true;
+		}
+		for (const file of seasonFixtures) {
+			try {
+				await fs.access(file);
+			} catch {
+				await fs.writeFile(file, '');
+				createdFixtures.push(file);
+			}
+		}
+	});
+
+	afterAll(async () => {
+		await Promise.all(createdFixtures.map((file) => fs.rm(file, { force: true })));
+		if (createdDirectory) {
+			// 目录非空时删除会失败，说明另有内容残留，保留现场即可（`rm` 删目录需要 recursive）。
+			await fs.rmdir(seasonFixtureDirectory).catch(() => {});
+		}
+	});
 
 	async function getJsonFIle() {
 		const json = await fs.readFile(dataPath, 'utf-8');
@@ -263,11 +295,15 @@ describe('Video Data Config', () => {
 			await series.getDataInstance().save();
 
 			const season1 = new Season('第一季', series);
+			// 移动到第 3 位会被夹到末位：第一季 sort 2，第二季 sort 1。
 			await season1.updateSort(3);
 			await series.getDataInstance().save();
 			const season2 = new Season('第二季', series);
-			const season = (await series.seasons)[0];
+			const seasons = await series.seasons;
 			await series.getDataInstance().save();
+			// 季列表按 sort 升序返回，第一季被移动到末位后顺序为 [第二季, 第一季]。
+			expect(await Promise.all(seasons.map((item) => item.id))).toEqual([await season2.id, await season1.id]);
+			const season = seasons[1]!;
 			expect(await season.id).toBe(await season1.id);
 			expect(await season.id).toBe(Series.hash(await season.path));
 			expect(await season.path).toBe(path.resolve(dataPath, '..', '视频1', '第一季'));
@@ -286,9 +322,13 @@ describe('Video Data Config', () => {
 			expect(dataSeason[0].seasons.find((item: any) => item.id === expectSeasonId)?.title).toBe('测试第一季');
 
 			const episode1 = new Episode('1.mp4', season);
+			// 移动到第 2 位：1.mp4 sort 2，2.mp4 sort 1。
 			await episode1.updateSort(2);
 			const episode2 = new Episode('2.mp4', season);
-			const episode = (await season.episodes)[0];
+			const episodes = await season.episodes;
+			// 剧集列表同样按 sort 升序返回，顺序为 [2.mp4, 1.mp4]。
+			expect(await Promise.all(episodes.map((item) => item.id))).toEqual([await episode2.id, await episode1.id]);
+			const episode = episodes[1]!;
 			expect(await episode.id).toBe(await episode1.id);
 			expect(await episode.id).toBe(Series.hash(await episode.path));
 			expect(await episode.path).toBe(path.resolve(dataPath, '..', '视频1', '第一季', '1.mp4'));

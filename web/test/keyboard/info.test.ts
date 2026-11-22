@@ -3,15 +3,20 @@ import { getKeyboardKeyText } from '../../src/keyboard/info';
 
 describe('getKeyboardKeyText', () => {
 	it('formats physical keyboard codes with the default template', () => {
-		expect(getKeyboardKeyText('Space')).toBe('(Space)');
-		expect(getKeyboardKeyText('KeyS')).toBe('(S)');
-		expect(getKeyboardKeyText('NumpadAdd')).toBe('(Num +)');
+		// 默认模板为 ' ($key)'，前导空格用于和「播放」「截图」等文案拼接时保持间隔。
+		expect(getKeyboardKeyText('Space')).toBe(' (Space)');
+		expect(getKeyboardKeyText('KeyS')).toBe(' (S)');
+		expect(getKeyboardKeyText('NumpadAdd')).toBe(' (Num +)');
 	});
 
 	it('accepts KeyboardEvent.key values and preserves unknown keys', () => {
-		expect(getKeyboardKeyText(' ')).toBe('(Space)');
-		expect(getKeyboardKeyText('ArrowUp')).toBe('(Up)');
-		expect(getKeyboardKeyText('Unidentified')).toBe('(Unidentified)');
+		expect(getKeyboardKeyText(' ')).toBe(' (Space)');
+		expect(getKeyboardKeyText('ArrowUp')).toBe(' (Up)');
+		expect(getKeyboardKeyText('Unidentified')).toBe(' (Unidentified)');
+	});
+
+	it('joins multiple keys with the default separator', () => {
+		expect(getKeyboardKeyText(['ControlLeft', 'KeyS'])).toBe(' (Ctrl/S)');
 	});
 
 	it('replaces every key placeholder in a custom template', () => {

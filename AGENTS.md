@@ -154,7 +154,7 @@ pnpm exec tsc --noEmit -p server/tsconfig.json
 pnpm exec vitest run
 ```
 
-根 Vitest 配置发现 `**/test/**/*.test.ts`，排除 `dev/**`，并为数据层测试设置 `SERVER_VIDEO_CONFIG_PREFIX=test` 和 `SERVER_DATA_FILE_SAVE_DELAY=0`。`server/package.json` 当前没有可用的正式 `test` 脚本，不能把其中的占位失败脚本当作验证命令。
+根 Vitest 配置发现 `**/test/**/*.test.ts`，排除 `dev/**`，并为数据层测试设置 `SERVER_VIDEO_CONFIG_PREFIX=test` 和 `SERVER_DATA_FILE_SAVE_DELAY=0`。`test/setup.ts` 在测试文件导入前把 `shared/config-parser` 的结果挂到全局 `__APP_CONFIG__`，因为服务端模块（如 `server/data/data.ts`、`server/data/common.ts`）在导入阶段就会读取它。`server/package.json` 当前没有可用的正式 `test` 脚本，不能把其中的占位失败脚本当作验证命令。
 
 ### 测试用例要求（强制）
 
@@ -164,6 +164,8 @@ pnpm exec vitest run
 - 前端纯逻辑测试放在根目录 `test/web/`，服务端测试放在 `test/` 或子项目测试目录，文件名与被测模块对应，使用 `.test.ts` 后缀。
 - 每个测试至少覆盖：正常路径、空数据或缺失字段、边界值（首尾、越界、非法输入）。
 - 提交前必须让新增测试与既有测试一起通过：`pnpm exec vitest run`。功能无法自动化的部分（拖拽、写入落库、主题与响应式布局）在 `docs/changes/` 的“验证”段落写明手工验证方式与结果。
+- 全局 `__APP_CONFIG__` 只由 `test/setup.ts` 注入。服务端测试不要自行赋值，也不要改掉 `test` 前缀——那会让用例读写正式数据文件。
+- 依赖本地媒体文件的夹具必须在用例内自行创建（`.gitignore` 忽略了 `*.mp4` 等真实视频，干净检出时不存在），并在结束后清理本次新建的内容。
 - 只改样式或文案且不涉及逻辑分支时，可以不新增测试，但要在变更记录中说明。
 
 原生扩展使用自己的脚本和 CMake 环境：

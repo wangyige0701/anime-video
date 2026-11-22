@@ -220,8 +220,8 @@ onBeforeMount(() => {
 	.label {
 		font-size: 0.8125rem;
 		line-height: 1;
-		// 分割线只作为分组提示，使用次级文字色，避免比卡片标题更抢眼
-		color: map.get(token.$theme, 'l-7');
+		// 分割线只作为分组提示，使用更暗的主题梯度，避免比卡片标题更抢眼
+		color: map.get(token.$theme, 'l-4');
 	}
 	.line {
 		flex: 1;
@@ -231,7 +231,7 @@ onBeforeMount(() => {
 	.count {
 		font-size: 0.6875rem;
 		line-height: 1;
-		color: map.get(token.$theme, 'l-6');
+		color: map.get(token.$theme, 'l-3');
 	}
 }
 

@@ -6,12 +6,13 @@
 		</div>
 		<span v-else class="empty">暂无可筛选的上线时间</span>
 
-		<!-- 收起状态也要能直接读到当前筛选的时间范围，不必再展开面板确认 -->
+		<!-- 未选中时提示「全部时间」；选中后范围文案浮在轴的选区块上方，这里只留等宽占位，避免轴宽跳动 -->
 		<span class="range" :class="{ active: !!filter.dateRange }">{{ rangeText }}</span>
 
+		<!-- 清除按钮始终占位，未筛选时只隐藏不参与交互，切换筛选状态时轴宽保持稳定 -->
 		<el-button
-			v-if="filter.dateRange"
 			class="clear"
+			:class="{ hidden: !filter.dateRange }"
 			text
 			size="small"
 			title="清除时间筛选"
@@ -96,14 +97,19 @@ function onSelect(range: SeriesDateRange | null) {
 
 .range {
 	flex: 0 0 auto;
+	// 固定宽度：选中前后占位一致，时间轴不会因文案长短重新分格
+	width: 86px;
+	text-align: right;
 	font-size: 0.75rem;
 	line-height: 1;
 	white-space: nowrap;
+	overflow: hidden;
 	font-variant-numeric: tabular-nums;
 	color: map.get(token.$theme, 'l-6');
+	transition: opacity 0.15s ease;
+	// 选中后范围文案已经在轴的选区块上方展示，这里只保留占位不重复显示
 	&.active {
-		color: map.get(token.$theme, 'l-9');
-		font-weight: 500;
+		opacity: 0;
 	}
 }
 
@@ -125,6 +131,10 @@ function onSelect(range: SeriesDateRange | null) {
 	&:hover {
 		color: map.get(token.$theme, 'l-9');
 		background-color: transparent;
+	}
+	// 没有筛选时只隐藏，不改变布局，切换选中状态不会让时间轴重新分格
+	&.hidden {
+		visibility: hidden;
 	}
 }
 </style>

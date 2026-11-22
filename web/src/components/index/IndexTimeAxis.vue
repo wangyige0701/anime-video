@@ -1,6 +1,11 @@
 <template>
 	<!-- 固定高度的宿主：展开的面板向上溢出，但指针仍在宿主子树内，不会触发 pointerleave 抖动 -->
 	<div class="axis-wrap" @pointerenter="onPointerEnter" @pointerleave="onPointerLeave">
+		<!-- 收起态：范围文案贴着选区块浮动在轴上方，不占布局宽度，时间轴才能铺满整行 -->
+		<span v-if="!expanded && collapsedTip" class="band-tip" :style="collapsedTip.style">
+			{{ collapsedTip.label }}
+		</span>
+
 		<div class="time-axis" :class="{ expanded, dragging, dense }" @wheel="onWheel">
 			<div v-if="expanded" class="panel-head">
 				<span class="head-range">{{ rangeLabel }}</span>
@@ -51,6 +56,7 @@ import type { AxisMonth, AxisWindow } from '@/utils/timeAxis';
 import {
 	AXIS_TICK_WIDTH,
 	AXIS_ZOOM_STEP,
+	bandTipStyle,
 	clampAxisWindow,
 	formatAxisRange,
 	formatAxisWindow,
@@ -135,9 +141,27 @@ const activeRange = computed(() => (dragging.value ? previewRange.value : props.
 const rangeLabel = computed(() => formatAxisRange(activeRange.value, '拖动选择时间范围'));
 const windowLabel = computed(() => formatAxisWindow(props.axis, currentView.value));
 
+/** 当前选区块在当前窗口内的百分比位置，收起与展开状态共用 */
+const band = computed(() => rangeToBand(props.axis, currentView.value, activeRange.value));
+
 const bandStyle = computed(() => {
-	const band = rangeToBand(props.axis, currentView.value, activeRange.value);
-	return band ? { left: `${band.left}%`, width: `${band.width}%` } : null;
+	const current = band.value;
+	return current ? { left: `${current.left}%`, width: `${current.width}%` } : null;
+});
+
+/**
+ * 收起态贴住选区块的范围文案。
+ *
+ * 文字浮在轴上方而不是挤在右侧，轴就能铺满整行；拖动时跟随预览范围移动，
+ * 未选中时返回 null，由过滤栏右侧的「全部时间」兜底。
+ */
+const collapsedTip = computed(() => {
+	const range = activeRange.value;
+	const current = band.value;
+	if (!range || !current) {
+		return null;
+	}
+	return { label: formatAxisRange(range), style: bandTipStyle(current) };
 });
 
 /** 供拖拽划选换算下标：视口左边界 + 当前刻度宽度 + 窗口起点 */
@@ -271,9 +295,9 @@ watch(dragging, (value) => {
 	}
 });
 
-/** 数量映射为柱高：收起时 1 - 14px，展开时 2 - 40px；空档月份保留一根短刻度维持节奏 */
+/** 数量映射为柱高：收起时 1 - 18px，展开时 2 - 40px；空档月份保留一根短刻度维持节奏 */
 function barHeight(count: number) {
-	const maxHeight = expanded.value ? 40 : 14;
+	const maxHeight = expanded.value ? 40 : 18;
 	if (maxCount.value <= 0) {
 		return 0;
 	}
@@ -294,6 +318,20 @@ function barHeight(count: number) {
 	right: 0;
 	bottom: 0;
 	height: 26px;
+}
+
+// 收起态的范围文案：贴着选区块浮在轴上方，不占位、不挡指针
+.band-tip {
+	position: absolute;
+	bottom: calc(100% + 2px);
+	z-index: 1;
+	font-size: 0.6875rem;
+	line-height: 1;
+	white-space: nowrap;
+	color: rgba(#fff, 0.94);
+	text-shadow: 0 1px 3px rgba(#000, 0.42);
+	font-variant-numeric: tabular-nums;
+	pointer-events: none;
 }
 
 .time-axis {
@@ -326,7 +364,7 @@ function barHeight(count: number) {
 			0 0 0 1px rgba(#000, 0.24);
 	}
 	&:not(.expanded):hover {
-		background-color: map.get(token.$theme, 'd-4');
+		background-color: rgba(#fff, 0.06);
 	}
 	&.dragging {
 		cursor: ew-resize;
@@ -440,7 +478,9 @@ function barHeight(count: number) {
 	align-items: flex-end;
 	border-bottom: 1px solid map.get(token.$theme, 'd-5');
 	.time-axis:not(.expanded) & {
+		// 收起态不画深色分隔线，只留一条极淡的白色基线，柱子像是立在轴上
 		border-bottom: none;
+		box-shadow: inset 0 -1px 0 rgba(#fff, 0.2);
 	}
 }
 
@@ -455,7 +495,8 @@ function barHeight(count: number) {
 	border-radius: 3px;
 	pointer-events: none;
 	.time-axis:not(.expanded) & {
-		border-color: map.get(token.$theme, 'd-9');
+		// 收起态底衬是浅紫过滤栏，深色描边会变成黑框，改用白色描边标记选区两端
+		border-color: rgba(#fff, 0.9);
 	}
 }
 
@@ -466,9 +507,9 @@ function barHeight(count: number) {
 	background-color: map.get(token.$theme, 'primary');
 	opacity: 0.34;
 	border-radius: 2px;
-	// 收起态底衬是浅色过滤栏，主色填充几乎看不出，改用深色蒙层把选中区间压暗
+	// 收起态底色就是过滤栏本身，用白色薄蒙层提亮选中区间即可，不需要额外轨道
 	.time-axis:not(.expanded) & {
-		background-color: map.get(token.$theme, 'd-9');
+		background-color: #fff;
 		opacity: 0.24;
 	}
 }
@@ -487,7 +528,7 @@ function barHeight(count: number) {
 		background-color: map.get(token.$theme, 'd-7');
 	}
 	.time-axis:not(.expanded) &:hover {
-		background-color: map.get(token.$theme, 'd-4');
+		background-color: rgba(#fff, 0.09);
 	}
 	&.selected .bar {
 		background-color: map.get(token.$theme, 'l-9');
@@ -495,9 +536,9 @@ function barHeight(count: number) {
 	&.empty .bar {
 		background-color: map.get(token.$theme, 'l-2');
 	}
-	// 收起态的底衬是浅色过滤栏，浅色柱体几乎看不见，改用深色柱体形成波形概览
+	// 收起态底衬是浅紫过滤栏，用白色半透明柱体形成波形；空档月份只留极淡的短刻度
 	.time-axis:not(.expanded) &.empty .bar {
-		background-color: map.get(token.$theme, 'd-3');
+		background-color: rgba(#fff, 0.24);
 	}
 }
 
@@ -507,14 +548,16 @@ function barHeight(count: number) {
 	min-height: 1px;
 	background-color: map.get(token.$theme, 'l-5');
 	border-radius: 2px 2px 0 0;
-	transition: height 0.18s ease;
+	transition:
+		height 0.18s ease,
+		background-color 0.18s ease;
 	.time-axis:not(.expanded) & {
-		max-width: 5px;
-		background-color: map.get(token.$theme, 'd-6');
-		border-radius: 1px;
+		max-width: 6px;
+		background-color: rgba(#fff, 0.78);
+		border-radius: 2px 2px 0 0;
 	}
 	.time-axis:not(.expanded) .month.selected & {
-		background-color: map.get(token.$theme, 'd-9');
+		background-color: #fff;
 	}
 }
 

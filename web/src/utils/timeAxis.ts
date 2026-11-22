@@ -250,6 +250,23 @@ export function rangeToBand(axis: AxisMonth[], window: AxisWindow, range: Series
 	};
 }
 
+/** 选区块中心超过该百分比时，上方文案改为右对齐，避免文字溢出时间轴 */
+export const BAND_TIP_RIGHT_THRESHOLD = 68;
+
+/**
+ * 计算选区块上方范围文案的水平定位。
+ *
+ * 文字朝容器内部延伸：默认与选区左端左对齐；选区落在右侧三分之一时
+ * 改为与选区右端右对齐，这样收起态文案始终贴着选区块，又不会超出轴宽。
+ */
+export function bandTipStyle(band: { left: number; width: number }): { left?: string; right?: string } {
+	const center = band.left + band.width / 2;
+	if (center > BAND_TIP_RIGHT_THRESHOLD) {
+		return { right: `${Math.max(0, 100 - band.left - band.width)}%` };
+	}
+	return { left: `${band.left}%` };
+}
+
 /** 把时间范围格式化为文案：单月只显示一个月份，未选择时使用兜底文案 */
 export function formatAxisRange(range: SeriesDateRange | null, empty = '全部时间'): string {
 	if (!range) {

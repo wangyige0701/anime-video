@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	AXIS_TICK_WIDTH,
+	BAND_TIP_RIGHT_THRESHOLD,
+	bandTipStyle,
 	buildMonthAxis,
 	clampAxisWindow,
 	formatAxisRange,
@@ -214,6 +216,28 @@ describe('时间轴文案', () => {
 		expect(formatAxisWindow(axis, { start: 2, count: 4 })).toBe('2024-03 ~ 2024-06');
 		expect(formatAxisWindow(axis, { start: 0, count: 1 })).toBe('2024-01');
 		expect(formatAxisWindow([], { start: 0, count: 0 })).toBe('');
+	});
+});
+
+describe('bandTipStyle', () => {
+	it('选区在左半侧时与左端对齐，文字向右延伸', () => {
+		expect(bandTipStyle({ left: 12.5, width: 20 })).toEqual({ left: '12.5%' });
+		expect(bandTipStyle({ left: 0, width: 1 })).toEqual({ left: '0%' });
+	});
+
+	it('选区中心越过阈值后改为与右端对齐，避免文字溢出', () => {
+		const band = { left: 78, width: 9.5 };
+		expect(band.left + band.width / 2).toBeGreaterThan(BAND_TIP_RIGHT_THRESHOLD);
+		expect(bandTipStyle(band)).toEqual({ right: '12.5%' });
+		expect(bandTipStyle({ left: 94, width: 6 })).toEqual({ right: '0%' });
+	});
+
+	it('右对齐偏移不会出现负数', () => {
+		expect(bandTipStyle({ left: 90, width: 20 })).toEqual({ right: '0%' });
+	});
+
+	it('铺满整条轴时与左端对齐', () => {
+		expect(bandTipStyle({ left: 0, width: 100 })).toEqual({ left: '0%' });
 	});
 });
 

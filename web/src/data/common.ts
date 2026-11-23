@@ -18,6 +18,9 @@ export type StatusController = {
  * 与原先每个字段手写 `onX() -> try/catch -> offX()` 的行为一致，
  * 返回请求是否成功，供排序等需要分支处理的调用方使用。
  *
+ * 回滚只在本地值仍是本次乐观值时才执行：同一字段的请求使用 `Single.PREV` 时会取消
+ * 前一次请求，若前一次失败无条件回滚，会把后一次已经写入的新值覆盖成更旧的值。
+ *
  * @param settle 请求成功后用返回值纠正本地值；返回 `undefined` 表示不调整。
  * 标题用它同步服务端还原出的默认标题（空标题提交后本地不能停在空串）。
  */
@@ -32,15 +35,21 @@ export async function patchField<T extends object, K extends keyof T>(
 	const target = values[key];
 	const oldValue = target.value;
 	target.value = next;
+	// 数组/对象字段经 ref 读取得到的是响应式代理，不能直接与传入值比引用，
+	// 这里以「写入后立刻读回的值」作为本次乐观更新的标记。
+	const optimistic = target.value;
 	try {
 		const result = await status.run(key as string, commit);
 		const settled = settle?.(result);
-		if (settled !== undefined) {
+		// 请求期间又发生了新的编辑时，不能再用旧响应覆盖当前值。
+		if (settled !== undefined && target.value === optimistic) {
 			target.value = settled as T[K];
 		}
 		return true;
 	} catch {
-		target.value = oldValue;
+		if (target.value === optimistic) {
+			target.value = oldValue;
+		}
 		return false;
 	}
 }

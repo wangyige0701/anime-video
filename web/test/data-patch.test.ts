@@ -5,18 +5,24 @@ import { Common, patchField, serverTitle, type FieldRefs } from '../src/data/com
 interface DemoValue {
 	title: string;
 	count: number;
+	tags: string[];
 }
 
 class Demo extends Common {
 	public readonly values: FieldRefs<DemoValue> = {
 		title: ref(''),
 		count: ref(0),
+		tags: ref<string[]>([]),
 	};
 
-	public readonly requestStatus = this.createStatus('title', 'count');
+	public readonly requestStatus = this.createStatus('title', 'count', 'tags');
 
 	public updateTitle(next: string, commit: () => Promise<unknown>, settle?: (result: unknown) => unknown) {
 		return patchField(this.values, this.requestStatus, 'title', next, commit, settle);
+	}
+
+	public updateTags(next: string[], commit: () => Promise<unknown>) {
+		return patchField(this.values, this.requestStatus, 'tags', next, commit);
 	}
 }
 
@@ -60,6 +66,40 @@ describe('patchField 乐观更新', () => {
 		const demo = createDemo();
 		expect(await demo.requestStatus.run('count', async () => 42)).toBe(42);
 		expect(demo.requestStatus.get('count')).toBe(false);
+	});
+});
+
+describe('并发编辑与数组字段', () => {
+	it('同一字段前一次请求失败时，不回滚后一次已写入的值', async () => {
+		const demo = createDemo();
+		let rejectFirst!: (error: Error) => void;
+		const first = demo.updateTitle(
+			'第一次',
+			() =>
+				new Promise((_resolve, reject) => {
+					rejectFirst = reject;
+				}),
+		);
+		const second = demo.updateTitle('第二次', async () => undefined);
+		// 前一次请求被取消（如 axios 的 Single.PREV），此时本地已是「第二次」。
+		rejectFirst(new Error('请求被取消'));
+		expect(await first).toBe(false);
+		expect(await second).toBe(true);
+		expect(demo.values.title.value).toBe('第二次');
+	});
+
+	it('数组字段失败回滚、成功保留，响应式代理不会影响判断', async () => {
+		const demo = createDemo();
+		demo.values.tags.value = ['a'];
+		const failed = await demo.updateTags(['a', 'b'], async () => {
+			throw new Error('请求失败');
+		});
+		expect(failed).toBe(false);
+		expect(demo.values.tags.value).toEqual(['a']);
+
+		const success = await demo.updateTags(['a', 'b'], async () => undefined);
+		expect(success).toBe(true);
+		expect(demo.values.tags.value).toEqual(['a', 'b']);
 	});
 });
 

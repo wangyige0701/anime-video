@@ -3,12 +3,10 @@ import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-us
 import { ServerRoot } from '~shared/server-route-config';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
-import { seriesStatus } from '~shared/series-status';
+import { isWritableSeriesStatus } from '~shared/series-status';
 import { seriesTypes } from '~shared/series-types';
 import { ApiError } from '~server/src/error';
 
-const minSeriesStatus = seriesStatus[0].id;
-const maxSeriesStatus = seriesStatus[seriesStatus.length - 1].id;
 const minSeriesType = seriesTypes[0].id;
 const maxSeriesType = seriesTypes[seriesTypes.length - 1].id;
 
@@ -92,7 +90,8 @@ export class SeriesController {
 	@HttpMethod.Put('/series/:seriesId/status')
 	@Validate((z) =>
 		z.object({
-			status: z.number().int().min(minSeriesStatus).max(maxSeriesStatus),
+			// 「全部」只是筛选选项，不是系列状态，写入时按可写状态集合校验。
+			status: z.number().int().refine(isWritableSeriesStatus, { message: '系列状态无效' }),
 		}),
 	)
 	public async updateSeriesStatus(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {

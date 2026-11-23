@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import type { SeriesFilterMode, SeriesSortMode } from '@/utils/seriesQuery';
 import { useIndexFilterStore } from '@/stores/indexFilter';
-import { seriesStatus } from '~shared/series-status';
+import { writableSeriesStatus } from '~shared/series-status';
 import { seriesTypes } from '~shared/series-types';
 
 /**
@@ -71,7 +71,7 @@ const sortOptions: Array<{ label: string; value: SeriesSortMode }> = [
 const typeOptions = seriesTypes;
 
 /** 状态过滤排除「全部」这一非状态项 */
-const statusOptions = seriesStatus.filter((item) => item.id > 1);
+const statusOptions = writableSeriesStatus;
 
 function onModeChange(value: string | number | boolean) {
 	filter.setMode(value as SeriesFilterMode);

@@ -1,6 +1,17 @@
 import { Common } from './common';
 
 /**
+ * 服务端属性转为 Promise 类型。
+ *
+ * 领域类的属性都是异步派生的，调用方需要 `await` 后取值；该类型用于约束子类结构，
+ * 让 `Series`、`Season`、`Episode` 在编译期保证每个字段都以 Promise 暴露。
+ * 它只描述服务端实现，前端不应引用，因此与 `Entity` 放在同一文件。
+ */
+export type ServerToPromise<T extends object> = {
+	[K in keyof T]: Promise<T[K]>;
+};
+
+/**
  * 领域对象字段基类。
  *
  * 每个可编辑字段原先需要「声明 `_x`、写 getter、写 `registerX()`、在 `getValue()` 与

@@ -1,10 +1,10 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import type { Episode as IEpisode, ServerToPromise } from '~types/videos';
+import type { Episode as IEpisode } from '~types/videos';
 import type { Season } from './season';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
-import { Entity } from './entity';
+import { Entity, type ServerToPromise } from './entity';
 
 const SERVER = __APP_CONFIG__.server;
 

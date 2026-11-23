@@ -97,10 +97,3 @@ export interface Episode {
 	 */
 	title: string;
 }
-
-/**
- * 服务端属性转为 Promise 类型
- */
-export type ServerToPromise<T extends Object> = {
-	[K in keyof T]: Promise<T[K]>;
-};

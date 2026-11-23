@@ -1,13 +1,13 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import type { Series as ISeries, SeriesImagesStoreStruct, ServerToPromise } from '~types/videos';
+import type { Series as ISeries, SeriesImagesStoreStruct } from '~types/videos';
 import { NotFoundError } from '~server/src/error/notFound';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Data } from './data';
 import { Season } from './season';
 import { Episode } from './episode';
-import { Entity } from './entity';
+import { Entity, type ServerToPromise } from './entity';
 import { mapWithConcurrency } from '~server/src/utils/concurrency';
 
 const SERVER = __APP_CONFIG__.server;

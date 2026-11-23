@@ -1,11 +1,11 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
-import type { Season as ISeason, ServerToPromise } from '~types/videos';
+import type { Season as ISeason } from '~types/videos';
 import type { Series } from './series';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Episode } from './episode';
-import { Entity } from './entity';
+import { Entity, type ServerToPromise } from './entity';
 
 type SeasonValue = Omit<ISeason, 'episodes'>;
 

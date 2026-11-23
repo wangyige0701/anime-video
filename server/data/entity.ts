@@ -12,6 +12,13 @@ export type ServerToPromise<T extends object> = {
 };
 
 /**
+ * 字段映射表：把配置中的原始值转换为对外值。
+ *
+ * 只有需要变换的字段才需要声明，未声明的字段直接返回配置值。
+ */
+export type FieldReaders<S, V> = { [K in keyof V]?: (store: S) => V[K] };
+
+/**
  * 领域对象字段基类。
  *
  * 每个可编辑字段原先需要「声明 `_x`、写 getter、写 `registerX()`、在 `getValue()` 与
@@ -28,20 +35,27 @@ export abstract class Entity<S extends { id: string }, V extends object> extends
 	/** 已解析的配置对象；子类必须在构造函数中赋值，再由 `initialize()` 完成 resolve */
 	protected store!: Promise<S>;
 
+	/**
+	 * 需要从配置派生出对外值的字段。
+	 *
+	 * 必须声明为类的字段而不是传给单次 `field()` 调用：`getValue()` 通过 `collect()`
+	 * 统一取值，映射只存在于 getter 里时 DTO 会拿到未排序、未拼接路径的原始配置值。
+	 * 图片、季/集绝对路径都属于这一类。
+	 */
+	protected abstract readonly readers: FieldReaders<S, V>;
+
 	/** 字段派生缓存，key 为配置字段名；写入或配置被原地改写后按 key 失效 */
 	private fields = new Map<string, Promise<unknown>>();
 
 	/**
-	 * 读取字段的对外值。
-	 *
-	 * @param key 配置字段名
-	 * @param read 配置值到对外值的映射；图片、路径等需要排序或拼接的字段必须提供
+	 * 读取字段的对外值，映射来自子类的 `readers`。
 	 */
-	protected field<K extends keyof S & keyof V>(key: K, read?: (store: S) => V[K]): Promise<V[K]> {
+	protected field<K extends keyof S & keyof V>(key: K): Promise<V[K]> {
 		const cached = this.fields.get(key as string) as Promise<V[K]> | undefined;
 		if (cached) {
 			return cached;
 		}
+		const read = this.readers[key] as ((store: S) => V[K]) | undefined;
 		const value = this.store.then((store) => (read ? read(store) : (store[key] as unknown as V[K])));
 		this.fields.set(key as string, value);
 		return value;

@@ -4,7 +4,7 @@ import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Episode as IEpisode } from '~types/videos';
 import type { Season } from './season';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
-import { Entity, type ServerToPromise } from './entity';
+import { Entity, type FieldReaders, type ServerToPromise } from './entity';
 
 const SERVER = __APP_CONFIG__.server;
 
@@ -64,6 +64,14 @@ export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromi
 	private episodeName!: string;
 	private directory!: string;
 	private hashId!: string;
+
+	/**
+	 * 配置中的 `path` 只是集文件名，对外必须是绝对路径。
+	 * 该映射必须留在字段定义里，`getValue()` 通过 `collect()` 取值时才会生效。
+	 */
+	protected readonly readers: FieldReaders<IEpisode, IEpisode> = {
+		path: (store) => path.join(this.season.getDirectory(), store.path),
+	};
 
 	constructor(
 		episodeName: string,
@@ -141,7 +149,7 @@ export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromi
 	}
 
 	public get path() {
-		return this.field('path', (store) => path.join(this.season.getDirectory(), store.path));
+		return this.field('path');
 	}
 
 	public get extension() {

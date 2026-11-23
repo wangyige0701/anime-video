@@ -295,8 +295,16 @@ describe('Video Data Config', () => {
 					sort: 3,
 				},
 			]);
-			await fs.unlink(testImagePath1);
+			// 配置数组顺序与 sort 不一致时（历史数据），移除图片仍按 sort 重编号，
+			// 否则剩余图片的展示顺序会退化成配置文件里的数组顺序。
+			const configWithImages = await series.getConfig();
+			configWithImages.images.reverse();
 			await series.removeImages([path.basename(testImagePath1)]);
+			expect(configWithImages.images).toEqual([
+				{ path: path.basename(originImagePath2), sort: 1 },
+				{ path: path.basename(originImagePath1), sort: 2 },
+			]);
+			await fs.unlink(testImagePath1);
 			await series.getDataInstance().save();
 
 			const season1 = new Season('第一季', series);
@@ -346,11 +354,13 @@ describe('Video Data Config', () => {
 			expect(await episode2.sort).toBe(1);
 			expect(await episode.title).toBe('1');
 			// DTO 出口由字段表派生，键集合与顺序必须与接口契约一致。
-			expect(Object.keys(await episode.getValue())).toEqual(['id', 'sort', 'path', 'extension', 'title']);
+			const episodeDetail = await episode.getValue();
+			expect(Object.keys(episodeDetail)).toEqual(['id', 'sort', 'path', 'extension', 'title']);
 			const seasonDetail = await season.getValue();
 			expect(Object.keys(seasonDetail)).toEqual(['id', 'sort', 'path', 'title', 'episodes']);
 			expect(Object.keys(seasonDetail.episodes[0]!)).toEqual(['id', 'sort', 'path', 'extension', 'title']);
-			expect(Object.keys(await series.getValueOmitSeasons())).toEqual([
+			const seriesSummary = await series.getValueOmitSeasons();
+			expect(Object.keys(seriesSummary)).toEqual([
 				'id',
 				'path',
 				'name',
@@ -361,7 +371,8 @@ describe('Video Data Config', () => {
 				'types',
 				'status',
 			]);
-			expect(Object.keys(await series.getValue())).toEqual([
+			const seriesDetail = await series.getValue();
+			expect(Object.keys(seriesDetail)).toEqual([
 				'id',
 				'path',
 				'name',
@@ -373,6 +384,19 @@ describe('Video Data Config', () => {
 				'status',
 				'seasons',
 			]);
+
+			// DTO 必须输出派生后的值，而不是配置文件里的原始结构：
+			// 图片是排序后的绝对路径数组，季/集 path 是绝对路径。
+			// 这里断言类型与取值而不只是键集合，否则「图片退化成 { path, sort } 对象」不会被发现。
+			expect(seriesDetail.images).toEqual(await series.images);
+			expect(seriesSummary.images).toEqual(await series.images);
+			expect(seriesDetail.images.every((image) => typeof image === 'string' && path.isAbsolute(image))).toBe(
+				true,
+			);
+			expect(seasonDetail.path).toBe(await season.path);
+			expect(path.isAbsolute(seasonDetail.path)).toBe(true);
+			expect(episodeDetail.path).toBe(await episode.path);
+			expect(path.isAbsolute(episodeDetail.path)).toBe(true);
 			// 同一季中的剧集排序遵循相同的并发一致性约束。
 			await Promise.all([episode1.updateSort(1), episode2.updateSort(2)]);
 			expect(await episode1.sort).toBe(1);

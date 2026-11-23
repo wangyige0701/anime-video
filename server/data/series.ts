@@ -7,7 +7,7 @@ import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Data } from './data';
 import { Season } from './season';
 import { Episode } from './episode';
-import { Entity, type ServerToPromise } from './entity';
+import { Entity, type FieldReaders, type ServerToPromise } from './entity';
 import { mapWithConcurrency } from '~server/src/utils/concurrency';
 
 const SERVER = __APP_CONFIG__.server;
@@ -259,6 +259,18 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 	private seasonPromise?: Promise<Season[]>;
 
 	/**
+	 * 图片在配置中保存的是「文件名 + 排序值」，对外必须是按排序拼接好的绝对路径。
+	 * 该映射必须留在字段定义里，`getValue()` 通过 `collect()` 取值时才会生效。
+	 */
+	protected readonly readers: FieldReaders<SeriesStore, SeriesValue> = {
+		images: (store) =>
+			store.images
+				.slice()
+				.sort((a, b) => a.sort - b.sort)
+				.map((image) => path.join(this.directory, image.path)),
+	};
+
+	/**
 	 * @param rootDirectory 视频系列根目录绝对路径
 	 * @param seriesName 视频系列名称，可以为空，此时 rootDirectory 为视频系列目录绝对路径
 	 */
@@ -365,13 +377,7 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 	}
 
 	public get images() {
-		// 排序基于副本，避免读取时改写配置数组顺序。
-		return this.field('images', (store) =>
-			store.images
-				.slice()
-				.sort((a, b) => a.sort - b.sort)
-				.map((image) => path.join(this.directory, image.path)),
-		);
+		return this.field('images');
 	}
 
 	public get description() {
@@ -472,7 +478,8 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 			return;
 		}
 		const filterImages = imageNames.filter((image) => image).map((image) => path.basename(image));
-		const oldImages = await this.imagesRaw();
+		// 重编号必须按当前排序进行，否则配置数组的写入顺序会决定剩余图片的展示顺序。
+		const oldImages = (await this.imagesRaw()).slice().sort((a, b) => a.sort - b.sort);
 		const newImages = [] as SeriesImagesStoreStruct;
 		for (const image of oldImages) {
 			if (!filterImages.find((img) => img === image.path)) {

@@ -148,7 +148,7 @@ Series 只扫描允许根目录的直接子目录；Season 只扫描 series 的�
 
 `Series`、`Season`、`Episode` 分别维护按 ID 索引的静态实例 cache。构造函数命中同 ID 时直接返回已有对象，确保同一资源在进程内只有一个领域实例。初始化失败时必须从 cache 删除该实例，否则后续读取会永久复用 rejected Promise。
 
-领域类实现 `ServerToPromise<T>`：`id`、`path`、`title`、`sort` 等属性都是从初始化 Promise 派生的 Promise。三者继承 `data/entity.ts` 的 `Entity<S, V>`（`S` 为配置形状，`V` 为对外 DTO），用 `field()` 按需派生并缓存字段 Promise，调用方仍可并行等待多个属性。写操作使用 `write()` 覆盖或 `mutate()` 原地修改，两者都会让对应字段缓存失效；配置被原地改写（刷新、重新解析默认值）后调用 `invalidate()` 重新派生，Series/Season 会同时重建季/集关系 Promise。子级关系在构造时即开始派生，缓存回收等清理路径依赖这一时机。
+领域类实现 `ServerToPromise<T>`：`id`、`path`、`title`、`sort` 等属性都是从初始化 Promise 派生的 Promise。三者继承 `data/entity.ts` 的 `Entity<S, V>`（`S` 为配置形状，`V` 为对外 DTO），用 `field()` 按需派生并缓存字段 Promise，调用方仍可并行等待多个属性。**配置值与对外值不一致的字段必须声明在子类的 `readers` 映射里**（系列 `images` 的排序与路径拼接、季/集的绝对路径），不要只写在 getter 中：`getValue()` 通过 `collect()` 统一取值，映射缺席时 DTO 会漏出 `{ path, sort }` 这类存储结构。写操作使用 `write()` 覆盖或 `mutate()` 原地修改，两者都会让对应字段缓存失效；配置被原地改写（刷新、重新解析默认值）后调用 `invalidate()` 重新派生，Series/Season 会同时重建季/集关系 Promise。子级关系在构造时即开始派生，缓存回收等清理路径依赖这一时机。
 
 - `getPromise()` / `getConfig()` 暴露实体初始化及其配置对象。
 - `getValue()` 等待全部属性并返回普通 DTO；Series/Season 的完整版会递归装配子级。

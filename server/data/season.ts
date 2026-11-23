@@ -5,7 +5,7 @@ import type { Season as ISeason } from '~types/videos';
 import type { Series } from './series';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Episode } from './episode';
-import { Entity, type ServerToPromise } from './entity';
+import { Entity, type FieldReaders, type ServerToPromise } from './entity';
 
 type SeasonValue = Omit<ISeason, 'episodes'>;
 
@@ -84,6 +84,14 @@ export class Season extends Entity<ISeason, SeasonValue> implements ServerToProm
 	private hashId!: string;
 	private episodeSortQueue: Promise<void> = Promise.resolve();
 	private episodePromise?: Promise<Episode[]>;
+
+	/**
+	 * 配置中的 `path` 只是季目录名，对外必须是绝对路径。
+	 * 该映射必须留在字段定义里，`getValue()` 通过 `collect()` 取值时才会生效。
+	 */
+	protected readonly readers: FieldReaders<ISeason, SeasonValue> = {
+		path: (store) => path.resolve(this.series.getDirectory(), store.path),
+	};
 
 	/**
 	 * @param seasonDirectory 季目录名
@@ -179,7 +187,7 @@ export class Season extends Entity<ISeason, SeasonValue> implements ServerToProm
 	}
 
 	public get path() {
-		return this.field('path', (store) => path.resolve(this.series.getDirectory(), store.path));
+		return this.field('path');
 	}
 
 	public get title() {

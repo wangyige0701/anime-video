@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Entity } from '~server/data/entity';
+import { Entity, type FieldReaders } from '~server/data/entity';
 
 interface DemoStore {
 	id: string;
@@ -14,6 +14,11 @@ interface DemoValue {
 }
 
 class Demo extends Entity<DemoStore, DemoValue> {
+	/** 与领域类一致：需要变换的字段写在字段映射里，而不是传给单次 field() 调用 */
+	protected readonly readers: FieldReaders<DemoStore, DemoValue> = {
+		tags: (store) => store.tags.join(','),
+	};
+
 	constructor(private readonly raw: DemoStore) {
 		super();
 		this.store = Promise.resolve(raw);
@@ -28,7 +33,7 @@ class Demo extends Entity<DemoStore, DemoValue> {
 	}
 
 	public get tags() {
-		return this.field('tags', (store) => store.tags.join(','));
+		return this.field('tags');
 	}
 
 	public async rename(title: string) {
@@ -69,9 +74,17 @@ describe('Entity 字段派生', () => {
 		expect(demo.id).toBe(demo.id);
 	});
 
-	it('读取时按 read 映射存储值为对外值', async () => {
+	it('读取时按字段映射把配置值转换成对外值', async () => {
 		const demo = createDemo();
 		expect(await demo.tags).toBe('a,b');
+	});
+
+	it('collect 同样应用字段映射，DTO 不会拿到原始配置值', async () => {
+		const demo = createDemo();
+		const value = await demo.read(['id', 'tags']);
+		expect(value.tags).toBe('a,b');
+		// 原始配置是数组，DTO 必须是映射后的字符串，否则接口会漏出存储结构。
+		expect(Array.isArray(value.tags)).toBe(false);
 	});
 
 	it('write 后旧 Promise 保留旧值，新读取拿到新值', async () => {

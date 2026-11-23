@@ -94,18 +94,22 @@ function isTypesSame() {
 	@include metadata-content;
 	cursor: pointer;
 	padding: 0;
+	flex: 1;
+	align-items: stretch;
 }
 
 .placeholder {
 	@include metadata-placeholder;
+	flex: 1;
 }
 
 .types-container {
 	cursor: pointer;
-	max-width: calc(100% + 10px);
+	flex: 1;
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
+	align-content: center;
 	gap: 10px;
 	padding: 10px;
 	border-radius: 5px;

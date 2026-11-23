@@ -172,9 +172,9 @@ Series 初始化会验证数据文件和系列目录都在允许范围内，然�
 
 series 图片仅扫描系列目录直接包含的允许扩展名文件。刷新时会删除磁盘上已不存在的图片；已有图片沿用旧 sort，新图片从历史最大 sort 之后追加。对外 `images` 按 sort 排列并转换为绝对路径，配置文件中只保存 basename 和 sort。
 
-`updateImages()` 使用调用方给出的有效图片名重建并从 1 排序；没有任何有效图片时保持原配置。`addImages()` 验证文件与扩展名后追加到当前最大 sort 之后；`removeImages()` 按 basename 删除并把剩余项从 1 重新排序。图片参数是 series 目录内名称而非任意绝对路径。
+`updateImages()` 使用调用方给出的有效图片名重建并从 1 排序；没有任何有效图片时保持原配置。`addImages()` 验证文件与扩展名后追加到当前最大 sort 之后，已存在的 basename 与同一批次内的重复项直接跳过（追加幂等）；`removeImages()` 按 basename 删除并把剩余项从 1 重新排序。图片参数是 series 目录内名称而非任意绝对路径。
 
-Series 还负责 title、description、date、types、status 更新。`addTypes()` 当前直接追加，不自动去重；`removeTypes()` 删除匹配项；输入范围与 operation 合法性由装饰器 controller 校验。`updateTitle()` 会先去首尾空白，空字符串按默认标题（系列目录名）落库，与 `resolveTitleConfig()` 的 `config.title || name` 保持同一规则；Season 与 Episode 的 `updateTitle()` 同理，分别回落到季目录名与文件名去扩展名。
+Series 还负责 title、description、date、types、status 更新。`addTypes()` 按追加语义写入并对已有项去重（重复提交同一批类型不会产生重复值）；`removeTypes()` 删除匹配项；输入范围与 operation 合法性由装饰器 controller 校验。`updateTitle()` 会先去首尾空白，空字符串按默认标题（系列目录名）落库，与 `resolveTitleConfig()` 的 `config.title || name` 保持同一规则；Season 与 Episode 的 `updateTitle()` 同理，分别回落到季目录名与文件名去扩展名。
 
 ### Season 与 Episode 扫描
 

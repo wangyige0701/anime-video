@@ -226,6 +226,14 @@ describe('Video Data Config', () => {
 			expect(dataSeries[0].types).toEqual([1, 2]);
 			expect(dataSeries[0].status).toBe(1);
 
+			// 类型追加与移除：追加是幂等的，重复提交同一批类型不会写出重复项。
+			await series.addTypes([2, 3]);
+			expect(await series.types).toEqual([1, 2, 3]);
+			await series.addTypes([3, 3]);
+			expect(await series.types).toEqual([1, 2, 3]);
+			await series.removeTypes([3]);
+			expect(await series.types).toEqual([1, 2]);
+
 			// 标题传空（含纯空白）表示恢复默认标题，即系列目录名。
 			await series.updateTitle('   ');
 			expect(await series.title).toBe('视频1');
@@ -256,6 +264,12 @@ describe('Video Data Config', () => {
 					sort: 4,
 				},
 			]);
+			// 追加接口幂等：重复提交已存在的图片（含同一批次内的重复项）不新增记录
+			await series.addImages([path.basename(testImagePath1), path.basename(testImagePath1)]);
+			await series.getDataInstance().save();
+			const dataWithImageAgain = await getJsonFIle();
+			expect(dataWithImageAgain[0].images).toEqual(dataWithImage1[0].images);
+
 			await fs.unlink(testImagePath2);
 			await series.removeImages([path.basename(testImagePath2)]);
 			await series.getDataInstance().save();

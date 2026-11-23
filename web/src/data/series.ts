@@ -17,6 +17,7 @@ import {
 } from '@/api/series';
 import { getSeasons } from '@/api/season';
 import { applySeriesQuery, paginateSeries, type SeriesQuery } from '@/utils/seriesQuery';
+import { getSeriesImageName, mergeUnique } from '@/utils/series';
 import { Common, patchField, serverTitle, type FieldRefs } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
@@ -359,15 +360,25 @@ export class Series extends Common implements SeriesValue {
 	// endregion
 
 	// region 更新类型
+	/**
+	 * 追加类型，服务端为追加语义，本地按同一语义合并后去重
+	 */
 	public async addTypes(types: number[]) {
-		await patchField(this.values, this.requestStatus, 'types', types, () =>
+		await patchField(this.values, this.requestStatus, 'types', mergeUnique(this.types, types), () =>
 			updateSeriesTypes('add', this.id, types),
 		);
 	}
 
+	/**
+	 * 移除类型，服务端为过滤语义，本地同步剔除
+	 */
 	public async removeTypes(types: number[]) {
-		await patchField(this.values, this.requestStatus, 'types', types, () =>
-			updateSeriesTypes('remove', this.id, types),
+		await patchField(
+			this.values,
+			this.requestStatus,
+			'types',
+			this.types.filter((type) => !types.includes(type)),
+			() => updateSeriesTypes('remove', this.id, types),
 		);
 	}
 
@@ -379,22 +390,39 @@ export class Series extends Common implements SeriesValue {
 	// endregion
 
 	// region 更新图片
+	/**
+	 * 追加图片，入参为绝对路径，接口只接受系列目录内的文件名
+	 */
 	public async addImages(images: string[]) {
-		await patchField(this.values, this.requestStatus, 'images', images, () =>
-			updateSeriesImages('add', this.id, images),
+		await patchField(this.values, this.requestStatus, 'images', mergeUnique(this.images, images), () =>
+			updateSeriesImages('add', this.id, this.toImageNames(images)),
 		);
 	}
 
+	/**
+	 * 移除图片，入参为绝对路径，接口只接受系列目录内的文件名
+	 */
 	public async removeImages(images: string[]) {
-		await patchField(this.values, this.requestStatus, 'images', images, () =>
-			updateSeriesImages('remove', this.id, images),
+		await patchField(
+			this.values,
+			this.requestStatus,
+			'images',
+			this.images.filter((image) => !images.includes(image)),
+			() => updateSeriesImages('remove', this.id, this.toImageNames(images)),
 		);
 	}
 
+	/**
+	 * 覆盖图片顺序，入参为绝对路径，接口只接受系列目录内的文件名
+	 */
 	public async updateImages(images: string[]) {
 		await patchField(this.values, this.requestStatus, 'images', images, () =>
-			updateSeriesImages('set', this.id, images),
+			updateSeriesImages('set', this.id, this.toImageNames(images)),
 		);
+	}
+
+	private toImageNames(images: string[]) {
+		return images.map((image) => getSeriesImageName(this.path, image));
 	}
 	// endregion
 

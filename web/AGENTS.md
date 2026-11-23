@@ -100,7 +100,9 @@
 - 标题的 `settle` 固定传 `serverTitle`：标题允许清空，服务端会还原为默认标题（系列目录名、季目录名、文件名去扩展名）并返回实际标题，本地乐观写入的空串必须用返回值覆盖，不能停留在空白标题上。
 - `removeDate()` 在服务端删除成功后才清空本地日期；`removeStatus()` 先把本地状态设为 0，失败时回滚。
 
-图片和类型的 `add/remove/set` 方法会把调用方传入数组直接作为当前本地值，同时把操作类型传给 API；调用方必须传入期望展示的完整目标数组，不能假设 data 类会在旧数组上自动拼接或删除。`updateSort()` 只更新实体的 sort 字段，不会自动重排已挂载的 seasons/episodes 数组。
+图片和类型的 `add/remove/set` 三个方法语义与服务端接口一致，本地乐观值按同一语义计算后再发请求：`add` 在现有值上追加（`utils/series.ts` 的 `mergeUnique()` 去重并保留顺序）、`remove` 从现有值中剔除入参项、`set` 直接覆盖。调用方只传本次增删的项，不要自己先拼出目标数组。类型与图片的追加在服务端也是幂等的，重复提交已存在的项不会写出重复记录。
+
+图片方法的入参是绝对路径（与 `series.images` 一致），发请求前会经 `getSeriesImageName(directory, image)` 转成系列目录内的文件名：服务端图片接口只接受文件名，直接传绝对路径会因二次拼接而查不到文件并被静默过滤。返回值仍以绝对路径写回 `images`，调用方无需自行转换。`updateSort()` 只更新实体的 sort 字段，不会自动重排已挂载的 seasons/episodes 数组。
 
 季与集的拖拽排序遵循同一套约定：以 `updateSort()` 的布尔返回值判断服务端是否成功，成功后对同容器其余项调用 `syncSort()` 对齐本地 `sort`，再通过 `series.setSeasons()` / `season.setEpisodes()` 回写关系数组；列表必须先复制为本地镜像，不能把 `series.seasons` / `season.episodes` 直接交给拖拽库。`useDraggable` 必须显式传 `clone: (item) => item`：库默认用 JSON 深拷贝被拖拽项，而领域对象内部持有 `Ref`（循环引用）会在 `onStart` 抛错并让失败快照失效。实现细节见 `docs/modules/web/detail-episode-sort.md` 与 `docs/modules/web/detail-season-sort.md`。
 

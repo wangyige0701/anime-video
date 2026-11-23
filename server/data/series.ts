@@ -456,13 +456,24 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 			return;
 		}
 		await this.mutate('images', (images) => {
+			// 追加语义要幂等：已存在的图片不重复写入，批次内的同名项也只保留一个。
+			const names = new Set(images.map((image) => image.path));
+			const append = [] as string[];
+			for (const image of filterImages) {
+				const name = path.basename(image);
+				if (names.has(name)) {
+					continue;
+				}
+				names.add(name);
+				append.push(name);
+			}
+			if (!append.length) {
+				return;
+			}
 			const maxSort = Math.max(1, ...images.map((image) => image.sort));
 			images.push(
-				...filterImages.map((image, index) => {
-					return {
-						path: path.basename(image),
-						sort: maxSort + index + 1,
-					} satisfies SeriesImagesStoreStruct[number];
+				...append.map((name, index) => {
+					return { path: name, sort: maxSort + index + 1 } satisfies SeriesImagesStoreStruct[number];
 				}),
 			);
 		});
@@ -507,7 +518,14 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		if (!types.length) {
 			return;
 		}
-		await this.mutate('types', (current) => current.push(...types));
+		// 追加语义要幂等：重复提交同一批类型不能写出重复项。
+		await this.mutate('types', (current) => {
+			for (const type of types) {
+				if (!current.includes(type)) {
+					current.push(type);
+				}
+			}
+		});
 	}
 
 	public async removeTypes(types: number[]) {

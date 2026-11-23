@@ -54,58 +54,66 @@ export class SeriesController {
 	@Validate(() => seriesTitleSchema)
 	public async updateSeriesTitle(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { title } = ctx.request.body as { title: string };
-		return await this.commitSeries(ctx, seriesId, (series) => series.updateTitle(title), {
+		const series = await this.commitSeries(ctx, seriesId, (series) => series.updateTitle(title), {
 			event: 'series.title.updated',
 			message: 'Series title updated',
+			details: { title },
 		});
+		// 空标题会被数据层还原为默认标题，返回写入后的实际标题供前端同步。
+		return ctx.Success(await series.title);
 	}
 
 	@HttpMethod.Put('/series/:seriesId/description')
 	@Validate(() => seriesDescriptionSchema)
 	public async updateSeriesDescription(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { description } = ctx.request.body as { description: string };
-		return await this.commitSeries(ctx, seriesId, (series) => series.updateDescription(description), {
+		await this.commitSeries(ctx, seriesId, (series) => series.updateDescription(description), {
 			event: 'series.description.updated',
 			message: 'Series description updated',
 		});
+		return ctx.Success();
 	}
 
 	@HttpMethod.Put('/series/:seriesId/date')
 	@Validate(() => seriesDateSchema)
 	public async updateSeriesDate(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { year, month } = ctx.request.body as { year: number; month: number };
-		return await this.commitSeries(ctx, seriesId, (series) => series.updateDate(year, month), {
+		await this.commitSeries(ctx, seriesId, (series) => series.updateDate(year, month), {
 			event: 'series.date.updated',
 			message: 'Series date updated',
 			details: { year, month },
 		});
+		return ctx.Success();
 	}
 
 	@HttpMethod.Delete('/series/:seriesId/date')
 	public async removeSeriesDate(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
-		return await this.commitSeries(ctx, seriesId, (series) => series.removeDate(), {
+		await this.commitSeries(ctx, seriesId, (series) => series.removeDate(), {
 			event: 'series.date.deleted',
 			message: 'Series date deleted',
 		});
+		return ctx.Success();
 	}
 
 	@HttpMethod.Put('/series/:seriesId/status')
 	@Validate(() => seriesStatusSchema)
 	public async updateSeriesStatus(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { status } = ctx.request.body as { status: number };
-		return await this.commitSeries(ctx, seriesId, (series) => series.updateStatus(status), {
+		await this.commitSeries(ctx, seriesId, (series) => series.updateStatus(status), {
 			event: 'series.status.updated',
 			message: 'Series status updated',
 			details: { status },
 		});
+		return ctx.Success();
 	}
 
 	@HttpMethod.Delete('/series/:seriesId/status')
 	public async deleteSeriesStatus(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
-		return await this.commitSeries(ctx, seriesId, (series) => series.updateStatus(0), {
+		await this.commitSeries(ctx, seriesId, (series) => series.updateStatus(0), {
 			event: 'series.status.deleted',
 			message: 'Series status deleted',
 		});
+		return ctx.Success();
 	}
 
 	@HttpMethod.Put('/series/:seriesId/types/:operation')
@@ -157,10 +165,11 @@ export class SeriesController {
 	}
 
 	/**
-	 * 字段写入的公共流程：取实体 → 写入 → 等待落盘 → 记日志 → 返回成功。
+	 * 字段写入的公共流程：取实体 → 写入 → 等待落盘 → 记日志。
 	 *
-	 * 六个字段端点原先各自重复这五步，漏任何一步都会出现「接口已返回但未落盘」
-	 * 或「改了却没有日志」。集中到一处后，字段处理器只描述自己的写入动作与日志内容。
+	 * 六个字段端点原先各自重复这段流程，漏任何一步都会出现「接口已返回但未落盘」
+	 * 或「改了却没有日志」。集中到一处后，字段处理器只描述写入动作与日志内容，
+	 * 需要返回写入结果的端点（如标题）直接使用返回的实体实例。
 	 */
 	private async commitSeries(
 		ctx: Koa.Context,
@@ -172,7 +181,7 @@ export class SeriesController {
 		await apply(series);
 		await series.waitDataSave();
 		ctx.log.info({ event: log.event, seriesId, ...log.details }, log.message);
-		return ctx.Success();
+		return series;
 	}
 }
 

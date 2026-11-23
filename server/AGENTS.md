@@ -174,7 +174,7 @@ series 图片仅扫描系列目录直接包含的允许扩展名文件。刷新�
 
 `updateImages()` 使用调用方给出的有效图片名重建并从 1 排序；没有任何有效图片时保持原配置。`addImages()` 验证文件与扩展名后追加到当前最大 sort 之后；`removeImages()` 按 basename 删除并把剩余项从 1 重新排序。图片参数是 series 目录内名称而非任意绝对路径。
 
-Series 还负责 title、description、date、types、status 更新。`addTypes()` 当前直接追加，不自动去重；`removeTypes()` 删除匹配项；输入范围与 operation 合法性由装饰器 controller 校验。
+Series 还负责 title、description、date、types、status 更新。`addTypes()` 当前直接追加，不自动去重；`removeTypes()` 删除匹配项；输入范围与 operation 合法性由装饰器 controller 校验。`updateTitle()` 会先去首尾空白，空字符串按默认标题（系列目录名）落库，与 `resolveTitleConfig()` 的 `config.title || name` 保持同一规则；Season 与 Episode 的 `updateTitle()` 同理，分别回落到季目录名与文件名去扩展名。
 
 ### Season 与 Episode 扫描
 
@@ -207,7 +207,8 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 - `DirectoryController` 负责允许根目录读取和设置。
 - `SeriesController` 负责列表、详情、刷新及 series 可编辑字段。
 - series 的 title、description、date、status 字段端点保持「一个字段一个接口」，公共流程由 `SeriesController.commitSeries()` 统一完成「取实体 → 写入 → `waitDataSave()` → 日志」，参数模式集中在 `src/schema/series-fields.ts`。新增字段写接口时复用这两处，不要复制流程或另写一套校验。
-- `SeasonController`、`EpisodeController` 负责按父级/ID 读取和 title/sort 更新。
+- `SeasonController`、`EpisodeController` 负责按父级/ID 读取和 title/sort 更新，参数模式分别位于 `src/schema/season-fields.ts`、`src/schema/episode-fields.ts`。三者共用的约定是：参数模式集中在 `src/schema/`（不写进装饰器）、`@Validate()` 只负责解析与校验、控制器不重复实现校验规则。
+- 标题端点（series/season/episode）在写入后返回 `ctx.Success(实际标题)`：空标题会被数据层还原为默认标题，前端依赖该返回值同步本地值。不要改回返回 `null`。
 - request body 通过 `@Validate()` 校验；路由 ID 通过 `@Inject()` 注入，operation 在注入时额外使用 `validateOperation` 转换并校验。
 - 修改接口在领域对象更新并 `waitDataSave()` 后记录 `ctx.log.info()`，再返回 `ctx.Success()`。
 

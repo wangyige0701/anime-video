@@ -215,8 +215,9 @@ export class Season extends Entity<ISeason, SeasonValue> implements ServerToProm
 		await this.write('sort', sort);
 	}
 
+	/** 更新季标题；空标题（含纯空白）恢复默认标题，即季目录名 */
 	public async updateTitle(title: string) {
-		await this.write('title', title);
+		await this.write('title', title.trim() || this.seasonName);
 	}
 
 	public async updateEpisodeSort(getTarget: () => Episode | Promise<Episode>, position: number) {

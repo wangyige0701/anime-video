@@ -3,6 +3,7 @@ import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-us
 import { ServerRoot } from '~shared/server-route-config';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
+import { seasonSortSchema, seasonTitleSchema } from '~server/src/schema/season-fields';
 
 @Singleton()
 @Controller(ServerRoot.DATA)
@@ -22,7 +23,7 @@ export class SeasonController {
 	}
 
 	@HttpMethod.Put('/season/:seasonId/sort')
-	@Validate((z) => z.object({ sort: z.number().min(1) }))
+	@Validate(() => seasonSortSchema)
 	public async updateSeasonSort(@Context() ctx: Koa.Context, @Inject('seasonId') seasonId: string) {
 		const { sort } = ctx.request.body as { sort: number };
 		const season = await Series.getSeasonById(seasonId);
@@ -33,13 +34,14 @@ export class SeasonController {
 	}
 
 	@HttpMethod.Put('/season/:seasonId/title')
-	@Validate((z) => z.object({ title: z.string().min(1) }))
+	@Validate(() => seasonTitleSchema)
 	public async updateSeasonTitle(@Context() ctx: Koa.Context, @Inject('seasonId') seasonId: string) {
 		const { title } = ctx.request.body as { title: string };
 		const season = await Series.getSeasonById(seasonId);
 		await season.updateTitle(title);
 		await season.waitDataSave();
-		ctx.log.info({ event: 'season.title.updated', seasonId }, 'Season title updated');
-		return ctx.Success();
+		ctx.log.info({ event: 'season.title.updated', seasonId, title }, 'Season title updated');
+		// 空标题会被数据层还原为默认标题，返回实际标题供前端同步。
+		return ctx.Success(await season.title);
 	}
 }

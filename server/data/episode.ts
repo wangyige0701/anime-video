@@ -167,8 +167,10 @@ export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromi
 		await this.write('sort', sort);
 	}
 
+	/** 更新集标题；空标题（含纯空白）恢复默认标题，即文件名去掉扩展名 */
 	public async updateTitle(title: string) {
-		await this.write('title', title);
+		const fallback = path.basename(this.episodeName, path.extname(this.episodeName));
+		await this.write('title', title.trim() || fallback);
 	}
 	// endregion
 

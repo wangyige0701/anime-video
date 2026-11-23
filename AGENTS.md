@@ -156,6 +156,16 @@ pnpm exec vitest run
 
 根 Vitest 配置发现 `**/test/**/*.test.ts`，排除 `dev/**`，并为数据层测试设置 `SERVER_VIDEO_CONFIG_PREFIX=test` 和 `SERVER_DATA_FILE_SAVE_DELAY=0`。`test/setup.ts` 在测试文件导入前把 `shared/config-parser` 的结果挂到全局 `__APP_CONFIG__`，因为服务端模块（如 `server/data/data.ts`、`server/data/common.ts`）在导入阶段就会读取它。`server/package.json` 当前没有可用的正式 `test` 脚本，不能把其中的占位失败脚本当作验证命令。
 
+### 可编辑文本字段的空值语义（强制）
+
+系列、季、集标题与系列描述都允许用户清空，这属于设计内的正常状态，不是非法输入：
+
+- **标题为空 = 恢复默认标题**。系列默认标题是系列目录名，季是季目录名，集是文件名去掉扩展名。数据层在 `updateTitle()` 内统一归一化（`title.trim() || 默认标题`），控制器只负责把写入后的实际标题返回给前端，前端用返回值覆盖本地值。不要在任何一层为「标题不能为空」报错，也不要让空标题落库。
+- **描述为空 = 清空描述**，前端不得拦截空描述提交。
+- **字符串统一去首尾空白**：`title`、`description` 在 API 参数模式里用 `z.string().trim()`，校验的是去空白后的值；前端提交前可以再 trim 一次，但服务端不依赖前端。
+- 默认标题的来源必须与 `resolveTitleConfig()` / `resolveSeasonConfig()` / `resolveEpisodeConfig()` 的解析规则一致，避免「写入的默认值」和「刷新后解析出的默认值」不同。
+- 新增可编辑文本字段时，按同一语义处理，并在变更记录中写明空值含义。
+
 ### 测试用例要求（强制）
 
 新增或修改功能时必须同时补齐测试用例，边写边测，不能把测试留到功能完成之后：

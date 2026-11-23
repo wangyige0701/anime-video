@@ -404,8 +404,14 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 	}
 
 	// region 更新数据方法，更新后会自动派生对应 get 属性
+	/**
+	 * 更新系列标题。
+	 *
+	 * 空字符串（含纯空白）表示恢复默认标题，即系列目录名。与 `resolveTitleConfig()`
+	 * 的 `config.title || name` 同一规则，保证写入结果与刷新后的解析结果一致。
+	 */
 	public async updateTitle(title: string) {
-		await this.write('title', title);
+		await this.write('title', title.trim() || (await this.name));
 	}
 
 	public async updateDescription(description: string) {

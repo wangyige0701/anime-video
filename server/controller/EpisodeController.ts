@@ -3,6 +3,7 @@ import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-us
 import { ServerRoot } from '~shared/server-route-config';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
+import { episodeSortSchema, episodeTitleSchema } from '~server/src/schema/episode-fields';
 
 @Singleton()
 @Controller(ServerRoot.DATA)
@@ -22,7 +23,7 @@ export class EpisodeController {
 	}
 
 	@HttpMethod.Put('/episode/:episodeId/sort')
-	@Validate((z) => z.object({ sort: z.number().int().min(1) }))
+	@Validate(() => episodeSortSchema)
 	public async updateEpisodeSort(@Context() ctx: Koa.Context, @Inject('episodeId') episodeId: string) {
 		const { sort } = ctx.request.body as { sort: number };
 		const episode = await Series.getEpisodeById(episodeId);
@@ -33,13 +34,14 @@ export class EpisodeController {
 	}
 
 	@HttpMethod.Put('/episode/:episodeId/title')
-	@Validate((z) => z.object({ title: z.string().min(1) }))
+	@Validate(() => episodeTitleSchema)
 	public async updateEpisodeTitle(@Context() ctx: Koa.Context, @Inject('episodeId') episodeId: string) {
 		const { title } = ctx.request.body as { title: string };
 		const episode = await Series.getEpisodeById(episodeId);
 		await episode.updateTitle(title);
 		await episode.waitDataSave();
-		ctx.log.info({ event: 'episode.title.updated', episodeId }, 'Episode title updated');
-		return ctx.Success();
+		ctx.log.info({ event: 'episode.title.updated', episodeId, title }, 'Episode title updated');
+		// 空标题会被数据层还原为默认标题，返回实际标题供前端同步。
+		return ctx.Success(await episode.title);
 	}
 }

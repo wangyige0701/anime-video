@@ -7,15 +7,22 @@ import {
 } from '~server/src/schema/series-fields';
 
 describe('系列字段写入参数', () => {
-	it('标题去掉首尾空白后必须非空', () => {
+	it('标题去掉首尾空白后原样保留', () => {
 		const result = seriesTitleSchema.safeParse({ title: '  某系列  ' });
 		expect(result.success).toBe(true);
 		expect(result.data).toEqual({ title: '某系列' });
 	});
 
-	it('空标题、纯空白标题与非字符串都被拒绝', () => {
-		expect(seriesTitleSchema.safeParse({ title: '' }).success).toBe(false);
-		expect(seriesTitleSchema.safeParse({ title: '   ' }).success).toBe(false);
+	it('空标题与纯空白标题是合法输入，交由数据层还原默认标题', () => {
+		const empty = seriesTitleSchema.safeParse({ title: '' });
+		expect(empty.success).toBe(true);
+		expect(empty.data).toEqual({ title: '' });
+		const blank = seriesTitleSchema.safeParse({ title: '   ' });
+		expect(blank.success).toBe(true);
+		expect(blank.data).toEqual({ title: '' });
+	});
+
+	it('标题缺失或非字符串仍然被拒绝', () => {
 		expect(seriesTitleSchema.safeParse({ title: 123 }).success).toBe(false);
 		expect(seriesTitleSchema.safeParse({}).success).toBe(false);
 	});

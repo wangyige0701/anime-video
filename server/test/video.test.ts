@@ -226,6 +226,11 @@ describe('Video Data Config', () => {
 			expect(dataSeries[0].types).toEqual([1, 2]);
 			expect(dataSeries[0].status).toBe(1);
 
+			// 标题传空（含纯空白）表示恢复默认标题，即系列目录名。
+			await series.updateTitle('   ');
+			expect(await series.title).toBe('视频1');
+			await series.updateTitle('测试视频标题');
+
 			// 测试系列图片
 			await fs.writeFile(testImagePath1, '');
 			await fs.writeFile(testImagePath2, '');
@@ -321,6 +326,11 @@ describe('Video Data Config', () => {
 			const expectSeasonId = await season.id;
 			expect(dataSeason[0].seasons.find((item: any) => item.id === expectSeasonId)?.title).toBe('测试第一季');
 
+			// 季标题为空时恢复默认标题，即季目录名。
+			await season.updateTitle('');
+			expect(await season.title).toBe('第一季');
+			await season.updateTitle('测试第一季');
+
 			const episode1 = new Episode('1.mp4', season);
 			// 移动到第 2 位：1.mp4 sort 2，2.mp4 sort 1。
 			await episode1.updateSort(2);
@@ -374,6 +384,11 @@ describe('Video Data Config', () => {
 			const expectEpisodeId = await episode.id;
 			const seasonData = dataEpisode[0].seasons.find((item: any) => item.id === expectSeasonId);
 			expect(seasonData?.episodes.find((item: any) => item.id === expectEpisodeId)?.title).toBe('测试1');
+
+			// 集标题为空时恢复默认标题，即文件名去掉扩展名。
+			await episode.updateTitle('  ');
+			expect(await episode.title).toBe('1');
+			await episode.updateTitle('测试1');
 
 			// 非视频文件不能被错误地登记为剧集，新增的视频文件则必须能被扫描到。
 			const temporaryVideoPath = path.join(dir, '视频1', '第一季', 'temporary.webm');

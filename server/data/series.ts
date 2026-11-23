@@ -5,9 +5,9 @@ import type { Series as ISeries, SeriesImagesStoreStruct, ServerToPromise } from
 import { NotFoundError } from '~server/src/error/notFound';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Data } from './data';
-import { Common } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
+import { Entity } from './entity';
 import { mapWithConcurrency } from '~server/src/utils/concurrency';
 
 const SERVER = __APP_CONFIG__.server;
@@ -22,17 +22,31 @@ const DATA_FILE = SERVER.videoConfigPrefix + SERVER.dataFile;
 const SERIES_SCAN_CONCURRENCY = 8;
 
 type SeriesStore = Omit<ISeries, 'images'> & { images: SeriesImagesStoreStruct };
+type SeriesValue = Omit<ISeries, 'seasons'>;
 
 /**
  * Series / Season / Episode 在更新属性时，没有去等待文件写入完成，因为数据记录在内存中完成，写文件是延迟操作，所以为了尽快完成数据更新，文件写入会放到后自动执行
  */
-export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'seasons'> {
+export class Series extends Entity<SeriesStore, SeriesValue> implements ServerToPromise<SeriesValue> {
 	/**
 	 * 视频系列缓存，key 为视频系列 id，value 为视频系列实例
 	 */
 	protected static cache: Map<string, Series> = new Map();
 	// 首次扫描完成后，普通读取复用索引；文件系统变化由刷新接口主动对账。
 	private static isIndexed = false;
+
+	/** 对外 DTO 字段，顺序与 `getValue()` 的键顺序一致 */
+	private static readonly VALUE_FIELDS = [
+		'id',
+		'path',
+		'name',
+		'title',
+		'images',
+		'description',
+		'date',
+		'types',
+		'status',
+	] as const;
 
 	public static async clearCache() {
 		for (const [_key, series] of this.cache) {
@@ -237,23 +251,12 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		throw new NotFoundError('Not Found', `没有找到 id 为 ${episodeId} 的视频集`, 'text/plain');
 	}
 
-	private _id!: Promise<ISeries['id']>;
-	private _path!: Promise<ISeries['path']>;
-	private _name!: Promise<ISeries['name']>;
-	private _title!: Promise<ISeries['title']>;
-	private _images!: Promise<ISeries['images']>;
-	private _description!: Promise<ISeries['description']>;
-	private _date!: Promise<ISeries['date']>;
-	private _types!: Promise<ISeries['types']>;
-	private _status!: Promise<ISeries['status']>;
-	private _seasons!: Promise<Season[]>;
-
 	private seriesName!: string;
 	private directory!: string;
 	private dataFile!: string;
 	private hashId!: string;
-	private promise!: Promise<SeriesStore>;
 	private seasonSortQueue: Promise<void> = Promise.resolve();
+	private seasonPromise?: Promise<Season[]>;
 
 	/**
 	 * @param rootDirectory 视频系列根目录绝对路径
@@ -276,89 +279,35 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		this.dataFile = path.resolve(this.directory, '..', DATA_FILE);
 
 		const { resolve, reject, promise } = createPromise<SeriesStore>();
-		this.promise = promise;
+		this.store = promise;
+		// 季关系在构造时即开始派生（与原 registerSeasons 的时机一致），
+		// 缓存回收等清理路径读取的是已完成或进行中的扫描结果。
+		this.seasonPromise = promise.then(() => Season.getAllSeasons(this));
 		const fail: PromiseReject = (error) => {
 			// 初始化失败的 Promise 不能留在缓存中，否则后续访问会一直复用失败结果。
 			Series.cache.delete(id);
 			reject(error);
 		};
 
-		// 需要在构造函数中立刻注册
-		this.register();
-
 		this.initialize(resolve, fail).catch(fail);
-	}
-
-	private register() {
-		this.registerId();
-		this.registerPath();
-		this.registerName();
-		this.registerTitle();
-		this.registerImages();
-		this.registerDescription();
-		this.registerDate();
-		this.registerTypes();
-		this.registerStatus();
-		this.registerSeasons();
 	}
 
 	/**
 	 * 获取视频系列信息，包含视频季和视频集信息
 	 */
 	public async getValue(): Promise<ISeries> {
-		const [id, path, name, title, images, description, date, types, status, seasons] = await Promise.all([
-			this.id,
-			this.path,
-			this.name,
-			this.title,
-			this.images,
-			this.description,
-			this.date,
-			this.types,
-			this.status,
-			Promise.all((await this.seasons).map((season) => season.getValue())),
+		const [value, seasons] = await Promise.all([
+			this.collect(Series.VALUE_FIELDS),
+			this.seasons.then((seasons) => Promise.all(seasons.map((season) => season.getValue()))),
 		]);
-		return {
-			id,
-			path,
-			name,
-			title,
-			images,
-			description,
-			date,
-			types,
-			status,
-			seasons,
-		};
+		return { ...value, seasons };
 	}
 
 	/**
 	 * 获取视频系列信息，不包含视频季信息
 	 */
-	public async getValueOmitSeasons(): Promise<Omit<ISeries, 'seasons'>> {
-		// 重复处理，避免此处调用 season 的数据获取方法
-		const [id, path, name, title, images, description, date, types, status] = await Promise.all([
-			this.id,
-			this.path,
-			this.name,
-			this.title,
-			this.images,
-			this.description,
-			this.date,
-			this.types,
-			this.status,
-		]);
-		return {
-			id,
-			path,
-			name,
-			title,
-			images,
-			description,
-			date,
-			types,
-			status,
-		};
+	public async getValueOmitSeasons(): Promise<SeriesValue> {
+		return await this.collect(Series.VALUE_FIELDS);
 	}
 
 	public toJSON() {
@@ -377,7 +326,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	}
 
 	public getConfig() {
-		return this.promise;
+		return this.store;
 	}
 
 	public getDataInstance() {
@@ -395,62 +344,72 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * 获取系列初始化的 promise 示例，可以判断内部是否出现异常
 	 */
 	public getPromise() {
-		return this.promise;
+		return this.store;
 	}
 
 	// region 属性代理
 	public get id() {
-		return this._id;
+		return this.field('id');
 	}
 
 	public get path() {
-		return this._path;
+		return this.field('path');
 	}
 
 	public get name() {
-		return this._name;
+		return this.field('name');
 	}
 
 	public get title() {
-		return this._title;
+		return this.field('title');
 	}
 
 	public get images() {
-		return this._images;
+		// 排序基于副本，避免读取时改写配置数组顺序。
+		return this.field('images', (store) =>
+			store.images
+				.slice()
+				.sort((a, b) => a.sort - b.sort)
+				.map((image) => path.join(this.directory, image.path)),
+		);
 	}
 
 	public get description() {
-		return this._description;
+		return this.field('description');
 	}
 
 	public get date() {
-		return this._date;
+		return this.field('date');
 	}
 
 	public get types() {
-		return this._types;
+		return this.field('types');
 	}
 
 	public get status() {
-		return this._status;
+		return this.field('status');
 	}
 
 	public get seasons() {
-		return this._seasons;
+		return (this.seasonPromise ??= this.store.then(() => Season.getAllSeasons(this)));
 	}
 	// endregion
 
-	// region 更新数据方法，更新后会自动注册并更新对应的 get 属性代理
+	/** 配置被原地改写后，系列字段与季关系都需要重新派生 */
+	protected invalidate() {
+		// 关系 Promise 与字段缓存一起失效，并按构造时的时机重新开始扫描。
+		this.seasonPromise = this.store.then(() => Season.getAllSeasons(this));
+		// 字段缓存由基类按 key 管理。
+		super.invalidate();
+	}
+
+	// region 更新数据方法，更新后会自动派生对应 get 属性
 	public async updateTitle(title: string) {
-		const config = await this.promise;
-		config.title = title;
-		this.registerTitle();
+		await this.write('title', title);
 	}
 
 	public async updateDescription(description: string) {
-		const config = await this.promise;
-		config.description = description;
-		this.registerDescription();
+		await this.write('description', description);
 	}
 
 	/**
@@ -459,29 +418,16 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	 * @param imageNames 图片名称数组，仅更新位于当前系列目录下的图片，不要传绝对路径
 	 */
 	public async updateImages(imageNames: string[]) {
-		const config = await this.promise;
-		const filterImages = [] as string[];
-		for (const image of imageNames) {
-			if (!image) {
-				continue;
-			}
-			const imagePath = path.join(this.directory, image);
-			if (!(await isFileExist(imagePath))) {
-				continue;
-			}
-			const extension = path.extname(imagePath);
-			if (!SERVER.allowedImageExtensions.includes(extension)) {
-				continue;
-			}
-			filterImages.push(image);
-		}
+		const filterImages = await this.filterImageNames(imageNames);
 		if (!filterImages.length) {
 			return;
 		}
-		config.images = filterImages.map((image, index) => {
-			return { path: path.basename(image), sort: index + 1 } satisfies SeriesImagesStoreStruct[number];
-		});
-		this.registerImages();
+		await this.write(
+			'images',
+			filterImages.map((image, index) => {
+				return { path: path.basename(image), sort: index + 1 } satisfies SeriesImagesStoreStruct[number];
+			}),
+		);
 	}
 
 	/**
@@ -493,7 +439,91 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 		if (!imageNames.length) {
 			return;
 		}
-		const config = await this.promise;
+		const filterImages = await this.filterImageNames(imageNames);
+		if (!filterImages.length) {
+			return;
+		}
+		await this.mutate('images', (images) => {
+			const maxSort = Math.max(1, ...images.map((image) => image.sort));
+			images.push(
+				...filterImages.map((image, index) => {
+					return {
+						path: path.basename(image),
+						sort: maxSort + index + 1,
+					} satisfies SeriesImagesStoreStruct[number];
+				}),
+			);
+		});
+	}
+
+	/**
+	 * 从视频系列中移除指定图片
+	 *
+	 * @param imageNames 图片名称数组，仅删除位于当前系列目录下的图片，不要传绝对路径
+	 */
+	public async removeImages(imageNames: string[]) {
+		if (!imageNames.length) {
+			return;
+		}
+		const filterImages = imageNames.filter((image) => image).map((image) => path.basename(image));
+		const oldImages = await this.imagesRaw();
+		const newImages = [] as SeriesImagesStoreStruct;
+		for (const image of oldImages) {
+			if (!filterImages.find((img) => img === image.path)) {
+				newImages.push({ path: image.path, sort: newImages.length + 1 });
+			}
+		}
+		if (oldImages.length !== newImages.length) {
+			await this.write('images', newImages);
+		}
+	}
+
+	public async updateDate(year: number, month: number) {
+		await this.write('date', [year, month]);
+	}
+
+	public async removeDate() {
+		await this.write('date', []);
+	}
+
+	public async updateTypes(types: number[]) {
+		await this.write('types', types);
+	}
+
+	public async addTypes(types: number[]) {
+		if (!types.length) {
+			return;
+		}
+		await this.mutate('types', (current) => current.push(...types));
+	}
+
+	public async removeTypes(types: number[]) {
+		if (!types.length) {
+			return;
+		}
+		await this.write(
+			'types',
+			(await this.store).types.filter((type) => !types.includes(type)),
+		);
+	}
+
+	public async updateStatus(status: number) {
+		await this.write('status', status);
+	}
+
+	/**
+	 * 读取配置中的原始图片记录（未拼接路径、未排序）。
+	 *
+	 * 仅内部增删逻辑使用，对外统一暴露 `images` 完整路径数组。
+	 */
+	private async imagesRaw() {
+		return (await this.store).images;
+	}
+
+	/**
+	 * 过滤掉不存在、非图片或不在当前系列目录下的图片名称。
+	 */
+	private async filterImageNames(imageNames: string[]) {
 		const filterImages = [] as string[];
 		for (const image of imageNames) {
 			if (!image) {
@@ -509,85 +539,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 			}
 			filterImages.push(image);
 		}
-		if (!filterImages.length) {
-			return;
-		}
-		const maxSort = Math.max(1, ...config.images.map((image) => image.sort));
-		config.images.push(
-			...filterImages.map((image, index) => {
-				return {
-					path: path.basename(image),
-					sort: maxSort + index + 1,
-				} satisfies SeriesImagesStoreStruct[number];
-			}),
-		);
-		this.registerImages();
-	}
-
-	/**
-	 * 从视频系列中移除指定图片
-	 *
-	 * @param imageNames 图片名称数组，仅删除位于当前系列目录下的图片，不要传绝对路径
-	 */
-	public async removeImages(imageNames: string[]) {
-		if (!imageNames.length) {
-			return;
-		}
-		const config = await this.promise;
-		const oldImages = config.images;
-		const filterImages = imageNames.filter((image) => image).map((image) => path.basename(image));
-		const newImages = [] as SeriesImagesStoreStruct;
-		for (const image of oldImages) {
-			if (!filterImages.find((img) => img === image.path)) {
-				newImages.push({ path: image.path, sort: newImages.length + 1 });
-			}
-		}
-		if (oldImages.length !== newImages.length) {
-			config.images = newImages;
-			this.registerImages();
-		}
-	}
-
-	public async updateDate(year: number, month: number) {
-		const config = await this.promise;
-		config.date = [year, month];
-		this.registerDate();
-	}
-
-	public async removeDate() {
-		const config = await this.promise;
-		config.date = [];
-		this.registerDate();
-	}
-
-	public async updateTypes(types: number[]) {
-		const config = await this.promise;
-		config.types = types;
-		this.registerTypes();
-	}
-
-	public async addTypes(types: number[]) {
-		if (!types.length) {
-			return;
-		}
-		const config = await this.promise;
-		config.types.push(...types);
-		this.registerTypes();
-	}
-
-	public async removeTypes(types: number[]) {
-		if (!types.length) {
-			return;
-		}
-		const config = await this.promise;
-		config.types = config.types.filter((type) => !types.includes(type));
-		this.registerTypes();
-	}
-
-	public async updateStatus(status: number) {
-		const config = await this.promise;
-		config.status = status;
-		this.registerStatus();
+		return filterImages;
 	}
 
 	public async updateSeasonSort(getTarget: () => Season | Promise<Season>, position: number) {
@@ -629,51 +581,6 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	}
 	// endregion
 
-	// region 注册数据方法，注册后会更新对应的 get 属性代理
-	private registerId() {
-		this._id = this.promise.then(({ id }) => id);
-	}
-
-	private registerPath() {
-		this._path = this.promise.then(({ path }) => path);
-	}
-
-	private registerName() {
-		this._name = this.promise.then(({ name }) => name);
-	}
-
-	private registerTitle() {
-		this._title = this.promise.then(({ title }) => title);
-	}
-
-	private registerImages() {
-		// 需要处理图片排序和路径拼接
-		this._images = this.promise.then(({ images }) =>
-			images.sort((a, b) => a.sort - b.sort).map((image) => path.join(this.directory, image.path)),
-		);
-	}
-
-	private registerSeasons() {
-		this._seasons = this.promise.then(() => Season.getAllSeasons(this));
-	}
-
-	private registerDescription() {
-		this._description = this.promise.then(({ description }) => description);
-	}
-
-	private registerDate() {
-		this._date = this.promise.then(({ date }) => date);
-	}
-
-	private registerTypes() {
-		this._types = this.promise.then(({ types }) => types);
-	}
-
-	private registerStatus() {
-		this._status = this.promise.then(({ status }) => status);
-	}
-	// endregion
-
 	// region 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
 	/**
 	 * 系列数据初始化，包括检测目录，读取配置文件，解析目录信息
@@ -712,7 +619,7 @@ export class Series extends Common implements Omit<ServerToPromise<ISeries>, 'se
 	private async refreshConfig() {
 		const configs = await this.getDataInstance().read();
 		await this.resolveSeriesConfig(configs);
-		this.register();
+		this.invalidate();
 	}
 
 	private async resolveSeriesConfig(configs: SeriesStore[]) {

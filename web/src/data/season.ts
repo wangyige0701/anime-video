@@ -1,22 +1,27 @@
-import type { Fn } from '@wang-yige/utils';
 import type { Season as ISeason } from '~types/videos';
+import type { Fn } from '@wang-yige/utils';
 import { ref, unref } from 'vue';
+import { Common, patchField, type FieldRefs } from './common';
 import { updateSeasonSort, updateSeasonTitle } from '@/api/season';
 import { Episode } from './episode';
-import { Common } from './common';
 
-export class Season extends Common implements Omit<ISeason, 'episodes'> {
+type SeasonValue = Omit<ISeason, 'episodes'>;
+
+export class Season extends Common implements SeasonValue {
 	protected static cache: Map<string, Season> = new Map();
 
-	private _id: Ref<ISeason['id']> = ref('');
-	private _sort: Ref<ISeason['sort']> = ref(0);
-	private _path: Ref<ISeason['path']> = ref('');
-	private _title: Ref<ISeason['title']> = ref('');
+	private values: FieldRefs<SeasonValue> = {
+		id: ref(''),
+		sort: ref(0),
+		path: ref(''),
+		title: ref(''),
+	};
+
+	private requestStatus = this.createStatus('title', 'sort');
+
 	private _episodes!: Ref<Episode[]>;
 	private episodesTrack!: Fn<[]>;
 	private episodesUpdate!: Fn<[Episode[]]>;
-
-	private useStatus = useVueStatusRef('title', 'sort');
 
 	constructor(season: ISeason) {
 		if (Season.cache.has(season.id)) {
@@ -25,10 +30,9 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 
 		super();
 
-		this._id.value = season.id;
-		this._sort.value = season.sort;
-		this._path.value = season.path;
-		this._title.value = season.title;
+		for (const key of Object.keys(this.values) as Array<keyof SeasonValue>) {
+			(this.values[key] as Ref<unknown>).value = season[key];
+		}
 
 		if (!Season.hasBindCache(season.id)) {
 			const { ref, track, update } = Season.createRef<Episode>();
@@ -52,19 +56,19 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 
 	// region 属性访问器
 	public get id() {
-		return unref(this._id);
+		return this.values.id.value;
 	}
 
 	public get sort() {
-		return unref(this._sort);
+		return this.values.sort.value;
 	}
 
 	public get path() {
-		return unref(this._path);
+		return this.values.path.value;
 	}
 
 	public get title() {
-		return unref(this._title);
+		return this.values.title.value;
 	}
 
 	public get episodes() {
@@ -75,25 +79,17 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 
 	// region 属性更新时的响应式状态
 	public get titleRef() {
-		return this.useStatus.title;
+		return this.requestStatus.get('title');
 	}
 
 	public get sortRef() {
-		return this.useStatus.sort;
+		return this.requestStatus.get('sort');
 	}
 	// endregion
 
 	// region 更新标题
 	public async updateTitle(title: string) {
-		const oldValue = this._title.value;
-		this._title.value = title;
-		this.useStatus.onTitle();
-		try {
-			await updateSeasonTitle(this.id, title);
-		} catch (error) {
-			this._title.value = oldValue;
-		}
-		this.useStatus.offTitle();
+		await patchField(this.values, this.requestStatus, 'title', title, () => updateSeasonTitle(this.id, title));
 	}
 	// endregion
 
@@ -104,18 +100,7 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	 * @returns 请求是否成功；失败时已回滚本地 sort，调用方可据此恢复列表顺序
 	 */
 	public async updateSort(sort: number) {
-		const oldValue = this._sort.value;
-		this._sort.value = sort;
-		this.useStatus.onSort();
-		try {
-			await updateSeasonSort(this.id, sort);
-			return true;
-		} catch (error) {
-			this._sort.value = oldValue;
-			return false;
-		} finally {
-			this.useStatus.offSort();
-		}
+		return await patchField(this.values, this.requestStatus, 'sort', sort, () => updateSeasonSort(this.id, sort));
 	}
 
 	/**
@@ -125,7 +110,7 @@ export class Season extends Common implements Omit<ISeason, 'episodes'> {
 	 * 避免排序字段与界面顺序长期不一致。
 	 */
 	public syncSort(sort: number) {
-		this._sort.value = sort;
+		this.values.sort.value = sort;
 	}
 	// endregion
 }

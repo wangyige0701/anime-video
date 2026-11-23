@@ -1,18 +1,20 @@
 import type { Episode as IEpisode } from '~types/videos';
-import { ref, unref } from 'vue';
-import { Common } from './common';
+import { ref } from 'vue';
+import { Common, patchField, type FieldRefs } from './common';
 import { updateEpisodeSort, updateEpisodeTitle } from '@/api/episode';
 
 export class Episode extends Common implements IEpisode {
 	protected static cache: Map<string, Episode> = new Map();
 
-	private _id: Ref<IEpisode['id']> = ref('');
-	private _sort: Ref<IEpisode['sort']> = ref(0);
-	private _path: Ref<IEpisode['path']> = ref('');
-	private _extension: Ref<IEpisode['extension']> = ref('');
-	private _title: Ref<IEpisode['title']> = ref('');
+	private values: FieldRefs<IEpisode> = {
+		id: ref(''),
+		sort: ref(0),
+		path: ref(''),
+		extension: ref(''),
+		title: ref(''),
+	};
 
-	private useStatus = useVueStatusRef('title', 'sort');
+	private requestStatus = this.createStatus('title', 'sort');
 
 	constructor(episode: IEpisode) {
 		if (Episode.cache.has(episode.id)) {
@@ -21,11 +23,9 @@ export class Episode extends Common implements IEpisode {
 
 		super();
 
-		this._id.value = episode.id;
-		this._sort.value = episode.sort;
-		this._path.value = episode.path;
-		this._extension.value = episode.extension;
-		this._title.value = episode.title;
+		for (const key of Object.keys(this.values) as Array<keyof IEpisode>) {
+			(this.values[key] as Ref<unknown>).value = episode[key];
+		}
 
 		Episode.cache.set(episode.id, this);
 	}
@@ -33,47 +33,39 @@ export class Episode extends Common implements IEpisode {
 	// region 属性访问器
 
 	public get id() {
-		return unref(this._id);
+		return this.values.id.value;
 	}
 
 	public get sort() {
-		return unref(this._sort);
+		return this.values.sort.value;
 	}
 
 	public get path() {
-		return unref(this._path);
+		return this.values.path.value;
 	}
 
 	public get extension() {
-		return unref(this._extension);
+		return this.values.extension.value;
 	}
 
 	public get title() {
-		return unref(this._title);
+		return this.values.title.value;
 	}
 	// endregion
 
 	// region 属性更新时的响应式状态
 	public get titleRef() {
-		return this.useStatus.title;
+		return this.requestStatus.get('title');
 	}
 
 	public get sortRef() {
-		return this.useStatus.sort;
+		return this.requestStatus.get('sort');
 	}
 	// endregion
 
 	// region 更新标题
 	public async updateTitle(title: string) {
-		const oldValue = this._title.value;
-		this._title.value = title;
-		this.useStatus.onTitle();
-		try {
-			await updateEpisodeTitle(this.id, title);
-		} catch (error) {
-			this._title.value = oldValue;
-		}
-		this.useStatus.offTitle();
+		await patchField(this.values, this.requestStatus, 'title', title, () => updateEpisodeTitle(this.id, title));
 	}
 	// endregion
 
@@ -84,18 +76,7 @@ export class Episode extends Common implements IEpisode {
 	 * @returns 请求是否成功；失败时已回滚本地 sort，调用方可据此恢复列表顺序
 	 */
 	public async updateSort(sort: number) {
-		const oldValue = this._sort.value;
-		this._sort.value = sort;
-		this.useStatus.onSort();
-		try {
-			await updateEpisodeSort(this.id, sort);
-			return true;
-		} catch (error) {
-			this._sort.value = oldValue;
-			return false;
-		} finally {
-			this.useStatus.offSort();
-		}
+		return await patchField(this.values, this.requestStatus, 'sort', sort, () => updateEpisodeSort(this.id, sort));
 	}
 
 	/**
@@ -105,7 +86,7 @@ export class Episode extends Common implements IEpisode {
 	 * 避免界面上显示的序号与实体 sort 长期不一致。
 	 */
 	public syncSort(sort: number) {
-		this._sort.value = sort;
+		this.values.sort.value = sort;
 	}
 	// endregion
 }

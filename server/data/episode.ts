@@ -4,12 +4,15 @@ import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Episode as IEpisode, ServerToPromise } from '~types/videos';
 import type { Season } from './season';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
-import { Common } from './common';
+import { Entity } from './entity';
 
 const SERVER = __APP_CONFIG__.server;
 
-export class Episode extends Common implements ServerToPromise<IEpisode> {
+export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromise<IEpisode> {
 	protected static cache: Map<string, Episode> = new Map();
+
+	/** 对外 DTO 字段，顺序与 `getValue()` 的键顺序一致 */
+	private static readonly VALUE_FIELDS = ['id', 'sort', 'path', 'extension', 'title'] as const;
 
 	public static async clearCache() {
 		this.cache.clear();
@@ -32,7 +35,8 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 			}
 			const episode = new Episode(entry.name, season);
 			await episode.getPromise();
-			episode.register();
+			// 缓存的实例可能已持有派生值，初始化后统一重新派生一次。
+			episode.invalidate();
 			result.push({ episode, sort: await episode.sort });
 		}
 		result.sort((a, b) => a.sort - b.sort);
@@ -57,16 +61,9 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		return result.map((item) => item.episode) as Episode[];
 	}
 
-	private _id!: Promise<IEpisode['id']>;
-	private _sort!: Promise<IEpisode['sort']>;
-	private _path!: Promise<IEpisode['path']>;
-	private _extension!: Promise<IEpisode['extension']>;
-	private _title!: Promise<IEpisode['title']>;
-
 	private episodeName!: string;
 	private directory!: string;
 	private hashId!: string;
-	private promise!: Promise<IEpisode>;
 
 	constructor(
 		episodeName: string,
@@ -87,44 +84,21 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 		this.hashId = id;
 
 		const { resolve, reject, promise } = createPromise<IEpisode>();
-		this.promise = promise;
+		this.store = promise;
 		const fail: PromiseReject = (error) => {
 			// 失败实例不保留在缓存中，后续修复文件后可正常重新初始化。
 			Episode.cache.delete(id);
 			reject(error);
 		};
 
-		this.register();
-
 		this.initialize(resolve, fail).catch(fail);
-	}
-
-	private register() {
-		this.registerId();
-		this.registerSort();
-		this.registerPath();
-		this.registerExtension();
-		this.registerTitle();
 	}
 
 	/**
 	 * 获取视频集信息
 	 */
 	public async getValue(): Promise<IEpisode> {
-		const [id, sort, path, extension, title] = await Promise.all([
-			this.id,
-			this.sort,
-			this.path,
-			this.extension,
-			this.title,
-		]);
-		return {
-			id,
-			sort,
-			path,
-			extension,
-			title,
-		};
+		return { ...(await this.collect(Episode.VALUE_FIELDS)) };
 	}
 
 	public toJSON() {
@@ -150,76 +124,51 @@ export class Episode extends Common implements ServerToPromise<IEpisode> {
 	}
 
 	public getConfig() {
-		return this.promise;
+		return this.store;
 	}
 
 	public getPromise() {
-		return this.promise;
+		return this.store;
 	}
 
 	// region 属性代理
 	public get id() {
-		return this._id;
+		return this.field('id');
 	}
 
 	public get sort() {
-		return this._sort;
+		return this.field('sort');
 	}
 
 	public get path() {
-		return this._path;
+		return this.field('path', (store) => path.join(this.season.getDirectory(), store.path));
 	}
 
 	public get extension() {
-		return this._extension;
+		return this.field('extension');
 	}
 
 	public get title() {
-		return this._title;
+		return this.field('title');
 	}
 	// endregion
 
 	// region 更新集数据
 	public async updateSort(sort: number) {
-		await this.promise;
+		await this.store;
 		await this.season.updateEpisodeSort(() => this, Math.max(1, sort));
-		this.registerSort();
+		this.invalidate();
 	}
 
 	/**
-	 * 更新排序时，由 Season 调用，重新注册排序属性
+	 * 更新排序时，由 Season 调用，重新派生排序字段
 	 */
 	public async rewriteSort(sort: number) {
-		(await this.getConfig()).sort = sort;
-		this.registerSort();
+		await this.write('sort', sort);
 	}
 
 	public async updateTitle(title: string) {
-		const config = await this.promise;
-		config.title = title;
-		this.registerTitle();
-	}
-	// endregion
-
-	// region 注册数据方法
-	private registerId() {
-		this._id = this.promise.then(({ id }) => id);
-	}
-
-	private registerSort() {
-		this._sort = this.promise.then(({ sort }) => sort);
-	}
-
-	private registerPath() {
-		this._path = this.promise.then(({ path: fileName }) => path.join(this.season.getDirectory(), fileName));
-	}
-
-	private registerExtension() {
-		this._extension = this.promise.then(({ extension }) => extension);
-	}
-
-	private registerTitle() {
-		this._title = this.promise.then(({ title }) => title);
+		await this.write('title', title);
 	}
 	// endregion
 

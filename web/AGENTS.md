@@ -31,7 +31,7 @@
 | `Season`  | `id`、`sort`、`path`、`title`                                                     | `episodes: Episode[]` | 标题、排序                         |
 | `Episode` | `id`、`sort`、`path`、`extension`、`title`                                        | 无                    | 标题、排序                         |
 
-三类对象的字段内部使用 Vue `ref()` 保存，对外通过 getter 暴露，因此组件读取 `series.title`、`season.episodes` 等普通属性时仍会建立响应式依赖。`id`、路径、目录名和扩展名当前没有前端更新方法，应视为服务端扫描结果和实体身份，不要在组件中直接改写。
+三类对象的可编辑字段统一保存在 `values` 映射中（`{ [K in keyof DTO]: Ref<DTO[K]> }`，每个字段一个 `ref()`），对外通过 getter 暴露，因此组件读取 `series.title`、`season.episodes` 等普通属性时仍会建立响应式依赖。字段名只在 `values` 定义和构造时的 DTO 赋值中各出现一次。`id`、路径、目录名和扩展名当前没有前端更新方法，应视为服务端扫描结果和实体身份，不要在组件中直接改写。
 
 实体构造与关系装配是两个步骤：`new Series(dto)` 不会自动解析 `dto.seasons`，`new Season(dto)` 也不会自动解析 `dto.episodes`。完整树必须显式执行 `series.setSeasons()`，并为每个 season 执行 `season.setEpisodes()`。新增数据入口时必须复用这一装配方式，避免把原始 DTO 数组混入领域对象数组。
 
@@ -96,6 +96,7 @@
 - `Series` 通过 `titleRef`、`imagesRef`、`descriptionRef`、`dateRef`、`typesRef`、`statusRef` 暴露各字段请求状态。
 - `Season` 和 `Episode` 通过 `titleRef`、`sortRef` 暴露更新状态。
 - 标题、描述、日期、图片、类型、状态和排序更新大多采用乐观更新：先修改本地 ref 并打开对应状态，请求失败则恢复旧值，最后关闭状态。
+- 乐观更新统一由 `data/common.ts` 的 `patchField(values, status, key, next, commit)` 完成；字段状态由 `createStatus()` 按键创建，`titleRef` 等 getter 返回布尔值并在读取时建立响应式依赖，组件用法保持不变。
 - `removeDate()` 在服务端删除成功后才清空本地日期；`removeStatus()` 先把本地状态设为 0，失败时回滚。
 
 图片和类型的 `add/remove/set` 方法会把调用方传入数组直接作为当前本地值，同时把操作类型传给 API；调用方必须传入期望展示的完整目标数组，不能假设 data 类会在旧数组上自动拼接或删除。`updateSort()` 只更新实体的 sort 字段，不会自动重排已挂载的 seasons/episodes 数组。

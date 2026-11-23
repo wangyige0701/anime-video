@@ -5,10 +5,15 @@ import type { Season as ISeason, ServerToPromise } from '~types/videos';
 import type { Series } from './series';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Episode } from './episode';
-import { Common } from './common';
+import { Entity } from './entity';
 
-export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'episodes'> {
+type SeasonValue = Omit<ISeason, 'episodes'>;
+
+export class Season extends Entity<ISeason, SeasonValue> implements ServerToPromise<SeasonValue> {
 	protected static cache: Map<string, Season> = new Map();
+
+	/** 对外 DTO 字段，顺序与 `getValue()` 的键顺序一致 */
+	private static readonly VALUE_FIELDS = ['id', 'sort', 'path', 'title'] as const;
 
 	public static async clearCache() {
 		for (const [_key, season] of this.cache) {
@@ -47,7 +52,8 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			}
 			const season = new Season(entry.name, series);
 			await season.getPromise();
-			season.register();
+			// 缓存的实例可能已持有派生值，初始化后统一重新派生一次。
+			season.invalidate();
 			result.push({ season, sort: await season.sort });
 		}
 
@@ -73,17 +79,11 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		return result.map((item) => item.season) as Season[];
 	}
 
-	private _id!: Promise<ISeason['id']>;
-	private _sort!: Promise<ISeason['sort']>;
-	private _path!: Promise<ISeason['path']>;
-	private _title!: Promise<ISeason['title']>;
-	private _episodes!: Promise<Episode[]>;
-
 	private seasonName!: string;
 	private directory!: string;
 	private hashId!: string;
-	private promise!: Promise<ISeason>;
 	private episodeSortQueue: Promise<void> = Promise.resolve();
+	private episodePromise?: Promise<Episode[]>;
 
 	/**
 	 * @param seasonDirectory 季目录名
@@ -109,54 +109,32 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 		this.hashId = id;
 
 		const { resolve, reject, promise } = createPromise<ISeason>();
-		this.promise = promise;
+		this.store = promise;
+		// 集关系在构造时即开始派生（与原 registerEpisodes 的时机一致），
+		// 缓存回收等清理路径读取的是已完成或进行中的扫描结果。
+		this.episodePromise = promise.then(() => Episode.getAllEpisodes(this));
 		const fail: PromiseReject = (error) => {
 			// 避免构造失败的季占据同一 ID 的缓存位置。
 			Season.cache.delete(id);
 			reject(error);
 		};
 
-		this.register();
-
 		this.initialize(resolve, fail).catch(fail);
-	}
-
-	private register() {
-		this.registerId();
-		this.registerSort();
-		this.registerPath();
-		this.registerTitle();
-		this.registerEpisodes();
 	}
 
 	/**
 	 * 获取视频季信息，包含视频集信息
 	 */
 	public async getValue(): Promise<ISeason> {
-		const [id, sort, path, title, episodes] = await Promise.all([
-			this.id,
-			this.sort,
-			this.path,
-			this.title,
-			Promise.all((await this.episodes).map((episode) => episode.getValue())),
+		const [value, episodes] = await Promise.all([
+			this.collect(Season.VALUE_FIELDS),
+			this.episodes.then((episodes) => Promise.all(episodes.map((episode) => episode.getValue()))),
 		]);
-		return {
-			id,
-			sort,
-			path,
-			title,
-			episodes,
-		};
+		return { ...value, episodes };
 	}
 
 	public async getValueOmitEpisodes() {
-		const [id, sort, path, title] = await Promise.all([this.id, this.sort, this.path, this.title]);
-		return {
-			id,
-			sort,
-			path,
-			title,
-		};
+		return await this.collect(Season.VALUE_FIELDS);
 	}
 
 	public toJSON() {
@@ -184,56 +162,61 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 	}
 
 	public getConfig() {
-		return this.promise;
+		return this.store;
 	}
 
 	public getPromise() {
-		return this.promise;
+		return this.store;
 	}
 
 	// region 属性代理
 	public get id() {
-		return this._id;
+		return this.field('id');
 	}
 
 	public get sort() {
-		return this._sort;
+		return this.field('sort');
 	}
 
 	public get path() {
-		return this._path;
+		return this.field('path', (store) => path.resolve(this.series.getDirectory(), store.path));
 	}
 
 	public get title() {
-		return this._title;
+		return this.field('title');
 	}
 
 	public get episodes() {
-		return this._episodes;
+		return (this.episodePromise ??= this.store.then(() => Episode.getAllEpisodes(this)));
 	}
 	// endregion
+
+	/** 配置被原地改写后，季字段与集关系都需要重新派生 */
+	protected invalidate() {
+		// 关系 Promise 与字段缓存一起失效，并按构造时的时机重新开始扫描。
+		this.episodePromise = this.store.then(() => Episode.getAllEpisodes(this));
+		// 字段缓存由基类按 key 管理。
+		super.invalidate();
+	}
 
 	// region 更新季数据
 	/**
 	 * 更新排序，通过调用 Series 中的方法将所有季的排序更新为新的排序
 	 */
 	public async updateSort(sort: number) {
-		await this.promise;
+		await this.store;
 		await this.series.updateSeasonSort(() => this, Math.max(1, sort));
 	}
 
 	/**
-	 * 更新排序时，由 Series 调用，重新注册排序属性
+	 * 更新排序时，由 Series 调用，重新派生排序字段
 	 */
 	public async rewriteSort(sort: number) {
-		(await this.getConfig()).sort = sort;
-		this.registerSort();
+		await this.write('sort', sort);
 	}
 
 	public async updateTitle(title: string) {
-		const config = await this.promise;
-		config.title = title;
-		this.registerTitle();
+		await this.write('title', title);
 	}
 
 	public async updateEpisodeSort(getTarget: () => Episode | Promise<Episode>, position: number) {
@@ -270,28 +253,6 @@ export class Season extends Common implements Omit<ServerToPromise<ISeason>, 'ep
 			await ordered[index]!.rewriteSort(index + 1);
 		}
 		episodes.splice(0, episodes.length, ...ordered);
-	}
-	// endregion
-
-	// region 注册数据方法
-	private registerId() {
-		this._id = this.promise.then(({ id }) => id);
-	}
-
-	private registerSort() {
-		this._sort = this.promise.then(({ sort }) => sort);
-	}
-
-	private registerPath() {
-		this._path = this.promise.then(({ path: folderName }) => path.resolve(this.series.getDirectory(), folderName));
-	}
-
-	private registerTitle() {
-		this._title = this.promise.then(({ title }) => title);
-	}
-
-	private registerEpisodes() {
-		this._episodes = this.promise.then(() => Episode.getAllEpisodes(this));
 	}
 	// endregion
 

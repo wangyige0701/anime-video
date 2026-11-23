@@ -335,6 +335,34 @@ describe('Video Data Config', () => {
 			expect(await episode.sort).toBe(2);
 			expect(await episode2.sort).toBe(1);
 			expect(await episode.title).toBe('1');
+			// DTO 出口由字段表派生，键集合与顺序必须与接口契约一致。
+			expect(Object.keys(await episode.getValue())).toEqual(['id', 'sort', 'path', 'extension', 'title']);
+			const seasonDetail = await season.getValue();
+			expect(Object.keys(seasonDetail)).toEqual(['id', 'sort', 'path', 'title', 'episodes']);
+			expect(Object.keys(seasonDetail.episodes[0]!)).toEqual(['id', 'sort', 'path', 'extension', 'title']);
+			expect(Object.keys(await series.getValueOmitSeasons())).toEqual([
+				'id',
+				'path',
+				'name',
+				'title',
+				'images',
+				'description',
+				'date',
+				'types',
+				'status',
+			]);
+			expect(Object.keys(await series.getValue())).toEqual([
+				'id',
+				'path',
+				'name',
+				'title',
+				'images',
+				'description',
+				'date',
+				'types',
+				'status',
+				'seasons',
+			]);
 			// 同一季中的剧集排序遵循相同的并发一致性约束。
 			await Promise.all([episode1.updateSort(1), episode2.updateSort(2)]);
 			expect(await episode1.sort).toBe(1);

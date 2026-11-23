@@ -83,7 +83,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `controller/`：装饰器控制器；按 data、video、image、system 等领域暴露 HTTP 接口。
 - `decorators/`：项目自定义装饰器，当前 `Validate` 使用 Zod 校验并替换解析后的 request body。
 - `middlewares/`：请求日志、统一异常映射和 JSON 响应辅助。
-- `data/`：扫描允许的视频目录，构建 Series/Season/Episode 数据树，维护实例缓存、排序及 `.video.json` 配置持久化。
+- `data/`：扫描允许的视频目录，构建 Series/Season/Episode 数据树，维护实例缓存、排序及 `.video.json` 配置持久化；`data/entity.ts` 提供字段派生、写入与失效的公共基类。
 - `src/hls.ts`：原生 HLS 实例、分片预加载、TS/图片缓存和生命周期管理。
 - `src/error/`：`ApiError`、`NotFoundError` 等 HTTP 错误类型。
 - `src/utils/`：文件系统和通用判断工具。
@@ -148,7 +148,7 @@ Series 只扫描允许根目录的直接子目录；Season 只扫描 series 的�
 
 `Series`、`Season`、`Episode` 分别维护按 ID 索引的静态实例 cache。构造函数命中同 ID 时直接返回已有对象，确保同一资源在进程内只有一个领域实例。初始化失败时必须从 cache 删除该实例，否则后续读取会永久复用 rejected Promise。
 
-领域类实现 `ServerToPromise<T>`：`id`、`path`、`title`、`sort` 等属性都是从初始化 Promise 派生的 Promise。构造时立即执行 `register*()`，初始化完成后调用方可以并行等待多个属性；配置修改后重新注册对应属性 Promise，使后续读取拿到新值。
+领域类实现 `ServerToPromise<T>`：`id`、`path`、`title`、`sort` 等属性都是从初始化 Promise 派生的 Promise。三者继承 `data/entity.ts` 的 `Entity<S, V>`（`S` 为配置形状，`V` 为对外 DTO），用 `field()` 按需派生并缓存字段 Promise，调用方仍可并行等待多个属性。写操作使用 `write()` 覆盖或 `mutate()` 原地修改，两者都会让对应字段缓存失效；配置被原地改写（刷新、重新解析默认值）后调用 `invalidate()` 重新派生，Series/Season 会同时重建季/集关系 Promise。子级关系在构造时即开始派生，缓存回收等清理路径依赖这一时机。
 
 - `getPromise()` / `getConfig()` 暴露实体初始化及其配置对象。
 - `getValue()` 等待全部属性并返回普通 DTO；Series/Season 的完整版会递归装配子级。

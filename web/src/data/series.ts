@@ -17,13 +17,15 @@ import {
 } from '@/api/series';
 import { getSeasons } from '@/api/season';
 import { applySeriesQuery, paginateSeries, type SeriesQuery } from '@/utils/seriesQuery';
-import { Common } from './common';
+import { Common, patchField, type FieldRefs } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
 
+type SeriesValue = Omit<ISeries, 'seasons'>;
+
 const initialize = useVueStatusRef('loading', 'initialized');
 
-export class Series extends Common implements Omit<ISeries, 'seasons'> {
+export class Series extends Common implements SeriesValue {
 	protected static cache: Map<string, Series> = new Map();
 	private static globalWaitPromise: Promise<Series[]> | null = null;
 
@@ -175,20 +177,23 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 		return applySeriesQuery(list, keyword, query);
 	}
 
-	private _id: Ref<ISeries['id']> = ref('');
-	private _path: Ref<ISeries['path']> = ref('');
-	private _name: Ref<ISeries['name']> = ref('');
-	private _title: Ref<ISeries['title']> = ref('');
-	private _images: Ref<ISeries['images']> = ref([]);
-	private _description: Ref<ISeries['description']> = ref('');
-	private _date: Ref<ISeries['date']> = ref([]);
-	private _types: Ref<ISeries['types']> = ref([]);
-	private _status: Ref<ISeries['status']> = ref(0);
+	private values: FieldRefs<SeriesValue> = {
+		id: ref(''),
+		path: ref(''),
+		name: ref(''),
+		title: ref(''),
+		images: ref<string[]>([]),
+		description: ref(''),
+		date: ref<[number?, number?]>([]),
+		types: ref<number[]>([]),
+		status: ref(0),
+	};
+
+	private requestStatus = this.createStatus('title', 'images', 'description', 'date', 'types', 'status');
+
 	private _seasons!: Ref<Season[]>;
 	private seasonsTrack!: Fn<[]>;
 	private seasonsUpdate!: Fn<[Season[]]>;
-
-	private useStatus = useVueStatusRef('title', 'images', 'description', 'date', 'types', 'status');
 
 	/**
 	 * 系列构造函数，因为季和集需要初始化后才能有数据，所以不要直接实例化系列对象，而是通过静态成员方法获取
@@ -200,15 +205,9 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 
 		super();
 
-		this._id.value = series.id;
-		this._path.value = series.path;
-		this._name.value = series.name;
-		this._title.value = series.title;
-		this._images.value = series.images;
-		this._description.value = series.description;
-		this._date.value = series.date;
-		this._types.value = series.types;
-		this._status.value = series.status;
+		for (const key of Object.keys(this.values) as Array<keyof SeriesValue>) {
+			(this.values[key] as Ref<unknown>).value = series[key];
+		}
 
 		if (!Series.hasBindCache(series.id)) {
 			const { ref, track, update } = Series.createRef<Season>();
@@ -232,39 +231,39 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 
 	// region 系列属性值
 	public get id() {
-		return unref(this._id);
+		return this.values.id.value;
 	}
 
 	public get path() {
-		return unref(this._path);
+		return this.values.path.value;
 	}
 
 	public get name() {
-		return unref(this._name);
+		return this.values.name.value;
 	}
 
 	public get title() {
-		return unref(this._title);
+		return this.values.title.value;
 	}
 
 	public get images() {
-		return unref(this._images);
+		return this.values.images.value;
 	}
 
 	public get description() {
-		return unref(this._description);
+		return this.values.description.value;
 	}
 
 	public get date() {
-		return unref(this._date);
+		return this.values.date.value;
 	}
 
 	public get types() {
-		return unref(this._types);
+		return this.values.types.value;
 	}
 
 	public get status() {
-		return unref(this._status);
+		return this.values.status.value;
 	}
 
 	public get seasons() {
@@ -278,199 +277,127 @@ export class Series extends Common implements Omit<ISeries, 'seasons'> {
 	 * 系列标题更新时的响应式状态
 	 */
 	public get titleRef() {
-		return this.useStatus.title;
+		return this.requestStatus.get('title');
 	}
 
 	/**
 	 * 系列描述更新时的响应式状态
 	 */
 	public get descriptionRef() {
-		return this.useStatus.description;
+		return this.requestStatus.get('description');
 	}
 
 	/**
 	 * 系列日期更新时的响应式状态
 	 */
 	public get dateRef() {
-		return this.useStatus.date;
+		return this.requestStatus.get('date');
 	}
 
 	/**
 	 * 系列类型更新时的响应式状态
 	 */
 	public get typesRef() {
-		return this.useStatus.types;
+		return this.requestStatus.get('types');
 	}
 
 	/**
 	 * 系列状态更新时的响应式状态
 	 */
 	public get statusRef() {
-		return this.useStatus.status;
+		return this.requestStatus.get('status');
 	}
 
 	/**
 	 * 系列图片更新时的响应式状态
 	 */
 	public get imagesRef() {
-		return this.useStatus.images;
+		return this.requestStatus.get('images');
 	}
 	// endregion
 
 	// region 更新标题
 	public async updateTitle(title: string) {
-		let oldValue = this._title.value;
-		this._title.value = title;
-		this.useStatus.onTitle();
-		try {
-			await updateSeriesTitle(this.id, title);
-		} catch (error) {
-			this._title.value = oldValue;
-		}
-		this.useStatus.offTitle();
+		await patchField(this.values, this.requestStatus, 'title', title, () => updateSeriesTitle(this.id, title));
 	}
 	// endregion
 
 	// region 更新描述
 	public async updateDescription(description: string) {
-		let oldValue = this._description.value;
-		this._description.value = description;
-		this.useStatus.onDescription();
-		try {
-			await updateSeriesDescription(this.id, description);
-		} catch (error) {
-			this._description.value = oldValue;
-		}
-		this.useStatus.offDescription();
+		await patchField(this.values, this.requestStatus, 'description', description, () =>
+			updateSeriesDescription(this.id, description),
+		);
 	}
 	// endregion
 
 	// region 更新日期
 	public async updateDate(year: number, month: number) {
-		let oldValue = this._date.value;
-		this._date.value = [year, month];
-		this.useStatus.onDate();
-		try {
-			await updateSeriesDate(this.id, year, month);
-		} catch (error) {
-			this._date.value = oldValue;
-		}
-		this.useStatus.offDate();
+		await patchField(this.values, this.requestStatus, 'date', [year, month], () =>
+			updateSeriesDate(this.id, year, month),
+		);
 	}
 	// endregion
 
 	// region 删除日期
 	public async removeDate() {
-		this.useStatus.onDate();
-		try {
-			await removeSeriesDate(this.id);
-			this._date.value = [];
-		} catch (error) {}
-		this.useStatus.offDate();
+		await this.requestStatus.run('date', async () => {
+			try {
+				await removeSeriesDate(this.id);
+				this.values.date.value = [];
+			} catch (error) {}
+		});
 	}
 	// endregion
 
 	// region 更新类型
 	public async addTypes(types: number[]) {
-		let oldValue = this._types.value;
-		this._types.value = types;
-		this.useStatus.onTypes();
-		try {
-			await updateSeriesTypes('add', this.id, types);
-		} catch (error) {
-			this._types.value = oldValue;
-		}
-		this.useStatus.offTypes();
+		await patchField(this.values, this.requestStatus, 'types', types, () =>
+			updateSeriesTypes('add', this.id, types),
+		);
 	}
 
 	public async removeTypes(types: number[]) {
-		let oldValue = this._types.value;
-		this._types.value = types;
-		this.useStatus.onTypes();
-		try {
-			await updateSeriesTypes('remove', this.id, types);
-		} catch (error) {
-			this._types.value = oldValue;
-		}
-		this.useStatus.offTypes();
+		await patchField(this.values, this.requestStatus, 'types', types, () =>
+			updateSeriesTypes('remove', this.id, types),
+		);
 	}
 
 	public async updateTypes(types: number[]) {
-		let oldValue = this._types.value;
-		this._types.value = types;
-		this.useStatus.onTypes();
-		try {
-			await updateSeriesTypes('set', this.id, types);
-		} catch (error) {
-			this._types.value = oldValue;
-		}
-		this.useStatus.offTypes();
+		await patchField(this.values, this.requestStatus, 'types', types, () =>
+			updateSeriesTypes('set', this.id, types),
+		);
 	}
 	// endregion
 
 	// region 更新图片
 	public async addImages(images: string[]) {
-		let oldValue = this._images.value;
-		this._images.value = images;
-		this.useStatus.onImages();
-		try {
-			await updateSeriesImages('add', this.id, images);
-		} catch (error) {
-			this._images.value = oldValue;
-		}
-		this.useStatus.offImages();
+		await patchField(this.values, this.requestStatus, 'images', images, () =>
+			updateSeriesImages('add', this.id, images),
+		);
 	}
 
 	public async removeImages(images: string[]) {
-		let oldValue = this._images.value;
-		this._images.value = images;
-		this.useStatus.onImages();
-		try {
-			await updateSeriesImages('remove', this.id, images);
-		} catch (error) {
-			this._images.value = oldValue;
-		}
-		this.useStatus.offImages();
+		await patchField(this.values, this.requestStatus, 'images', images, () =>
+			updateSeriesImages('remove', this.id, images),
+		);
 	}
 
 	public async updateImages(images: string[]) {
-		let oldValue = this._images.value;
-		this._images.value = images;
-		this.useStatus.onImages();
-		try {
-			await updateSeriesImages('set', this.id, images);
-		} catch (error) {
-			this._images.value = oldValue;
-		}
-		this.useStatus.offImages();
+		await patchField(this.values, this.requestStatus, 'images', images, () =>
+			updateSeriesImages('set', this.id, images),
+		);
 	}
 	// endregion
 
 	// region 更新状态
 	public async updateStatus(status: number) {
-		let oldValue = this._status.value;
-		this._status.value = status;
-		this.useStatus.onStatus();
-		try {
-			await updateSeriesStatus(this.id, status);
-		} catch (error) {
-			this._status.value = oldValue;
-		}
-		this.useStatus.offStatus();
+		await patchField(this.values, this.requestStatus, 'status', status, () => updateSeriesStatus(this.id, status));
 	}
 	// endregion
 
 	// region 删除状态
 	public async removeStatus() {
-		let oldValue = this._status.value;
-		this._status.value = 0;
-		this.useStatus.onStatus();
-		try {
-			await removeSeriesStatus(this.id);
-		} catch (error) {
-			this._status.value = oldValue;
-		}
-		this.useStatus.offStatus();
+		await patchField(this.values, this.requestStatus, 'status', 0, () => removeSeriesStatus(this.id));
 	}
 	// endregion
 }

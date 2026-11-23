@@ -206,6 +206,7 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 - `DirectoryController` 负责允许根目录读取和设置。
 - `SeriesController` 负责列表、详情、刷新及 series 可编辑字段。
+- series 的 title、description、date、status 字段端点保持「一个字段一个接口」，公共流程由 `SeriesController.commitSeries()` 统一完成「取实体 → 写入 → `waitDataSave()` → 日志」，参数模式集中在 `src/schema/series-fields.ts`。新增字段写接口时复用这两处，不要复制流程或另写一套校验。
 - `SeasonController`、`EpisodeController` 负责按父级/ID 读取和 title/sort 更新。
 - request body 通过 `@Validate()` 校验；路由 ID 通过 `@Inject()` 注入，operation 在注入时额外使用 `validateOperation` 转换并校验。
 - 修改接口在领域对象更新并 `waitDataSave()` 后记录 `ctx.log.info()`，再返回 `ctx.Success()`。

@@ -3,7 +3,12 @@ import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-us
 import { ServerRoot } from '~shared/server-route-config';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
-import { isWritableSeriesStatus } from '~shared/series-status';
+import {
+	seriesDateSchema,
+	seriesDescriptionSchema,
+	seriesStatusSchema,
+	seriesTitleSchema,
+} from '~server/src/schema/series-fields';
 import { seriesTypes } from '~shared/series-types';
 import { ApiError } from '~server/src/error';
 
@@ -46,70 +51,61 @@ export class SeriesController {
 	}
 
 	@HttpMethod.Put('/series/:seriesId/title')
-	@Validate((z) => z.object({ title: z.string().min(1) }))
+	@Validate(() => seriesTitleSchema)
 	public async updateSeriesTitle(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { title } = ctx.request.body as { title: string };
-		const series = await Series.getSeriesById(seriesId);
-		await series.updateTitle(title);
-		await series.waitDataSave();
-		ctx.log.info({ event: 'series.title.updated', seriesId }, 'Series title updated');
-		return ctx.Success();
+		return await this.commitSeries(ctx, seriesId, (series) => series.updateTitle(title), {
+			event: 'series.title.updated',
+			message: 'Series title updated',
+		});
 	}
 
 	@HttpMethod.Put('/series/:seriesId/description')
-	@Validate((z) => z.object({ description: z.string().min(0) }))
+	@Validate(() => seriesDescriptionSchema)
 	public async updateSeriesDescription(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { description } = ctx.request.body as { description: string };
-		const series = await Series.getSeriesById(seriesId);
-		await series.updateDescription(description);
-		await series.waitDataSave();
-		ctx.log.info({ event: 'series.description.updated', seriesId }, 'Series description updated');
-		return ctx.Success();
+		return await this.commitSeries(ctx, seriesId, (series) => series.updateDescription(description), {
+			event: 'series.description.updated',
+			message: 'Series description updated',
+		});
 	}
 
 	@HttpMethod.Put('/series/:seriesId/date')
-	@Validate((z) => z.object({ year: z.number().int().min(1900), month: z.number().int().min(1).max(12) }))
+	@Validate(() => seriesDateSchema)
 	public async updateSeriesDate(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { year, month } = ctx.request.body as { year: number; month: number };
-		const series = await Series.getSeriesById(seriesId);
-		await series.updateDate(year, month);
-		await series.waitDataSave();
-		ctx.log.info({ event: 'series.date.updated', seriesId, year, month }, 'Series date updated');
-		return ctx.Success();
+		return await this.commitSeries(ctx, seriesId, (series) => series.updateDate(year, month), {
+			event: 'series.date.updated',
+			message: 'Series date updated',
+			details: { year, month },
+		});
 	}
 
 	@HttpMethod.Delete('/series/:seriesId/date')
 	public async removeSeriesDate(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
-		const series = await Series.getSeriesById(seriesId);
-		await series.removeDate();
-		await series.waitDataSave();
-		ctx.log.info({ event: 'series.date.deleted', seriesId }, 'Series date deleted');
-		return ctx.Success();
+		return await this.commitSeries(ctx, seriesId, (series) => series.removeDate(), {
+			event: 'series.date.deleted',
+			message: 'Series date deleted',
+		});
 	}
 
 	@HttpMethod.Put('/series/:seriesId/status')
-	@Validate((z) =>
-		z.object({
-			// 「全部」只是筛选选项，不是系列状态，写入时按可写状态集合校验。
-			status: z.number().int().refine(isWritableSeriesStatus, { message: '系列状态无效' }),
-		}),
-	)
+	@Validate(() => seriesStatusSchema)
 	public async updateSeriesStatus(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { status } = ctx.request.body as { status: number };
-		const series = await Series.getSeriesById(seriesId);
-		await series.updateStatus(status);
-		await series.waitDataSave();
-		ctx.log.info({ event: 'series.status.updated', seriesId, status }, 'Series status updated');
-		return ctx.Success();
+		return await this.commitSeries(ctx, seriesId, (series) => series.updateStatus(status), {
+			event: 'series.status.updated',
+			message: 'Series status updated',
+			details: { status },
+		});
 	}
 
 	@HttpMethod.Delete('/series/:seriesId/status')
 	public async deleteSeriesStatus(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
-		const series = await Series.getSeriesById(seriesId);
-		await series.updateStatus(0);
-		await series.waitDataSave();
-		ctx.log.info({ event: 'series.status.deleted', seriesId }, 'Series status deleted');
-		return ctx.Success();
+		return await this.commitSeries(ctx, seriesId, (series) => series.updateStatus(0), {
+			event: 'series.status.deleted',
+			message: 'Series status deleted',
+		});
 	}
 
 	@HttpMethod.Put('/series/:seriesId/types/:operation')
@@ -157,6 +153,25 @@ export class SeriesController {
 			{ event: 'series.images.updated', seriesId, operation, count: images.length },
 			'Series images updated',
 		);
+		return ctx.Success();
+	}
+
+	/**
+	 * 字段写入的公共流程：取实体 → 写入 → 等待落盘 → 记日志 → 返回成功。
+	 *
+	 * 六个字段端点原先各自重复这五步，漏任何一步都会出现「接口已返回但未落盘」
+	 * 或「改了却没有日志」。集中到一处后，字段处理器只描述自己的写入动作与日志内容。
+	 */
+	private async commitSeries(
+		ctx: Koa.Context,
+		seriesId: string,
+		apply: (series: Series) => Promise<void>,
+		log: { event: string; message: string; details?: Record<string, unknown> },
+	) {
+		const series = await Series.getSeriesById(seriesId);
+		await apply(series);
+		await series.waitDataSave();
+		ctx.log.info({ event: log.event, seriesId, ...log.details }, log.message);
 		return ctx.Success();
 	}
 }

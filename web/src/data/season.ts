@@ -1,7 +1,7 @@
 import type { Season as ISeason } from '~types/videos';
 import type { Fn } from '@wang-yige/utils';
 import { ref, unref } from 'vue';
-import { Common, patchField, type FieldRefs } from './common';
+import { Common, patchField, serverTitle, type FieldRefs } from './common';
 import { updateSeasonSort, updateSeasonTitle } from '@/api/season';
 import { Episode } from './episode';
 
@@ -88,8 +88,17 @@ export class Season extends Common implements SeasonValue {
 	// endregion
 
 	// region 更新标题
+	/** 标题允许为空：服务端会还原为默认标题，并用返回值纠正本地值 */
 	public async updateTitle(title: string) {
-		await patchField(this.values, this.requestStatus, 'title', title, () => updateSeasonTitle(this.id, title));
+		const next = title.trim();
+		await patchField(
+			this.values,
+			this.requestStatus,
+			'title',
+			next,
+			() => updateSeasonTitle(this.id, next),
+			serverTitle,
+		);
 	}
 	// endregion
 

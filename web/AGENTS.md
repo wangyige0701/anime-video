@@ -96,7 +96,8 @@
 - `Series` 通过 `titleRef`、`imagesRef`、`descriptionRef`、`dateRef`、`typesRef`、`statusRef` 暴露各字段请求状态。
 - `Season` 和 `Episode` 通过 `titleRef`、`sortRef` 暴露更新状态。
 - 标题、描述、日期、图片、类型、状态和排序更新大多采用乐观更新：先修改本地 ref 并打开对应状态，请求失败则恢复旧值，最后关闭状态。
-- 乐观更新统一由 `data/common.ts` 的 `patchField(values, status, key, next, commit)` 完成；字段状态由 `createStatus()` 按键创建，`titleRef` 等 getter 返回布尔值并在读取时建立响应式依赖，组件用法保持不变。
+- 乐观更新统一由 `data/common.ts` 的 `patchField(values, status, key, next, commit, settle?)` 完成；字段状态由 `createStatus()` 按键创建，`titleRef` 等 getter 返回布尔值并在读取时建立响应式依赖，组件用法保持不变。
+- 标题的 `settle` 固定传 `serverTitle`：标题允许清空，服务端会还原为默认标题（系列目录名、季目录名、文件名去扩展名）并返回实际标题，本地乐观写入的空串必须用返回值覆盖，不能停留在空白标题上。
 - `removeDate()` 在服务端删除成功后才清空本地日期；`removeStatus()` 先把本地状态设为 0，失败时回滚。
 
 图片和类型的 `add/remove/set` 方法会把调用方传入数组直接作为当前本地值，同时把操作类型传给 API；调用方必须传入期望展示的完整目标数组，不能假设 data 类会在旧数组上自动拼接或删除。`updateSort()` 只更新实体的 sort 字段，不会自动重排已挂载的 seasons/episodes 数组。
@@ -134,9 +135,11 @@
 
 `components/common/TextEditor.vue` 是唯一的文本编辑组件，`showEditIcon` 默认 `false`：默认不渲染内置图标，由外层提供更稳定的编辑入口，需要内联编辑时才显式开启。`hideEditIcon` 用于强制隐藏图标，配合 `v-model:editing` 暴露的编辑态，外层可以在「进入编辑或保存中」把入口收起来、保存完成后再显示。
 
+- 系列标题：详情页顶部标题（`views/[seriesId]/[name].vue`）内联使用 `TextEditor` 并开启 `showEditIcon`，图标字号单独收敛到正文尺寸；标题清空后由服务端还原为系列目录名。
 - 剧情简介：编辑按钮在「剧情简介」标题右侧（`DetailDescription.vue`），通过组件暴露的 `edit()` 触发，不再跟随段落文本移动；按钮用 `editing || status.modifyDescription` 控制显隐，编辑与保存期间图标隐藏。
 - 季标题、集标题：`DetailSeason.vue` 内联使用 `TextEditor` 并开启 `showEditIcon`。两者都嵌在可点击区域里（折叠面板头部、点击即播放的集卡片），因此只在 `[contenteditable="true"]` 时阻止点击冒泡，非编辑态的展开与播放行为保持不变。
-- 三个入口都遵循同一写入流程：本地 trim 校验非空 → 调用领域对象 `updateTitle()` / `updateDescription()`（乐观更新 + 失败回滚）→ 由数据层的请求状态驱动加载态。组件内不直接调用 API。
+- 四个入口都遵循同一写入流程：本地 trim → 调用领域对象 `updateTitle()` / `updateDescription()`（乐观更新 + 失败回滚）→ 由数据层的请求状态驱动加载态。组件内不直接调用 API。
+- 空值语义见根 `AGENTS.md`「可编辑文本字段的空值语义」：**标题为空恢复默认标题、描述为空清空描述，组件不得拦截空值提交**，也不要自行计算默认标题。
 
 ## 播放器现有架构
 

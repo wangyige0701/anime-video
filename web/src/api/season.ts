@@ -41,8 +41,9 @@ export function updateSeasonSort(seasonId: string, sort: number) {
 	);
 }
 
+/** 更新季标题；空字符串表示恢复默认标题（季目录名），返回值为实际标题 */
 export function updateSeasonTitle(seasonId: string, title: string) {
-	return API.put<any, null>(
+	return API.put<any, string>(
 		`${ServerRoot.DATA}/season/${seasonId}/title`,
 		{ title },
 		{

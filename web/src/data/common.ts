@@ -17,6 +17,9 @@ export type StatusController = {
  *
  * 与原先每个字段手写 `onX() -> try/catch -> offX()` 的行为一致，
  * 返回请求是否成功，供排序等需要分支处理的调用方使用。
+ *
+ * @param settle 请求成功后用返回值纠正本地值；返回 `undefined` 表示不调整。
+ * 标题用它同步服务端还原出的默认标题（空标题提交后本地不能停在空串）。
  */
 export async function patchField<T extends object, K extends keyof T>(
 	values: FieldRefs<T>,
@@ -24,17 +27,32 @@ export async function patchField<T extends object, K extends keyof T>(
 	key: K,
 	next: T[K],
 	commit: () => Promise<unknown>,
+	settle?: (result: unknown) => unknown,
 ): Promise<boolean> {
 	const target = values[key];
 	const oldValue = target.value;
 	target.value = next;
 	try {
-		await status.run(key as string, commit);
+		const result = await status.run(key as string, commit);
+		const settled = settle?.(result);
+		if (settled !== undefined) {
+			target.value = settled as T[K];
+		}
 		return true;
 	} catch {
 		target.value = oldValue;
 		return false;
 	}
+}
+
+/**
+ * 标题以服务端返回值为准。
+ *
+ * 服务端会把空标题还原为默认标题（系列目录名、季目录名、文件名去扩展名），
+ * 直接用返回值覆盖本地乐观更新的空串，避免界面停在空白标题上。
+ */
+export function serverTitle(result: unknown) {
+	return typeof result === 'string' && result ? result : undefined;
 }
 
 export class Common {

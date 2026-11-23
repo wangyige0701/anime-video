@@ -117,15 +117,12 @@ useDraggable(episodesRef, episodes, {
 /**
  * 提交季标题。
  *
- * 标题为空时只提示不落库；`updateTitle()` 内部采用乐观更新与失败回滚，
- * 因此这里不需要额外处理异常。
+ * 标题允许清空：服务端会还原为默认标题（季目录名），数据层用返回值同步本地值，
+ * 因此这里不做非空校验，只在内容未变化时跳过请求。
+ * `updateTitle()` 内部采用乐观更新与失败回滚，不需要额外处理异常。
  */
 async function updateSeasonTitle(value: string) {
 	const title = value.trim();
-	if (!title) {
-		ElMessage.error('季标题不能为空');
-		return;
-	}
 	if (title === props.season.title) {
 		return;
 	}
@@ -135,10 +132,6 @@ async function updateSeasonTitle(value: string) {
 /** 提交集标题，规则与季标题一致 */
 async function updateEpisodeTitle(episode: Episode, value: string) {
 	const title = value.trim();
-	if (!title) {
-		ElMessage.error('集标题不能为空');
-		return;
-	}
 	if (title === episode.title) {
 		return;
 	}

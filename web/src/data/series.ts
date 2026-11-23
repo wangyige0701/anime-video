@@ -17,7 +17,7 @@ import {
 } from '@/api/series';
 import { getSeasons } from '@/api/season';
 import { applySeriesQuery, paginateSeries, type SeriesQuery } from '@/utils/seriesQuery';
-import { Common, patchField, type FieldRefs } from './common';
+import { Common, patchField, serverTitle, type FieldRefs } from './common';
 import { Season } from './season';
 import { Episode } from './episode';
 
@@ -317,8 +317,17 @@ export class Series extends Common implements SeriesValue {
 	// endregion
 
 	// region 更新标题
+	/** 标题允许为空：服务端会还原为默认标题，并用返回值纠正本地值 */
 	public async updateTitle(title: string) {
-		await patchField(this.values, this.requestStatus, 'title', title, () => updateSeriesTitle(this.id, title));
+		const next = title.trim();
+		await patchField(
+			this.values,
+			this.requestStatus,
+			'title',
+			next,
+			() => updateSeriesTitle(this.id, next),
+			serverTitle,
+		);
 	}
 	// endregion
 

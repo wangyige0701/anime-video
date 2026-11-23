@@ -50,13 +50,15 @@ function editDescription() {
 	void editorRef.value?.edit();
 }
 
+/**
+ * 提交描述。
+ *
+ * 空描述是合法状态（表示清空），不做非空拦截；去掉首尾空白后交给数据层，
+ * 失败回滚由 `updateDescription()` 统一处理。
+ */
 async function endEditDescription(value: string) {
-	if (!value) {
-		ElMessage.error('描述不能为空');
-		return;
-	}
 	status.onModifyDescription();
-	await props.series.updateDescription(value);
+	await props.series.updateDescription(value.trim());
 	status.offModifyDescription();
 }
 </script>

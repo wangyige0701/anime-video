@@ -3,7 +3,14 @@
 		<div class="top">
 			<DetailImage :images="series.value.images" />
 			<div class="info">
-				<div class="title">{{ series.value.title }}</div>
+				<TextEditor
+					class="title"
+					:value="series.value.title"
+					:loading="series.value.titleRef"
+					:disabled="status.waiting"
+					show-edit-icon
+					@blur="updateSeriesTitle"
+				/>
 				<DetailMetadata />
 				<DetailDescription :series="series.value" :disabled="status.waiting" />
 			</div>
@@ -132,6 +139,16 @@ provide(
 	computed(() => series.value),
 );
 
+/**
+ * 提交系列标题。
+ *
+ * 允许清空：服务端会还原为默认标题（系列目录名），数据层用返回值同步本地值，
+ * 因此这里既不做非空校验，也不需要额外提示。
+ */
+async function updateSeriesTitle(value: string) {
+	await series.value.updateTitle(value);
+}
+
 function play(episode: Episode, season: Season, series: Series) {
 	if (episode.id && videoBoxRef.value) {
 		activeEpisodeId.value = episode.id;
@@ -205,6 +222,10 @@ onBeforeUnmount(() => {
 	.title {
 		color: token.$text-color-primary;
 		font-size: 1.6rem;
+		/* 标题字号较大，编辑图标跟随会过大，单独收敛到正文尺寸 */
+		:deep(.edit) {
+			font-size: 1rem;
+		}
 	}
 }
 

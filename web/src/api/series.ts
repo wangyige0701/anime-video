@@ -42,8 +42,13 @@ export function getSeriesDetail(seriesId: string) {
 
 // region 更新系列具体信息
 
+/**
+ * 更新系列标题。
+ *
+ * 传空字符串表示恢复默认标题（系列目录名），返回值为写入后的实际标题。
+ */
 export function updateSeriesTitle(seriesId: string, title: string) {
-	return API.put<any, null>(
+	return API.put<any, string>(
 		`${ServerRoot.DATA}/series/${seriesId}/title`,
 		{ title },
 		{

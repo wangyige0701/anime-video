@@ -91,6 +91,26 @@ export const seriesTypes = [
 		id: 23,
 		name: '日常',
 	},
+	{
+		id: 24,
+		name: '美少女',
+	},
+	{
+		id: 25,
+		name: '魔法少女',
+	},
+	{
+		id: 26,
+		name: '战斗',
+	},
+	{
+		id: 27,
+		name: '恋爱',
+	},
+	{
+		id: 28,
+		name: '萌系',
+	},
 ];
 
 export function getSeriesTypeName(id: number) {

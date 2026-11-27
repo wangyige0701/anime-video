@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { BangumiMatchSeason, BangumiPreviewResult, BangumiPreviewSeason } from '../../web/src/@types/bangumi-sync';
+import type { BangumiCurrentSnapshot } from '../../web/src/utils/bangumiSync';
 import {
 	buildApplyInput,
 	buildSeasonMapping,
 	createSelection,
 	describeAlignment,
+	diffPreview,
 	orderSeasonsBySuggestion,
 	summarizeSelection,
 } from '../../web/src/utils/bangumiSync';
@@ -225,5 +227,99 @@ describe('describeAlignment', () => {
 		expect(describeAlignment('rule')).toBe('按集号自动对齐');
 		expect(describeAlignment('ai')).toBe('由模型对齐');
 		expect(describeAlignment('partial')).toBe('部分对齐');
+	});
+});
+
+describe('diffPreview', () => {
+	function snapshot(overrides?: Partial<BangumiCurrentSnapshot>): BangumiCurrentSnapshot {
+		return {
+			series: {
+				title: '无职转生',
+				description: '简介',
+				date: [2021, 1],
+				status: 3,
+				types: [1, 5],
+			},
+			seasons: [
+				{
+					seasonId: 'a',
+					episodeIds: ['e1', 'e2'],
+					episodeTitles: { e1: '第一话', e2: '第二话' },
+				},
+			],
+			...overrides,
+		};
+	}
+
+	it('逐项一致时全部标记为相同', () => {
+		const data = preview(
+			[
+				previewSeason(
+					'a',
+					[
+						['e1', '第一话'],
+						['e2', '第二话'],
+					],
+					{ fromTitle: '新标题' },
+				),
+			],
+			{ title: '无职转生', description: '简介', date: [2021, 1], status: 3, types: [1, 5] },
+		);
+		const diff = diffPreview(data, snapshot());
+		expect(diff.series).toEqual({ title: true, description: true, date: true, status: true, types: true });
+		expect(diff.seasons[0]).toEqual({ title: true, order: true, episodes: { e1: true, e2: true } });
+	});
+
+	it('只差首尾空白、或类型顺序不同，都算没有变化', () => {
+		const data = preview([], {
+			title: '  无职转生  ',
+			description: '\n简介 ',
+			types: [5, 1],
+		});
+		const diff = diffPreview(data, snapshot());
+		expect(diff.series.title).toBe(true);
+		expect(diff.series.description).toBe(true);
+		expect(diff.series.types).toBe(true);
+	});
+
+	it('顺序不同或集数不同都判为重排有意义', () => {
+		const data = preview([
+			previewSeason('a', [
+				['e2', '第二话'],
+				['e1', '第一话'],
+			]),
+		]);
+		expect(diffPreview(data, snapshot()).seasons[0]!.order).toBe(false);
+		const extra = preview([
+			previewSeason('a', [
+				['e1', '第一话'],
+				['e2', '第二话'],
+				['e3', '第三话'],
+			]),
+		]);
+		expect(diffPreview(extra, snapshot()).seasons[0]!.order).toBe(false);
+	});
+
+	it('预览缺失的字段不算相同，避免被当作「已一致」提交空值', () => {
+		const base = snapshot();
+		const data = preview([], { title: '  ', description: '', date: null, status: 0, types: [] });
+		const diff = diffPreview(data, snapshot({ series: { ...base.series, status: 0, types: [] } }));
+		expect(diff.series).toEqual({ title: false, description: false, date: false, status: false, types: false });
+	});
+
+	it('一致的项不会被默认勾选，应用数量随之减少', () => {
+		const data = preview([
+			previewSeason(
+				'a',
+				[
+					['e1', '第一话'],
+					['e2', '第二话'],
+				],
+				{ fromTitle: '新标题' },
+			),
+		]);
+		const diff = diffPreview(data, snapshot());
+		const summary = summarizeSelection(buildApplyInput(data, createSelection(data, diff)));
+		expect(summary.total).toBe(0);
 	});
 });

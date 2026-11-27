@@ -59,6 +59,7 @@ docs/modules/
 
 | 模块 | 文档                                                 | 摘要                                                                       |
 | ---- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| web  | [bangumi-sync.md](web/bangumi-sync.md)               | Bangumi 同步面板：两步流程、差异对比规则、剧集布局约束与请求期关闭守卫     |
 | web  | [detail-episode-sort.md](web/detail-episode-sort.md) | 详情页剧集拖拽排序：本地镜像、单条提交、失败回滚与季级加载态               |
 | web  | [detail-season-sort.md](web/detail-season-sort.md)   | 详情页季拖拽排序：与集层的差异、`el-collapse` 容器接入与列表级加载态       |
 | web  | [element-theme.md](web/element-theme.md)             | 组件库全局样式封装：`assets/elements` 分层、`d-*`/`l-*` 语义与权重陷阱     |

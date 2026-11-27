@@ -38,6 +38,41 @@ export interface BangumiSelection {
 	seasons: BangumiSeasonSelection[];
 }
 
+/**
+ * 对比用的本地数据快照。
+ *
+ * 只取会被同步覆盖的字段：勾选状态要据此把「与当前完全一致」的项排除掉，
+ * 否则用户会把大量没有变化的条目一起提交，既浪费写请求也让 diff 难以阅读。
+ */
+export interface BangumiCurrentSnapshot {
+	series: {
+		title: string;
+		description: string;
+		date?: Array<number | undefined> | null;
+		status: number;
+		types: number[];
+	};
+	seasons: Array<{
+		seasonId: string;
+		/** 当前展示顺序的 episodeId，用于判断「重排」是否真的会改变顺序 */
+		episodeIds: string[];
+		/** episodeId → 当前标题 */
+		episodeTitles: Record<string, string>;
+	}>;
+}
+
+/**
+ * 逐项对比结果：`true` 表示与当前数据一致，不需要更新。
+ *
+ * 命名统一为「相同」而不是「有变化」，调用方在 UI 上禁用勾选时不用再取反。
+ * 预览缺字段时一律判为不同，交给 `createSelection` 的缺失规则处理，
+ * 两条规则叠加后都不会被勾选。
+ */
+export interface BangumiPreviewDiff {
+	series: Record<keyof BangumiSeriesSelection, boolean>;
+	seasons: Array<{ title: boolean; order: boolean; episodes: Record<string, boolean> }>;
+}
+
 /** 本次提交将写入的条目数量，用于按钮文案与空提交拦截 */
 export interface BangumiSelectionSummary {
 	/** 系列字段数 */
@@ -85,25 +120,107 @@ export function buildSeasonMapping(seasons: BangumiMatchSeason[]): Array<{ seaso
  *
  * 默认只勾选「一定能写」的内容：空标题、空描述、无日期、无类型的字段都不勾，
  * 避免把 Bangumi 缺失的数据当成「清空本地数据」提交。
+ * 传入对比结果后，与当前数据完全一致的项同样不勾——它们提交也只会写回同样的值。
  */
-export function createSelection(preview: BangumiPreviewResult): BangumiSelection {
+export function createSelection(preview: BangumiPreviewResult, diff?: BangumiPreviewDiff): BangumiSelection {
+	const same = diff?.series;
 	return {
 		series: {
-			title: !!preview.series.title.trim(),
+			title: !same?.title && !!preview.series.title.trim(),
 			// 描述允许为空即清空，但默认不勾选，交给用户显式决定
-			description: !!preview.series.description.trim(),
-			date: !!preview.series.date,
-			status: !!preview.series.status,
-			types: preview.series.types.length > 0,
+			description: !same?.description && !!preview.series.description.trim(),
+			date: !same?.date && !!preview.series.date,
+			status: !same?.status && !!preview.series.status,
+			types: !same?.types && preview.series.types.length > 0,
 		},
-		seasons: preview.seasons.map((season) => ({
-			seasonId: season.seasonId,
-			title: !!season.title.trim(),
-			// 只有一集时重排没有意义，默认不勾选
-			order: season.episodes.length > 1,
-			episodes: Object.fromEntries(season.episodes.map((episode) => [episode.episodeId, !!episode.title.trim()])),
-		})),
+		seasons: preview.seasons.map((season, index) => {
+			const sameSeason = diff?.seasons[index];
+			return {
+				seasonId: season.seasonId,
+				title: !sameSeason?.title && !!season.title.trim(),
+				// 只有一集时重排没有意义，默认不勾选
+				order: !sameSeason?.order && season.episodes.length > 1,
+				episodes: Object.fromEntries(
+					season.episodes.map((episode) => [
+						episode.episodeId,
+						!sameSeason?.episodes[episode.episodeId] && !!episode.title.trim(),
+					]),
+				),
+			};
+		}),
 	};
+}
+
+/**
+ * 逐项对比预览与本地数据。
+ *
+ * 文本会先归一化空白再比较：「`标题！ `」与「`标题！`」在落库语义上完全一致，
+ * 把它们当成变更只会制造无意义的写请求。
+ */
+export function diffPreview(preview: BangumiPreviewResult, current: BangumiCurrentSnapshot): BangumiPreviewDiff {
+	return {
+		series: {
+			title: sameText(preview.series.title, current.series.title),
+			description: sameText(preview.series.description, current.series.description),
+			date: sameDate(preview.series.date, current.series.date),
+			// 预览的 status 为 0 表示没解析出来，不算「相同」，也不该被勾选
+			status: preview.series.status > 0 && preview.series.status === current.series.status,
+			types: preview.series.types.length > 0 && sameNumberSet(preview.series.types, current.series.types),
+		},
+		seasons: preview.seasons.map((season) => {
+			const local = current.seasons.find((item) => item.seasonId === season.seasonId);
+			return {
+				// 季标题用服务端给的 `fromTitle` 对比：它就是本地标题，
+				// 不依赖前端缓存里的季对象是否与预览同源
+				title: !!season.title.trim() && sameText(season.title, season.fromTitle),
+				order:
+					!!local &&
+					season.episodes.length > 1 &&
+					sameOrder(
+						season.episodes.map((episode) => episode.episodeId),
+						local.episodeIds,
+					),
+				episodes: Object.fromEntries(
+					season.episodes.map((episode) => [
+						episode.episodeId,
+						!!episode.title.trim() &&
+							sameText(episode.title, local?.episodeTitles[episode.episodeId] ?? ''),
+					]),
+				),
+			};
+		}),
+	};
+}
+
+/** 折叠连续空白，避免仅差空格的内容被当成变更 */
+function normalizeText(value: string) {
+	return value.replace(/\s+/g, ' ').trim();
+}
+
+function sameText(a: string, b: string) {
+	return normalizeText(a) === normalizeText(b);
+}
+
+/** 类型是无序集合，顺序不同不算变更 */
+function sameNumberSet(a: number[], b: number[]) {
+	if (a.length !== b.length) {
+		return false;
+	}
+	const sortedA = [...a].sort((x, y) => x - y);
+	const sortedB = [...b].sort((x, y) => x - y);
+	return sortedA.every((value, index) => value === sortedB[index]);
+}
+
+function sameDate(a: [number, number] | null, b?: Array<number | undefined> | null) {
+	if (!a?.[0] || !a[1]) {
+		return false;
+	}
+	return a[0] === b?.[0] && a[1] === b?.[1];
+}
+
+/** 顺序必须逐位相等：只要有一集挪了位置，重排就有意义 */
+function sameOrder(a: string[], b: string[]) {
+	return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
 /**

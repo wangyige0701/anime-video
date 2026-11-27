@@ -157,15 +157,18 @@
 
 ## 详情页 Bangumi 同步
 
-`components/detail/BangumiSync.vue` 是详情页标题行右侧的同步入口，对接服务端 `POST /data/series/:id/bangumi/{match,preview,apply}` 三段接口。接口与推断规则见 `docs/modules/server/bangumi-sync.md`，变更记录见 `docs/changes/web/2026-11-27-bangumi-sync-ui.md`。
+`components/detail/BangumiSync.vue` 是详情页标题行右侧的同步入口，对接服务端 `POST /data/series/:id/bangumi/{match,preview,apply}` 三段接口。接口与推断规则见 `docs/modules/server/bangumi-sync.md`，面板自身的流程、差异规则与布局约束见 `docs/modules/web/bangumi-sync.md`，变更记录见 `docs/changes/web/2026-11-27-bangumi-sync-ui.md`。
 
 - 对话框分两步：第一步确认「本地季 → Bangumi 条目」的对应（AI 已给出建议，可改可清空），第二步逐项确认要写入的系列字段、季标题、集标题与整体重排。`apply` 只在第二步点确认后调用一次。
 - **前端不做任何推断**：不解析文件名、不猜集号、不重排。预览里的顺序由服务端给出，前端只按预览顺序把集 id 拼成 `order`。
-- 可测逻辑集中在 `utils/bangumiSync.ts`（纯函数）：`orderSeasonsBySuggestion()` 稳定排序、`buildSeasonMapping()` 去重并生成 preview 入参、`createSelection()` 默认勾选、`buildApplyInput()` 生成 apply 入参、`summarizeSelection()` 统计写入数量。组件只把状态接到这些函数上，用例在 `test/web/bangumi-sync.test.ts`。
-- 默认勾选只包含「一定能写」的内容：空标题、空描述、无日期、无状态、无类型的字段都不勾。服务端把「描述传空串」当作清空，默认全选会把 Bangumi 缺失的数据写成清空本地数据。
-- `order` 必须是该季全部集的一个排列，无法按集部分勾选，因此它对应季级别的「按预览顺序重排 N 集」一个开关，只有一集时默认关闭。
+- 可测逻辑集中在 `utils/bangumiSync.ts`（纯函数）：`orderSeasonsBySuggestion()` 稳定排序、`buildSeasonMapping()` 去重并生成 preview 入参、`diffPreview()` 逐项对比、`createSelection()` 默认勾选、`buildApplyInput()` 生成 apply 入参、`summarizeSelection()` 统计写入数量。组件只把状态接到这些函数上，用例在 `test/web/bangumi-sync.test.ts`。
+- 默认勾选只包含「一定能写且确实有变化」的内容：空标题、空描述、无日期、无状态、无类型的字段都不勾；`diffPreview()` 判定与当前完全一致的项同样不勾并禁用勾选框，同时显示「与当前一致」。**预览缺字段不算「一致」**，否则「没解析出来」会被当成「已经同步过」。
+- `order` 必须是该季全部集的一个排列，无法按集部分勾选，因此它对应季级别的「按预览顺序重排 N 集」一个开关，只有一集时默认关闭；预览顺序与当前顺序逐位相同时禁用并提示「顺序已一致」。
+- 剧集列表必须**纵向单列、每项两行**（标题、文件名各一行）。横向两列的 `1fr` 等价于 `minmax(auto, 1fr)`，会被最长不可断词撑破容器，是「列表把对话框撑宽」的真实原因。
+- 系列描述**完整多行展示**，不做 JS 截断，用 `white-space: pre-wrap` 保留原文分段；多行文本不加删除线，靠「当前 / Bangumi」标签区分。
+- `matching / previewing / applying` 期间禁止关闭对话框（隐藏关闭按钮、拦 Esc、禁用取消与上一步），否则响应会写回已卸载的视图。`match` 失败也**不**自动关闭，保留空态让用户就地重试。
 - 写入成功后调用 `refreshSeries()` 重新扫描装配，并用返回的新 `Series` 实例整体替换详情页的 `series.value`；不要逐字段打补丁，标题、排序、季与集都可能变化。
-- `apply` 失败保留对话框与勾选状态；`match` 失败收起对话框。请求失败的提示统一由 `api.ts` 拦截器给出，组件内不重复 `ElMessage`。
+- `apply` 失败保留对话框与勾选状态。请求失败的提示统一由 `api.ts` 拦截器给出，组件内不重复 `ElMessage`。
 - 对话框与下拉面板挂载在 `body` 上，非 scoped 块只写业务布局与内容排版；组件主题（底色、描边、三级文字、选中态）由 `src/assets/elements/` 统一提供，见 `docs/modules/web/element-theme.md`。
 
 ## 播放器现有架构

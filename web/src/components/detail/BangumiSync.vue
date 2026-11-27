@@ -17,8 +17,9 @@
 			title="同步 Bangumi"
 			append-to-body
 			:close-on-click-modal="false"
-			:close-on-press-escape="!status.applying"
-			:show-close="!status.applying"
+			:close-on-press-escape="!busy"
+			:show-close="!busy"
+			:before-close="handleBeforeClose"
 			@closed="reset"
 		>
 			<el-steps class="steps" :active="step" simple>
@@ -67,43 +68,86 @@
 					<section v-else-if="previewData" class="preview">
 						<div class="group">
 							<div class="group-title">系列信息</div>
-							<div v-for="field in seriesFields" :key="field.key" class="field">
-								<el-checkbox v-model="selection.series[field.key]" />
-								<span class="label">{{ field.label }}</span>
-								<span class="from" :title="field.from">{{ field.from }}</span>
-								<el-icon class="arrow"><Right /></el-icon>
-								<span class="to" :title="field.to">{{ field.to }}</span>
+							<div
+								v-for="field in seriesFields"
+								:key="field.key"
+								class="field"
+								:class="{ same: field.same, long: field.key === 'description' }"
+							>
+								<div class="field-head">
+									<el-checkbox v-model="selection.series[field.key]" :disabled="field.same" />
+									<span class="label">{{ field.label }}</span>
+									<!-- 内容一致时只显示一份值：并排两个相同文本没有信息量 -->
+									<template v-if="field.same && field.key !== 'description'">
+										<span class="to" :title="field.to">{{ field.to }}</span>
+										<span class="same-tag">与当前一致</span>
+									</template>
+									<template v-else-if="field.key !== 'description'">
+										<span class="from" :title="field.from">{{ field.from }}</span>
+										<el-icon class="arrow"><Right /></el-icon>
+										<span class="to" :title="field.to">{{ field.to }}</span>
+									</template>
+									<span v-else-if="field.same" class="same-tag">与当前一致</span>
+								</div>
+								<!-- 描述可能上百字，逐字比对才是用户真正要看的内容，不做任何截断 -->
+								<div v-if="field.key === 'description'" class="field-long">
+									<div v-if="!field.same" class="long-item">
+										<span class="long-label">当前</span>
+										<p class="long-text from-text">{{ field.from }}</p>
+									</div>
+									<div class="long-item">
+										<span class="long-label">{{ field.same ? '当前' : 'Bangumi' }}</span>
+										<p class="long-text to-text">{{ field.to }}</p>
+									</div>
+								</div>
 							</div>
 						</div>
 
 						<div v-for="(season, index) in previewData.seasons" :key="season.seasonId" class="group">
 							<div class="group-title">
-								<el-checkbox v-model="selection.seasons[index].title" />
+								<el-checkbox
+									v-model="selection.seasons[index].title"
+									:disabled="isSameSeasonTitle(index)"
+								/>
 								<span class="from">{{ season.fromTitle }}</span>
 								<el-icon class="arrow"><Right /></el-icon>
 								<span class="to">{{ season.title }}</span>
 								<span class="tag">{{ describeAlignment(season.alignment) }}</span>
+								<span v-if="isSameSeasonTitle(index)" class="same-tag">与当前一致</span>
 							</div>
 							<div class="season-actions">
 								<el-checkbox
 									v-model="selection.seasons[index].order"
-									:disabled="season.episodes.length < 2"
+									:disabled="season.episodes.length < 2 || isSameSeasonOrder(index)"
 								>
 									按预览顺序重排 {{ season.episodes.length }} 集
 								</el-checkbox>
+								<span v-if="isSameSeasonOrder(index)" class="same-tag">顺序已一致</span>
 								<span class="spacer"></span>
 								<el-button text size="small" @click="setEpisodes(index, true)">全选</el-button>
 								<el-button text size="small" @click="setEpisodes(index, false)">全不选</el-button>
 							</div>
 							<div class="episodes">
-								<div v-for="episode in season.episodes" :key="episode.episodeId" class="episode">
-									<el-checkbox v-model="selection.seasons[index].episodes[episode.episodeId]" />
-									<span class="index">{{ episode.position }}</span>
-									<span class="title">{{ episode.title }}</span>
-									<span class="file">{{ episode.fileName }}</span>
-									<span v-if="episode.kind !== 'main'" class="kind">
-										{{ episode.kind === 'special' ? '特别篇' : '未匹配' }}
-									</span>
+								<div
+									v-for="episode in season.episodes"
+									:key="episode.episodeId"
+									class="episode"
+									:class="{ same: isSameEpisode(index, episode.episodeId) }"
+								>
+									<el-checkbox
+										v-model="selection.seasons[index].episodes[episode.episodeId]"
+										:disabled="isSameEpisode(index, episode.episodeId)"
+									/>
+									<div class="ep-main">
+										<div class="ep-line">
+											<span class="index">{{ episode.position }}</span>
+											<span class="title" :title="episode.title">{{ episode.title }}</span>
+											<span v-if="episode.kind !== 'main'" class="kind">
+												{{ episode.kind === 'special' ? '特别篇' : '未匹配' }}
+											</span>
+										</div>
+										<div class="file" :title="episode.fileName">{{ episode.fileName }}</div>
+									</div>
 								</div>
 							</div>
 							<ul v-if="season.missing.length" class="notes">
@@ -122,7 +166,7 @@
 			</div>
 
 			<template #footer>
-				<el-button :disabled="status.applying" @click="visible = false">取消</el-button>
+				<el-button :disabled="busy" @click="visible = false">取消</el-button>
 				<template v-if="step === 0">
 					<el-button :loading="status.matching" :disabled="status.previewing" @click="loadMatch"
 						>重新匹配</el-button
@@ -137,7 +181,7 @@
 					</el-button>
 				</template>
 				<template v-else>
-					<el-button :disabled="status.applying" @click="step = 0">上一步</el-button>
+					<el-button :disabled="busy" @click="step = 0">上一步</el-button>
 					<el-button type="primary" :loading="status.applying" :disabled="!summary.total" @click="submit">
 						应用 {{ summary.total }} 项
 					</el-button>
@@ -166,10 +210,16 @@ import {
 	buildApplyInput,
 	buildSeasonMapping,
 	createSelection,
+	diffPreview,
 	describeAlignment,
 	summarizeSelection,
 } from '@/utils/bangumiSync';
-import type { BangumiSeriesSelection, BangumiSelection } from '@/utils/bangumiSync';
+import type {
+	BangumiCurrentSnapshot,
+	BangumiPreviewDiff,
+	BangumiSeriesSelection,
+	BangumiSelection,
+} from '@/utils/bangumiSync';
 
 const props = defineProps<{
 	seriesId: string;
@@ -188,6 +238,8 @@ const visible = ref(false);
 const step = ref(0);
 const match = ref<BangumiMatchResult | null>(null);
 const previewData = ref<BangumiPreviewResult | null>(null);
+/** 预览与本地数据的逐项对比结果，用于把「无变化」的项排除在勾选之外 */
+const diff = ref<BangumiPreviewDiff | null>(null);
 /** 匹配结果的本地可编辑镜像，季与条目的对应关系由用户确认 */
 const seasons = ref<BangumiMatchSeason[]>([]);
 const selection = ref<BangumiSelection>({
@@ -195,6 +247,8 @@ const selection = ref<BangumiSelection>({
 	seasons: [],
 });
 
+/** 任何一步请求进行中都算忙碌：此时关闭对话框会让请求结果无处落地 */
+const busy = computed(() => status.matching || status.previewing || status.applying);
 const candidates = computed(() => match.value?.candidates ?? []);
 const mappedCount = computed(() => seasons.value.filter((season) => season.subjectIds.length).length);
 const applyInput = computed(() => (previewData.value ? buildApplyInput(previewData.value, selection.value) : {}));
@@ -220,6 +274,7 @@ const matchNotes = computed(() => {
  *
  * 修改前取当前领域对象，修改后取预览结果，两者并排展示，
  * 让用户能在勾选前确认覆盖内容（尤其是描述被清空的情况）。
+ * `same` 为真表示两边内容完全一致，勾选框会禁用——提交同样的值只是白白多一次写请求。
  */
 const seriesFields = computed(() => {
 	const data = previewData.value;
@@ -227,29 +282,74 @@ const seriesFields = computed(() => {
 		return [];
 	}
 	const current = series.value;
-	const fields: Array<{ key: keyof BangumiSeriesSelection; label: string; from: string; to: string }> = [
-		{ key: 'title', label: '标题', from: current.title, to: data.series.title },
-		{
-			key: 'description',
-			label: '剧情简介',
-			from: shorten(current.description) || '空',
-			to: shorten(data.series.description) || '空',
-		},
-		{ key: 'date', label: '上线时间', from: formatDate(current.date), to: formatDate(data.series.date) },
-		{
-			key: 'status',
-			label: '状态',
-			from: getSeriesStatusName(current.status) || '未设置',
-			to: getSeriesStatusName(data.series.status) || '未设置',
-		},
-		{ key: 'types', label: '类型', from: formatTypes(current.types), to: formatTypes(data.series.types) },
-	];
+	const same = diff.value?.series;
+	const fields: Array<{ key: keyof BangumiSeriesSelection; label: string; from: string; to: string; same: boolean }> =
+		[
+			{
+				key: 'title',
+				label: '标题',
+				from: current.title || '空',
+				to: data.series.title || '空',
+				same: !!same?.title,
+			},
+			{
+				key: 'description',
+				label: '剧情简介',
+				from: current.description || '空',
+				to: data.series.description || '空',
+				same: !!same?.description,
+			},
+			{
+				key: 'date',
+				label: '上线时间',
+				from: formatDate(current.date),
+				to: formatDate(data.series.date),
+				same: !!same?.date,
+			},
+			{
+				key: 'status',
+				label: '状态',
+				from: getSeriesStatusName(current.status) || '未设置',
+				to: getSeriesStatusName(data.series.status) || '未设置',
+				same: !!same?.status,
+			},
+			{
+				key: 'types',
+				label: '类型',
+				from: formatTypes(current.types),
+				to: formatTypes(data.series.types),
+				same: !!same?.types,
+			},
+		];
 	return fields;
 });
 
-function shorten(text: string, max = 60) {
-	const value = text.replace(/\s+/g, ' ').trim();
-	return value.length > max ? `${value.slice(0, max)}…` : value;
+/** 对比用的本地快照：只取会被覆盖的字段，季内顺序按当前展示顺序 */
+const currentSnapshot = computed<BangumiCurrentSnapshot>(() => ({
+	series: {
+		title: series.value.title,
+		description: series.value.description,
+		date: series.value.date,
+		status: series.value.status,
+		types: series.value.types,
+	},
+	seasons: series.value.seasons.map((season) => ({
+		seasonId: season.id,
+		episodeIds: season.episodes.map((episode) => episode.id),
+		episodeTitles: Object.fromEntries(season.episodes.map((episode) => [episode.id, episode.title])),
+	})),
+}));
+
+function isSameSeasonTitle(index: number) {
+	return !!diff.value?.seasons[index]?.title;
+}
+
+function isSameSeasonOrder(index: number) {
+	return !!diff.value?.seasons[index]?.order;
+}
+
+function isSameEpisode(index: number, episodeId: string) {
+	return !!diff.value?.seasons[index]?.episodes[episodeId];
 }
 
 function formatDate(value?: Array<number | undefined> | null) {
@@ -296,8 +396,8 @@ async function loadMatch() {
 		// 复制一份可编辑的镜像：候选条目要能被用户改写，不能直接改接口返回值
 		seasons.value = result.seasons.map((season) => ({ ...season, subjectIds: [...season.subjectIds] }));
 	} catch {
-		// 请求失败的提示由 API 层统一给出，这里只需要收起空对话框
-		visible.value = false;
+		// 请求失败的提示由 API 层统一给出；保留对话框，用户可以就地重试
+		// 而不是每次都从入口按钮重新打开
 	} finally {
 		status.offMatching();
 	}
@@ -311,8 +411,9 @@ async function loadPreview() {
 	status.onPreviewing();
 	try {
 		const result = await previewBangumi(props.seriesId, mapping);
+		diff.value = diffPreview(result, currentSnapshot.value);
 		previewData.value = result;
-		selection.value = createSelection(result);
+		selection.value = createSelection(result, diff.value);
 		step.value = 1;
 	} catch {
 		// 保持匹配步骤，用户调整条目后可以再次生成预览
@@ -341,6 +442,7 @@ async function submit() {
 	}
 }
 
+/** 全选/全不选只作用于有变化的集，「与当前一致」的项始终不参与提交 */
 function setEpisodes(index: number, checked: boolean) {
 	const picked = selection.value.seasons[index];
 	const season = previewData.value?.seasons[index];
@@ -348,14 +450,31 @@ function setEpisodes(index: number, checked: boolean) {
 		return;
 	}
 	for (const episode of season.episodes) {
+		if (isSameEpisode(index, episode.episodeId)) {
+			continue;
+		}
 		picked.episodes[episode.episodeId] = checked;
 	}
+}
+
+/**
+ * 请求进行中拦截所有关闭入口（右上角关闭、Esc）。
+ *
+ * 匹配与预览的响应要写回对话框状态，关闭后再返回会更新一个已卸载的视图：
+ * 用户既看不到结果，也无法判断是否成功，只能重新打开再来一次。
+ */
+function handleBeforeClose(done: () => void) {
+	if (busy.value) {
+		return;
+	}
+	done();
 }
 
 function reset() {
 	step.value = 0;
 	match.value = null;
 	previewData.value = null;
+	diff.value = null;
 	seasons.value = [];
 	selection.value = {
 		series: { title: false, description: false, date: false, status: false, types: false },
@@ -441,7 +560,7 @@ body .el-dialog.bangumi-dialog {
 		}
 	}
 	.group-title,
-	.field {
+	.field-head {
 		display: flex;
 		align-items: center;
 		gap: 10px;
@@ -450,13 +569,30 @@ body .el-dialog.bangumi-dialog {
 	.group-title {
 		color: map.get(token.$theme, 'l-9');
 	}
-	.field:not(:first-child) {
+	.field + .field {
 		margin-top: 8px;
+	}
+	.field.same .label {
+		color: map.get(token.$theme, 'l-6');
 	}
 	.label {
 		width: 4em;
 		flex-shrink: 0;
 		color: map.get(token.$theme, 'l-7');
+	}
+	// 「无变化」标记：让用户知道勾选框为什么是灰的，而不是以为坏了
+	.same-tag {
+		flex-shrink: 0;
+		padding: 0 6px;
+		border-radius: 4px;
+		background-color: map.get(token.$theme, 'd-2');
+		color: map.get(token.$theme, 'l-6');
+		font-size: 0.75rem;
+		line-height: 1.6;
+	}
+	// 描述行没有单值占位，单独把标签推到右边缘，与其它字段对齐
+	.field-head .same-tag {
+		margin-left: auto;
 	}
 	.from,
 	.to {
@@ -487,6 +623,43 @@ body .el-dialog.bangumi-dialog {
 		color: map.get(token.$theme, 'l-7');
 		font-size: 0.75rem;
 	}
+	// 描述是长文本：不截断、按原文换行，长串也必须在容器内折行
+	.field-long {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin: 6px 0 0 28px;
+	}
+	.long-item {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		min-width: 0;
+	}
+	.long-label {
+		flex-shrink: 0;
+		width: 4.5em;
+		padding-top: 2px;
+		color: map.get(token.$theme, 'l-6');
+		font-size: 0.75rem;
+		line-height: 1.7;
+	}
+	.long-text {
+		flex: 1;
+		min-width: 0;
+		margin: 0;
+		font-size: 0.8125rem;
+		line-height: 1.7;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+	// 多行文本不加删除线：整段划线会盖住字，靠「当前 / Bangumi」标签区分更清楚
+	.from-text {
+		color: map.get(token.$theme, 'l-6');
+	}
+	.to-text {
+		color: map.get(token.$theme, 'l-8');
+	}
 	.season-actions {
 		display: flex;
 		align-items: center;
@@ -496,16 +669,42 @@ body .el-dialog.bangumi-dialog {
 			flex: 1;
 		}
 	}
+	// 纵向单列：剧集标题与文件名都长，横向并排会把容器撑宽或互相挤到看不见
 	.episodes {
-		display: grid;
-		grid-template-columns: repeat(2, 1fr);
-		gap: 4px 15px;
-		margin-top: 5px;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin-top: 8px;
 	}
 	.episode {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 8px;
+		min-width: 0;
+		padding: 3px 6px;
+		border-radius: 6px;
+		transition: background-color 0.15s ease;
+		&:hover {
+			background-color: map.get(token.$theme, 'd-3');
+		}
+		// 勾选框默认 32px 高，会把两行内容撑出大片空隙
+		.el-checkbox {
+			height: auto;
+			margin-right: 0;
+		}
+		&.same .title {
+			color: map.get(token.$theme, 'l-6');
+		}
+	}
+	.ep-main {
+		flex: 1;
+		min-width: 0;
+	}
+	.ep-line {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		min-width: 0;
 		font-size: 0.875rem;
 		.index {
 			flex-shrink: 0;
@@ -521,19 +720,19 @@ body .el-dialog.bangumi-dialog {
 			white-space: nowrap;
 			color: map.get(token.$theme, 'l-8');
 		}
-		.file {
-			max-width: 40%;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			white-space: nowrap;
-			color: map.get(token.$theme, 'l-5');
-			font-size: 0.75rem;
-		}
 		.kind {
 			flex-shrink: 0;
 			color: map.get(token.$theme, 'l-6');
 			font-size: 0.75rem;
 		}
+	}
+	.ep-main .file {
+		margin-top: 1px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		color: map.get(token.$theme, 'l-5');
+		font-size: 0.75rem;
 	}
 }
 

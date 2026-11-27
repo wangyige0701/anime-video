@@ -49,11 +49,22 @@ body {
 		}
 
 		.el-step__head.is-process .el-step__icon.is-text {
-			// 当前步骤实心，和主色按钮形成同一视觉语言
-			border-color: transparent;
-			background: map.get(token.$theme, 'l-9');
-			color: map.get(token.$theme, 'd-5');
+			// 当前步骤用主题主色：实心近白圆在深色面板上过于刺眼，
+			// 主色又能随主题切换自动协调，不需要为每个主题单独调
+			border-width: 1.5px;
+			border-color: map.get(token.$theme, 'primary');
+			background: transparent;
+			color: map.get(token.$theme, 'primary');
 			font-weight: 600;
+			// simple 模式不渲染序号文本，只有描边就是个空心圈，
+			// 补一个同心内点，「进行中」才有实感
+			&::after {
+				content: '';
+				position: absolute;
+				inset: 4px;
+				border-radius: 50%;
+				background: currentcolor;
+			}
 		}
 
 		.el-step__head.is-finish .el-step__icon.is-text {

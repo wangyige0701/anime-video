@@ -50,7 +50,22 @@ Element Plus 的默认变量按亮色主题取值：
    `.el-select-dropdown.is-multiple .el-select-dropdown__item.is-selected:after` 给对勾上色，
    写在 `&.is-selected::after` 里权重不够，会被静默忽略。必须按同样的选择器结构在 `body` 下再写一条。
 
-## 5. 滚动条
+## 5. 步骤条的当前步骤
+
+simple 模式的三个状态各自要能一眼分辨，且都不能出现「纯白实心圆」——深色面板上那是最亮的一块，会把视线从内容上抢走：
+
+| 状态         | 形态                               | 说明                     |
+| ------------ | ---------------------------------- | ------------------------ |
+| `is-wait`    | `l-4` 描边，透明底                 | 未开始，最弱             |
+| `is-process` | **主色** 1.5px 描边 + 同色同心内点 | 唯一的彩色焦点，随主题走 |
+| `is-finish`  | `l-4` 实心，`d-5` 图标             | 已完成，退到后面         |
+
+两个必须知道的细节：
+
+- **simple 模式不渲染序号文本**。`el-step__icon-inner` 根本不存在，圆点里是没有内容的，所以只给描边会看起来像个空圈。当前步骤的「进行中」实感要靠 `::after` 画同心内点补出来。
+- **圆点的尺寸与描边写在 `.el-step__icon.is-text` 上**，process / finish 的覆盖必须带上 `.el-step__head` 前缀（`.el-step__head.is-process .el-step__icon.is-text`），否则被 Element 的 `.el-step.is-simple .el-step__icon { background: 0 0 }` 覆盖回去。
+
+## 6. 滚动条
 
 **统一使用 `el-scrollbar`，不用原生滚动条。** 原生滚动条不受主题控制，Windows 上是一条带箭头的灰色轨道；`scrollbar-width: thin` 只能改粗细，改不了配色。
 
@@ -59,19 +74,19 @@ Element Plus 的默认变量按亮色主题取值：
 - 需要「滚动区高度上限」时用 `max-height` prop，不要自己写 `overflow: auto`；
 - 对隐藏滚动条的场景（如横向滑动区域），用原有的 `HorizontalScroll`，不要新写一处 `::-webkit-scrollbar` 隐藏。
 
-## 6. 已覆盖的组件
+## 7. 已覆盖的组件
 
 `button`、`input`、`select`、`checkbox`、`switch`、`segmented`、`steps`、`dialog`、`popover`、`tooltip`、`scrollbar`、`loading`。
 
 新增适配时：在 `elements/` 下建 `<组件名>.scss` → 只写变量映射与默认尺寸 → 在 `elements.scss` 里 `@use` → 补一条变更记录。
 
-## 7. 已知限制
+## 8. 已知限制
 
 - 只适配了深色主题。`root.scss` 里没有亮色分支，新增亮色主题时这一层要整体过一遍。
 - `el-select` 的 `is-focused` 仍用主色描边（`primary`），没有改成 `l-*` 梯度——主色在深色底上是可辨识的，且能表达「当前焦点」。
 - `el-tag` 只在 `.el-select` 内部做了深色适配，其它位置的彩色标签仍走 Element 的状态色。
 
-## 8. 验证方式
+## 9. 验证方式
 
 改动这一层后至少跑一遍：
 

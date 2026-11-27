@@ -21,17 +21,19 @@
 				</div>
 			</template>
 
-			<div class="types">
-				<div
-					v-for="type in seriesTypes"
-					:key="type.id"
-					class="type-item"
-					:class="{ selected: selectedTypes.includes(type.id) }"
-					@click.stop="change(type.id)"
-				>
-					{{ type.name }}
+			<el-scrollbar max-height="240px">
+				<div class="types">
+					<div
+						v-for="type in seriesTypes"
+						:key="type.id"
+						class="type-item"
+						:class="{ selected: selectedTypes.includes(type.id) }"
+						@click.stop="change(type.id)"
+					>
+						{{ type.name }}
+					</div>
 				</div>
-			</div>
+			</el-scrollbar>
 		</el-popover>
 	</div>
 </template>

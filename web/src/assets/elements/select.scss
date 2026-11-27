@@ -1,0 +1,107 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+/**
+ * Element Plus 选择器的全局主题覆盖。
+ *
+ * 三处默认值在深色主题下不可用：
+ * 1. 输入框容器 `.el-select__wrapper` 用 `--el-fill-color-blank`（白）做底、
+ *    `--el-border-color`（浅灰）做描边，在深紫背景上是一块亮斑；
+ * 2. 下拉面板用 `--el-bg-color-overlay`（白），且箭头描边单独取 `--el-border-color-light`；
+ * 3. **选中项用主色**：`is-selected` 的 `color` 与对勾 `background-color` 都是
+ *    `--el-color-primary`。主色本身就是中紫色，压在 `d-5` 的深紫面板上几乎看不见，
+ *    这正是「下拉列表里看不到选中样式」的原因。这里改成「亮字 + 提亮底色 + 白色对勾」，
+ *    不再依赖主色与背景的对比度。
+ */
+body {
+	.el-select {
+		--el-fill-color-blank: #{map.get(token.$theme, 'd-4')};
+		--el-border-color: #{map.get(token.$theme, 'l-3')};
+		--el-border-color-hover: #{map.get(token.$theme, 'l-6')};
+		--el-text-color-regular: #{map.get(token.$theme, 'l-8')};
+		--el-text-color-placeholder: #{map.get(token.$theme, 'l-5')};
+		--el-text-color-secondary: #{map.get(token.$theme, 'l-6')};
+		--el-input-icon-color: #{map.get(token.$theme, 'l-6')};
+		--el-select-input-color: #{map.get(token.$theme, 'l-6')};
+		--el-select-multiple-input-color: #{map.get(token.$theme, 'l-8')};
+	}
+
+	// 多选时的已选项标签默认是浅紫底 + 主色字，深色下同样发白
+	.el-select .el-tag {
+		--el-tag-bg-color: #{map.get(token.$theme, 'd-3')};
+		--el-tag-border-color: #{map.get(token.$theme, 'l-3')};
+		--el-tag-text-color: #{map.get(token.$theme, 'l-8')};
+		--el-tag-hover-color: #{map.get(token.$theme, 'l-6')};
+		.el-tag__close {
+			color: map.get(token.$theme, 'l-6');
+			&:hover {
+				color: map.get(token.$theme, 'd-5');
+				background-color: map.get(token.$theme, 'l-6');
+			}
+		}
+	}
+
+	.el-select__wrapper {
+		&.is-focused {
+			// 聚焦仍用主色描边，但把内阴影由 1px 加粗到 1.5px，深色下更明确
+			box-shadow: 0 0 0 1.5px map.get(token.$theme, 'primary') inset;
+		}
+	}
+
+	// 下拉面板挂载在 body 上，与选择器本身不共享作用域
+	.el-select__popper.el-popper {
+		--el-bg-color-overlay: #{map.get(token.$theme, 'd-5')};
+		border-color: map.get(token.$theme, 'l-3');
+		background: map.get(token.$theme, 'd-5');
+
+		.el-popper__arrow::before {
+			// 箭头底色默认取 `--el-bg-color`（亮色），不跟弹层变量走，必须单独覆盖
+			border-color: map.get(token.$theme, 'l-3');
+			background: map.get(token.$theme, 'd-5');
+		}
+	}
+
+	.el-select-dropdown__item {
+		color: map.get(token.$theme, 'l-8');
+		font-size: 0.875rem;
+
+		&.is-hovering {
+			background-color: map.get(token.$theme, 'd-3');
+			color: map.get(token.$theme, 'l-9');
+		}
+
+		&.is-selected {
+			// 不叠主色：亮字 + 提亮底色，配合白色对勾，任何主题下都能分辨
+			background-color: map.get(token.$theme, 'd-2');
+			color: map.get(token.$theme, 'l-9');
+			font-weight: 500;
+		}
+
+		// 已选中项再次悬浮时保持选中底色，避免视觉上「选中状态被 hover 覆盖」
+		&.is-selected.is-hovering {
+			background-color: map.get(token.$theme, 'd-2');
+		}
+
+		&.is-disabled {
+			color: map.get(token.$theme, 'l-5');
+			background-color: transparent;
+		}
+	}
+
+	.el-select-dropdown__empty,
+	.el-select-dropdown__loading {
+		color: map.get(token.$theme, 'l-6');
+	}
+}
+
+// 多选对勾的 `background-color` 由 Element 用
+// `.el-select-dropdown.is-multiple .el-select-dropdown__item.is-selected:after` 设置，
+// 权重高于上面的 `&.is-selected::after`，必须按同样的选择器结构覆盖
+body .el-select-dropdown.is-multiple .el-select-dropdown__item.is-selected::after {
+	// 对勾靠 mask 绘制，改 `background-color` 即改变勾的颜色
+	background-color: map.get(token.$theme, 'l-9');
+}
+
+body .el-select-dropdown.is-multiple .el-select-dropdown__item.is-disabled::after {
+	background-color: map.get(token.$theme, 'l-4');
+}

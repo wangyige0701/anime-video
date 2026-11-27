@@ -120,10 +120,7 @@ onBeforeUnmount(() => {
 	padding-left: calc(token.$menu-width + token.$main-padding);
 	padding-right: 0;
 	padding-bottom: 0;
-	.el-scrollbar {
-		--el-scrollbar-bg-color: #{map.get(token.$theme, 'l-9')};
-		--el-scrollbar-hover-bg-color: #{map.get(token.$theme, 'l-6')};
-	}
+	// 滚动条配色由 assets/elements/scrollbar.scss 统一提供，这里只补主容器的层级与内边距
 	:deep(.el-scrollbar__wrap) {
 		padding-left: token.$main-padding;
 	}

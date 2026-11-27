@@ -1,0 +1,39 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+/**
+ * Element Plus 滚动条的全局主题覆盖。
+ *
+ * 项目统一用 `el-scrollbar` 而不是原生滚动条：原生滚动条不受主题控制，
+ * Windows 上是一条带箭头的灰色轨道，和深色界面完全不搭。
+ *
+ * 配色与不透明度收敛在这一处，页面里只写 `el-scrollbar` 即可，
+ * 不再各自覆盖 `--el-scrollbar-bg-color`。
+ *
+ * 注意滑块尺寸由 `.el-scrollbar__bar` 的宽/高决定（竖条的 thumb 是 `width: 100%`），
+ * 直接给 `__thumb` 设宽度不会生效。
+ */
+body {
+	.el-scrollbar {
+		--el-scrollbar-bg-color: #{map.get(token.$theme, 'l-8')};
+		--el-scrollbar-hover-bg-color: #{map.get(token.$theme, 'l-6')};
+		--el-scrollbar-opacity: 0.35;
+		--el-scrollbar-hover-opacity: 0.75;
+	}
+
+	.el-scrollbar__bar {
+		border-radius: 3px;
+
+		&.is-vertical {
+			width: 6px;
+		}
+
+		&.is-horizontal {
+			height: 6px;
+		}
+	}
+
+	.el-scrollbar__thumb {
+		border-radius: 3px;
+	}
+}

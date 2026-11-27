@@ -1,0 +1,78 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+/**
+ * Element Plus 对话框的全局主题覆盖。
+ *
+ * 对话框挂载在 `body` 上，页面内的 scoped 样式命中不到，而默认变量是按亮色主题
+ * 取的（背景 `--el-bg-color` 为白、正文 `--el-text-color-primary` 为近黑）。
+ * 这里一次性把「浮层底色 / 描边 / 三级文字 / 填充」全部换成主题梯度，
+ * 业务组件只需写自己的布局，不必再逐个覆盖变量。
+ *
+ * 变量语义（与元素色阶一致）：
+ * - `d-5` 浮层底色、`d-4` 块级卡片、`d-3` 悬浮与填充、`d-2` 更亮的悬浮；
+ * - `l-3` 描边、`l-5`/`l-6` 弱文字、`l-8` 常规文字、`l-9` 主文字。
+ */
+body {
+	.el-dialog {
+		--el-dialog-bg-color: #{map.get(token.$theme, 'd-5')};
+		--el-dialog-padding-primary: 20px;
+		--el-dialog-border-radius: #{token.$radius-ex-lg};
+
+		--el-text-color-primary: #{map.get(token.$theme, 'l-9')};
+		--el-text-color-regular: #{map.get(token.$theme, 'l-8')};
+		--el-text-color-secondary: #{map.get(token.$theme, 'l-6')};
+		--el-text-color-placeholder: #{map.get(token.$theme, 'l-5')};
+
+		--el-border-color: #{map.get(token.$theme, 'l-3')};
+		--el-border-color-light: #{map.get(token.$theme, 'l-2')};
+		--el-border-color-lighter: #{map.get(token.$theme, 'l-2')};
+		--el-border-color-extra-light: #{map.get(token.$theme, 'l-2')};
+
+		--el-fill-color-blank: #{map.get(token.$theme, 'd-4')};
+		--el-fill-color-light: #{map.get(token.$theme, 'd-3')};
+		--el-fill-color-lighter: #{map.get(token.$theme, 'd-3')};
+		--el-fill-color-extra-light: #{map.get(token.$theme, 'd-4')};
+		--el-fill-color-dark: #{map.get(token.$theme, 'd-2')};
+
+		border: 1px solid map.get(token.$theme, 'l-3');
+		border-radius: token.$radius-ex-lg;
+		box-shadow: 0 18px 50px rgb(0 0 0 / 45%);
+
+		.el-dialog__header {
+			// 标题与正文之间不再额外留一大段空白，靠内容自身的间距分组
+			padding-bottom: 10px;
+			margin-right: 0;
+		}
+
+		.el-dialog__title {
+			// 默认 1.125rem 在正文 0.875rem 的对话框里偏大，收敛到 1rem 并加字重区分层级
+			color: map.get(token.$theme, 'l-9');
+			font-size: 1rem;
+			font-weight: 600;
+			line-height: 1.5;
+		}
+
+		.el-dialog__headerbtn {
+			top: 10px;
+			width: 36px;
+			height: 36px;
+			.el-dialog__close {
+				color: map.get(token.$theme, 'l-6');
+			}
+			&:hover .el-dialog__close {
+				color: map.get(token.$theme, 'l-9');
+			}
+		}
+
+		.el-dialog__body {
+			padding-top: 0;
+			color: map.get(token.$theme, 'l-8');
+			font-size: 0.875rem;
+		}
+
+		.el-dialog__footer {
+			padding-top: 15px;
+		}
+	}
+}

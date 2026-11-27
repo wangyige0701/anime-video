@@ -1,16 +1,61 @@
 @use 'sass:map';
 @use '@/scss/token.scss' as token;
 
+/**
+ * Element Plus 按钮的全局主题覆盖。
+ *
+ * 两类按钮需要分开处理，不能只写 `.el-button`：
+ * - 默认按钮取 `--el-fill-color-blank`（白）做底，深色界面里是一块亮砖；
+ * - 主色按钮的 hover/active 取 `--el-color-primary-light-3/-5`（往白里混），
+ *   按下时反而变亮，与深色主题的「越按越深」直觉相反。
+ *
+ * 因此让默认按钮读主题梯度，主色按钮把 hover/active 换成 `d-*`。
+ * 显式排除 `is-text` / `is-link` / `is-plain` 与各状态色：它们各自用变量表达
+ * 透明底或状态色，被这里覆盖会变成实心方块。
+ */
 body {
-	.el-button {
-		&.icon {
-			--el-button-border-color: transparent;
-			--el-button-disabled-border-color: transparent;
-			--el-button-bg-color: transparent;
-			--el-button-disabled-bg-color: transparent;
-			--el-button-hover-bg-color: #{map.get(token.$theme, 'l-2')};
-			--el-button-hover-border-color: #{map.get(token.$theme, 'l-2')};
-			--el-button-hover-text-color: #fff;
+	.el-button:not(.is-text):not(.is-link):not(.is-plain):not(.icon) {
+		&:not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(
+				.el-button--info
+			) {
+			--el-button-text-color: #{map.get(token.$theme, 'l-8')};
+			--el-button-bg-color: #{map.get(token.$theme, 'd-4')};
+			--el-button-border-color: #{map.get(token.$theme, 'l-3')};
+			--el-button-hover-text-color: #{map.get(token.$theme, 'l-9')};
+			--el-button-hover-bg-color: #{map.get(token.$theme, 'd-3')};
+			--el-button-hover-border-color: #{map.get(token.$theme, 'l-5')};
+			--el-button-active-text-color: #{map.get(token.$theme, 'l-9')};
+			--el-button-active-bg-color: #{map.get(token.$theme, 'd-5')};
+			--el-button-active-border-color: #{map.get(token.$theme, 'l-6')};
+			--el-button-disabled-text-color: #{map.get(token.$theme, 'l-5')};
+			--el-button-disabled-bg-color: #{map.get(token.$theme, 'd-4')};
+			--el-button-disabled-border-color: #{map.get(token.$theme, 'l-2')};
 		}
+	}
+
+	.el-button--primary {
+		--el-button-text-color: #fff;
+		--el-button-bg-color: #{map.get(token.$theme, 'primary')};
+		--el-button-border-color: #{map.get(token.$theme, 'primary')};
+		// hover 往深走：默认是往白里混的主色，按下会突然变亮
+		--el-button-hover-text-color: #fff;
+		--el-button-hover-bg-color: #{map.get(token.$theme, 'd-2')};
+		--el-button-hover-border-color: #{map.get(token.$theme, 'd-2')};
+		--el-button-active-text-color: #fff;
+		--el-button-active-bg-color: #{map.get(token.$theme, 'd-3')};
+		--el-button-active-border-color: #{map.get(token.$theme, 'd-3')};
+		--el-button-disabled-text-color: #{map.get(token.$theme, 'l-6')};
+		--el-button-disabled-bg-color: #{map.get(token.$theme, 'd-3')};
+		--el-button-disabled-border-color: #{map.get(token.$theme, 'l-2')};
+	}
+
+	.el-button.icon {
+		--el-button-border-color: transparent;
+		--el-button-disabled-border-color: transparent;
+		--el-button-bg-color: transparent;
+		--el-button-disabled-bg-color: transparent;
+		--el-button-hover-bg-color: #{map.get(token.$theme, 'l-2')};
+		--el-button-hover-border-color: #{map.get(token.$theme, 'l-2')};
+		--el-button-hover-text-color: #fff;
 	}
 }

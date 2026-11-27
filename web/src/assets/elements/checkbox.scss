@@ -1,0 +1,38 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+/**
+ * Element Plus 勾选框的全局主题覆盖。
+ *
+ * 未勾选的方框默认取 `--el-fill-color-blank`（白）做底、`--el-border` 做描边，
+ * 在深色对话框里是一排亮点。这里把底改成透明、描边换成主题亮色梯度，
+ * 勾选态仍用主色保持可识别。
+ */
+body {
+	.el-checkbox {
+		--el-checkbox-text-color: #{map.get(token.$theme, 'l-8')};
+		--el-checkbox-checked-text-color: #{map.get(token.$theme, 'l-9')};
+		--el-checkbox-input-border-color-hover: #{map.get(token.$theme, 'l-6')};
+		--el-checkbox-bg-color: transparent;
+		--el-checkbox-input-border: 1px solid #{map.get(token.$theme, 'l-4')};
+		--el-checkbox-checked-bg-color: #{map.get(token.$theme, 'primary')};
+		--el-checkbox-checked-input-border-color: #{map.get(token.$theme, 'primary')};
+		--el-checkbox-checked-icon-color: #fff;
+
+		--el-checkbox-disabled-input-fill: #{map.get(token.$theme, 'd-3')};
+		--el-checkbox-disabled-border-color: #{map.get(token.$theme, 'l-3')};
+		--el-checkbox-disabled-checked-input-fill: #{map.get(token.$theme, 'd-3')};
+		--el-checkbox-disabled-checked-input-border-color: #{map.get(token.$theme, 'l-3')};
+		--el-checkbox-disabled-checked-icon-color: #{map.get(token.$theme, 'l-4')};
+		--el-checkbox-disabled-text-color: #{map.get(token.$theme, 'l-5')};
+
+		// 默认字号 14px 与对话框正文一致，但行高偏松，收敛后列表更紧凑
+		font-size: 0.875rem;
+		height: 24px;
+
+		&.is-checked .el-checkbox__inner::after {
+			// 深色背景下对勾需要更清晰的描边
+			border-width: 1px;
+		}
+	}
+}

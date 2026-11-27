@@ -1,7 +1,7 @@
 <template>
 	<div class="bangumi-sync">
 		<el-tooltip content="从 Bangumi 同步季、集标题与排序" placement="bottom" :show-after="300">
-			<el-button class="entry" text :loading="status.matching" @click="open">
+			<el-button class="entry" :loading="status.matching" @click="open">
 				<template #icon>
 					<el-icon><Connection /></el-icon>
 				</template>
@@ -27,96 +27,98 @@
 			</el-steps>
 
 			<div v-loading="status.previewing || status.applying" class="body">
-				<section v-if="step === 0" class="match">
-					<div v-for="(item, index) in seasons" :key="item.seasonId" class="season">
-						<div class="season-head">
-							<span class="path">{{ item.path }}</span>
-							<span class="meta">{{ describeFiles(item) }}</span>
-						</div>
-						<div class="samples">{{ item.sampleFiles.join(' / ') }}</div>
-						<el-select
-							v-model="seasons[index].subjectIds"
-							class="candidates"
-							multiple
-							filterable
-							clearable
-							popper-class="bangumi-popper"
-							placeholder="选择 Bangumi 条目"
-							:multiple-limit="MAX_SUBJECTS_PER_SEASON"
-						>
-							<el-option
-								v-for="candidate in candidates"
-								:key="candidate.id"
-								:value="candidate.id"
-								:label="candidateLabel(candidate)"
+				<el-scrollbar max-height="calc(80vh - 150px)">
+					<section v-if="step === 0" class="match">
+						<div v-for="(item, index) in seasons" :key="item.seasonId" class="season">
+							<div class="season-head">
+								<span class="path">{{ item.path }}</span>
+								<span class="meta">{{ describeFiles(item) }}</span>
+							</div>
+							<div class="samples">{{ item.sampleFiles.join(' / ') }}</div>
+							<el-select
+								v-model="seasons[index].subjectIds"
+								class="candidates"
+								multiple
+								filterable
+								clearable
+								popper-class="bangumi-popper"
+								placeholder="选择 Bangumi 条目"
+								:multiple-limit="MAX_SUBJECTS_PER_SEASON"
 							>
-								<span>{{ candidateLabel(candidate) }}</span>
-								<span class="option-sub">{{ candidate.name }}</span>
-							</el-option>
-						</el-select>
-					</div>
-					<p v-if="!candidates.length && !status.matching" class="empty">
-						没有搜索到候选条目，请手动在 Bangumi 确认条目 ID 后重试。
-					</p>
-					<ul v-if="matchNotes.length" class="notes">
-						<li v-for="(note, index) in matchNotes" :key="index">{{ note }}</li>
-					</ul>
-				</section>
+								<el-option
+									v-for="candidate in candidates"
+									:key="candidate.id"
+									:value="candidate.id"
+									:label="candidateLabel(candidate)"
+								>
+									<span>{{ candidateLabel(candidate) }}</span>
+									<span class="option-sub">{{ candidate.name }}</span>
+								</el-option>
+							</el-select>
+						</div>
+						<p v-if="!candidates.length && !status.matching" class="empty">
+							没有搜索到候选条目，请手动在 Bangumi 确认条目 ID 后重试。
+						</p>
+						<ul v-if="matchNotes.length" class="notes">
+							<li v-for="(note, index) in matchNotes" :key="index">{{ note }}</li>
+						</ul>
+					</section>
 
-				<section v-else-if="previewData" class="preview">
-					<div class="group">
-						<div class="group-title">系列信息</div>
-						<div v-for="field in seriesFields" :key="field.key" class="field">
-							<el-checkbox v-model="selection.series[field.key]" />
-							<span class="label">{{ field.label }}</span>
-							<span class="from" :title="field.from">{{ field.from }}</span>
-							<el-icon class="arrow"><Right /></el-icon>
-							<span class="to" :title="field.to">{{ field.to }}</span>
-						</div>
-					</div>
-
-					<div v-for="(season, index) in previewData.seasons" :key="season.seasonId" class="group">
-						<div class="group-title">
-							<el-checkbox v-model="selection.seasons[index].title" />
-							<span class="from">{{ season.fromTitle }}</span>
-							<el-icon class="arrow"><Right /></el-icon>
-							<span class="to">{{ season.title }}</span>
-							<span class="tag">{{ describeAlignment(season.alignment) }}</span>
-						</div>
-						<div class="season-actions">
-							<el-checkbox
-								v-model="selection.seasons[index].order"
-								:disabled="season.episodes.length < 2"
-							>
-								按预览顺序重排 {{ season.episodes.length }} 集
-							</el-checkbox>
-							<span class="spacer"></span>
-							<el-button text size="small" @click="setEpisodes(index, true)">全选</el-button>
-							<el-button text size="small" @click="setEpisodes(index, false)">全不选</el-button>
-						</div>
-						<div class="episodes">
-							<div v-for="episode in season.episodes" :key="episode.episodeId" class="episode">
-								<el-checkbox v-model="selection.seasons[index].episodes[episode.episodeId]" />
-								<span class="index">{{ episode.position }}</span>
-								<span class="title">{{ episode.title }}</span>
-								<span class="file">{{ episode.fileName }}</span>
-								<span v-if="episode.kind !== 'main'" class="kind">
-									{{ episode.kind === 'special' ? '特别篇' : '未匹配' }}
-								</span>
+					<section v-else-if="previewData" class="preview">
+						<div class="group">
+							<div class="group-title">系列信息</div>
+							<div v-for="field in seriesFields" :key="field.key" class="field">
+								<el-checkbox v-model="selection.series[field.key]" />
+								<span class="label">{{ field.label }}</span>
+								<span class="from" :title="field.from">{{ field.from }}</span>
+								<el-icon class="arrow"><Right /></el-icon>
+								<span class="to" :title="field.to">{{ field.to }}</span>
 							</div>
 						</div>
-						<ul v-if="season.missing.length" class="notes">
-							<li>
-								官方剧集在本地未找到：{{
-									season.missing.map((item) => `第 ${item.sort} 话 ${item.title}`).join('、')
-								}}
-							</li>
-						</ul>
-						<ul v-if="season.warnings.length" class="notes">
-							<li v-for="(warning, index) in season.warnings" :key="index">{{ warning }}</li>
-						</ul>
-					</div>
-				</section>
+
+						<div v-for="(season, index) in previewData.seasons" :key="season.seasonId" class="group">
+							<div class="group-title">
+								<el-checkbox v-model="selection.seasons[index].title" />
+								<span class="from">{{ season.fromTitle }}</span>
+								<el-icon class="arrow"><Right /></el-icon>
+								<span class="to">{{ season.title }}</span>
+								<span class="tag">{{ describeAlignment(season.alignment) }}</span>
+							</div>
+							<div class="season-actions">
+								<el-checkbox
+									v-model="selection.seasons[index].order"
+									:disabled="season.episodes.length < 2"
+								>
+									按预览顺序重排 {{ season.episodes.length }} 集
+								</el-checkbox>
+								<span class="spacer"></span>
+								<el-button text size="small" @click="setEpisodes(index, true)">全选</el-button>
+								<el-button text size="small" @click="setEpisodes(index, false)">全不选</el-button>
+							</div>
+							<div class="episodes">
+								<div v-for="episode in season.episodes" :key="episode.episodeId" class="episode">
+									<el-checkbox v-model="selection.seasons[index].episodes[episode.episodeId]" />
+									<span class="index">{{ episode.position }}</span>
+									<span class="title">{{ episode.title }}</span>
+									<span class="file">{{ episode.fileName }}</span>
+									<span v-if="episode.kind !== 'main'" class="kind">
+										{{ episode.kind === 'special' ? '特别篇' : '未匹配' }}
+									</span>
+								</div>
+							</div>
+							<ul v-if="season.missing.length" class="notes">
+								<li>
+									官方剧集在本地未找到：{{
+										season.missing.map((item) => `第 ${item.sort} 话 ${item.title}`).join('、')
+									}}
+								</li>
+							</ul>
+							<ul v-if="season.warnings.length" class="notes">
+								<li v-for="(warning, index) in season.warnings" :key="index">{{ warning }}</li>
+							</ul>
+						</div>
+					</section>
+				</el-scrollbar>
 			</div>
 
 			<template #footer>
@@ -367,11 +369,11 @@ function reset() {
 @use '@/scss/token.scss' as token;
 
 .entry {
-	--el-button-text-color: #{map.get(token.$theme, 'l-7')};
-	--el-button-hover-text-color: #{map.get(token.$theme, 'l-9')};
-	--el-button-hover-bg-color: #{map.get(token.$theme, 'l-2')};
-	--el-button-hover-border-color: transparent;
 	flex-shrink: 0;
+	// 颜色全部来自全局按钮封装，这里只管与标题行的尺寸配合
+	height: 32px;
+	padding: 0 12px;
+	font-size: 0.8125rem;
 }
 </style>
 
@@ -379,39 +381,11 @@ function reset() {
 @use 'sass:map';
 @use '@/scss/token.scss' as token;
 
-// 对话框挂载在 body 上，样式不能写在 scoped 里
+// 对话框挂载在 body 上，业务布局样式不能写在 scoped 里；
+// 主题变量（底色、文字、描边、填充）由 assets/elements/dialog.scss 统一提供，这里不再重复。
 body .el-dialog.bangumi-dialog {
-	--el-dialog-bg-color: #{map.get(token.$theme, 'd-5')};
-	--el-dialog-padding-primary: 20px;
-	--el-text-color-primary: #{map.get(token.$theme, 'l-9')};
-	--el-text-color-regular: #{map.get(token.$theme, 'l-8')};
-	--el-text-color-secondary: #{map.get(token.$theme, 'l-6')};
-	--el-text-color-placeholder: #{map.get(token.$theme, 'l-5')};
-	--el-border-color: #{map.get(token.$theme, 'l-3')};
-	--el-border-color-light: #{map.get(token.$theme, 'l-2')};
-	--el-fill-color-blank: #{map.get(token.$theme, 'd-4')};
-	--el-fill-color-light: #{map.get(token.$theme, 'd-3')};
-	--el-checkbox-text-color: #{map.get(token.$theme, 'l-8')};
-	--el-checkbox-checked-text-color: #{map.get(token.$theme, 'l-9')};
-	--el-checkbox-input-border-color-hover: #{map.get(token.$theme, 'l-6')};
-	border: 1px solid map.get(token.$theme, 'l-3');
-	border-radius: 12px;
-	.el-dialog__title {
-		font-size: 1rem;
-		color: map.get(token.$theme, 'l-9');
-	}
-	.el-dialog__header {
-		padding-bottom: 10px;
-	}
-	.el-dialog__body {
-		// 内容按需滚动，季多时不至于把对话框撑出视口
-		max-height: calc(80vh - 150px);
-		overflow: auto;
-		scrollbar-width: thin;
-	}
 	.steps {
 		margin-bottom: 15px;
-		--el-text-color-placeholder: #{map.get(token.$theme, 'l-6')};
 	}
 	.body {
 		min-height: 120px;
@@ -563,16 +537,9 @@ body .el-dialog.bangumi-dialog {
 	}
 }
 
-// 下拉面板同样挂载在 body 上，需要单独对齐深色主题
+// 下拉面板同样挂载在 body 上；主题由 assets/elements/select.scss 统一处理，
+// 这里只保留候选条目的业务排版
 body .el-popper.bangumi-popper {
-	--el-bg-color-overlay: #{map.get(token.$theme, 'd-5')};
-	--el-text-color-regular: #{map.get(token.$theme, 'l-8')};
-	--el-border-color-light: #{map.get(token.$theme, 'l-2')};
-	--el-fill-color-light: #{map.get(token.$theme, 'd-3')};
-	border-color: map.get(token.$theme, 'l-3');
-	.el-select-dropdown__item.is-selected {
-		color: map.get(token.$theme, 'l-9');
-	}
 	.option-sub {
 		margin-left: 8px;
 		color: map.get(token.$theme, 'l-5');

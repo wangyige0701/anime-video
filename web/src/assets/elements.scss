@@ -1,7 +1,19 @@
+// Element Plus 组件库的全局主题封装层。
+//
+// 一个组件一个文件，各文件只负责「把该组件的默认变量映射到主题梯度」，
+// 不写业务布局。页面与业务组件里不再重复覆盖 `--el-*` 变量，
+// 只保留与业务相关的尺寸、间距与结构样式。
+//
+// 新增组件的适配请在这里加文件并登记，避免样式又散落到各个页面。
 @use './elements/button.scss';
 @use './elements/input.scss';
-@use './elements/tooltip.scss';
-@use './elements/loading.scss';
-@use './elements/popover.scss';
+@use './elements/select.scss';
+@use './elements/checkbox.scss';
 @use './elements/switch.scss';
 @use './elements/segmented.scss';
+@use './elements/steps.scss';
+@use './elements/dialog.scss';
+@use './elements/popover.scss';
+@use './elements/tooltip.scss';
+@use './elements/scrollbar.scss';
+@use './elements/loading.scss';

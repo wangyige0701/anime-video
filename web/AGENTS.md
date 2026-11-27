@@ -166,7 +166,7 @@
 - `order` 必须是该季全部集的一个排列，无法按集部分勾选，因此它对应季级别的「按预览顺序重排 N 集」一个开关，只有一集时默认关闭。
 - 写入成功后调用 `refreshSeries()` 重新扫描装配，并用返回的新 `Series` 实例整体替换详情页的 `series.value`；不要逐字段打补丁，标题、排序、季与集都可能变化。
 - `apply` 失败保留对话框与勾选状态；`match` 失败收起对话框。请求失败的提示统一由 `api.ts` 拦截器给出，组件内不重复 `ElMessage`。
-- 对话框与下拉面板挂载在 `body` 上，主题样式写在非 scoped 块中，颜色只用 `map.get(token.$theme, ...)` 与 `--el-*` 变量覆盖。
+- 对话框与下拉面板挂载在 `body` 上，非 scoped 块只写业务布局与内容排版；组件主题（底色、描边、三级文字、选中态）由 `src/assets/elements/` 统一提供，见 `docs/modules/web/element-theme.md`。
 
 ## 播放器现有架构
 
@@ -412,6 +412,7 @@ const videoRef = useTemplateRef('videoRef');
 - 需要让某个模块随主题变化时，新增颜色必须先在 `src/scss/mixin/themes.scss` 的 `themes()` 中声明对应 CSS 变量，并同步加入 `$theme` 映射；组件内再通过 `map.get(token.$theme, '变量名')` 使用。
 - 播放器居中音量 HUD 的背景、边框和投影分别使用 `video-volume-tip-bg`、`video-volume-tip-border`、`video-volume-tip-shadow`，各主题根据主色生成对应的半透明层次。
 - 不得在组件中硬编码仅适配某一个主题的主色。新增或修改主题变量后，至少检查全部现有主题类下的可读性、对比度和切换效果。
+- Element Plus 的组件适配集中在 `src/assets/elements/`（一个组件一个文件，`elements.scss` 汇总登记），页面与业务组件只写布局、不再覆盖 `--el-*` 变量；滚动区域统一用 `el-scrollbar`，不使用原生滚动条。职责划分、`d-*`/`l-*` 变量语义与三个权重陷阱见 `docs/modules/web/element-theme.md`。
 
 ## 兼容性与修改边界
 

@@ -528,6 +528,30 @@ export function normalizeSeasonTitle(names: string[]) {
 }
 
 /**
+ * 校验排序数组是否是「该季全部集的一个排列」。
+ *
+ * 长度不符、存在重复、或出现不属于该季的 id 都必须拒绝：`rewriteEpisodeOrder`
+ * 会对未列出的集做末尾追加，如果这里放过缺项，用户看到的结果会与预览不一致。
+ */
+export function validateOrder(order: string[], allowedIds: string[]): { ok: true } | { ok: false; message: string } {
+	if (order.length !== allowedIds.length) {
+		return { ok: false, message: `排序数组必须包含该季全部 ${allowedIds.length} 个集` };
+	}
+	const allowed = new Set(allowedIds);
+	const seen = new Set<string>();
+	for (const id of order) {
+		if (seen.has(id)) {
+			return { ok: false, message: `排序数组存在重复集 ${id}` };
+		}
+		if (!allowed.has(id)) {
+			return { ok: false, message: `集 ${id} 不属于该季` };
+		}
+		seen.add(id);
+	}
+	return { ok: true };
+}
+
+/**
  * 应用 changeSet。
  *
  * 校验在写之前完成：季与集必须属于该系列，`order` 必须是该季全部集的一个排列。
@@ -551,17 +575,9 @@ export async function applyChangeSet(series: Series, input: ApplyInput): Promise
 		if (item.order) {
 			const episodes = await season.episodes;
 			const ids = await Promise.all(episodes.map((episode) => episode.id));
-			if (item.order.length !== ids.length || new Set(item.order).size !== ids.length) {
-				throw new ApiError(
-					Status.Failed,
-					`${item.seasonId} 的排序数组必须包含该季全部 ${ids.length} 个集且不重复`,
-				);
-			}
-			const allowed = new Set(ids);
-			for (const id of item.order) {
-				if (!allowed.has(id)) {
-					throw new ApiError(Status.Failed, `集 ${id} 不属于季 ${item.seasonId}`);
-				}
+			const check = validateOrder(item.order, ids);
+			if (!check.ok) {
+				throw new ApiError(Status.Failed, `${item.seasonId}：${check.message}`);
 			}
 		}
 		if (item.episodes) {

@@ -2,6 +2,7 @@ import type { Response } from '~types/response';
 import { SERVER_URL } from '~shared/server-route-config';
 import { AxiosRequest, axios } from 'axios-useful';
 import { isBoolean, isNumber, isString } from '@wang-yige/utils';
+import { getPlainErrorMessage } from '@/utils/apiError';
 
 export const API = new AxiosRequest(SERVER_URL);
 
@@ -20,12 +21,17 @@ API.interceptors.response.use(
 		if (error instanceof axios.CanceledError) {
 			throw error;
 		}
+		const plainMessage = getPlainErrorMessage(error);
+		if (plainMessage) {
+			ElMessage.error(plainMessage);
+			throw error;
+		}
 		if (error instanceof Error) {
 			ElMessage.error(error.message);
 			throw error;
 		}
-		const data = error.response?.data as Response<any>;
-		if (isString(data.message)) {
+		const data = error?.response?.data as Response<any> | undefined;
+		if (isString(data?.message)) {
 			ElMessage.error(data.message);
 			throw error;
 		}

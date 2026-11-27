@@ -191,6 +191,9 @@ function onPointerDown(event: PointerEvent) {
  *
  * 成功后广播全量列表：成员从列表消失、主卡片长出叠层，两者的位置都会变，
  * 局部打补丁不如复用同一条刷新管线。
+ *
+ * 失败提示由 `api.ts` 拦截器统一给出（服务端 `ApiError` 的原因在纯文本响应体里），
+ * 这里不重复弹 `ElMessage`，只把失败结果交给拖拽层决定浮层收尾。
  */
 async function handleMerge(sourceId: string, targetId: string) {
 	const main = seriesById.value.get(targetId);
@@ -202,8 +205,7 @@ async function handleMerge(sourceId: string, targetId: string) {
 		refreshEmitter.emit('series', await SeriesModel.getAllSeries());
 		ElMessage.success(`已合并到「${main.title}」`);
 		return true;
-	} catch (error: any) {
-		ElMessage.error(error?.message || '合并失败');
+	} catch {
 		return false;
 	}
 }
@@ -214,8 +216,8 @@ async function handleDetach(series: Series, memberId: string) {
 		await series.detachMember(memberId);
 		refreshEmitter.emit('series', await SeriesModel.getAllSeries());
 		ElMessage.success('已脱离合并');
-	} catch (error: any) {
-		ElMessage.error(error?.message || '脱离失败');
+	} catch {
+		// 失败提示同 handleMerge，由拦截器统一给出
 	}
 }
 

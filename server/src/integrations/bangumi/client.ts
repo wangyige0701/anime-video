@@ -5,20 +5,20 @@
  * 所以 UA 必须来自配置而不是 Node 默认值。
  */
 import { ApiError } from '~server/src/error';
-import { getServiceConfig } from './config';
-import { requestJsonWithRetry } from './http';
+import { getBangumiConfig } from './config';
+import { requestJsonWithRetry } from '../http';
 import type { BangumiEpisodePage, BangumiSearchResponse, BangumiSubjectSummary } from './types';
 
 /** 动画条目在 Bangumi 里的 type 值 */
 const SUBJECT_TYPE_ANIME = 2;
 
 function endpoint(path: string) {
-	const config = getServiceConfig().bangumi;
+	const config = getBangumiConfig();
 	return { url: `${config.baseUrl.replace(/\/+$/, '')}${path}`, config };
 }
 
 function headers() {
-	return { 'User-Agent': getServiceConfig().bangumi.userAgent };
+	return { 'User-Agent': getBangumiConfig().userAgent };
 }
 
 /**
@@ -28,7 +28,7 @@ function headers() {
  * 搜索失败不抛错而是返回空数组：匹配阶段还有候选可试，整体失败由调用方判断。
  */
 export async function searchSubjects(keyword: string, limit = 20): Promise<BangumiSubjectSummary[]> {
-	const config = getServiceConfig().bangumi;
+	const config = getBangumiConfig();
 	const { url } = endpoint('/v0/search/subjects');
 	const response = await requestJsonWithRetry<BangumiSearchResponse>(url, {
 		method: 'POST',
@@ -46,7 +46,7 @@ export async function searchSubjects(keyword: string, limit = 20): Promise<Bangu
 
 /** 取条目详情；不存在时返回 null，由调用方决定是跳过还是报错 */
 export async function getSubject(subjectId: number): Promise<BangumiSubjectSummary | null> {
-	const config = getServiceConfig().bangumi;
+	const config = getBangumiConfig();
 	const { url } = endpoint(`/v0/subjects/${subjectId}`);
 	const response = await requestJsonWithRetry<BangumiSubjectSummary>(url, {
 		headers: headers(),
@@ -69,7 +69,7 @@ export async function getSubject(subjectId: number): Promise<BangumiSubjectSumma
  * 避免长篇条目被截断后静默产出错误的集映射。
  */
 export async function getSubjectEpisodes(subjectId: number): Promise<BangumiEpisodePage['data']> {
-	const config = getServiceConfig().bangumi;
+	const config = getBangumiConfig();
 	const episodes: BangumiEpisodePage['data'] = [];
 	let offset = 0;
 	for (;;) {

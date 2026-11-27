@@ -1,22 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isAiConfigured, parseEnvText, resolveServiceConfig } from '~server/src/integrations/bangumi/config';
+import { resolveBangumiConfig } from '~server/src/integrations/bangumi/config';
+import { parseEnvText } from '~server/src/integrations/env';
 import type { AppConfig } from '~shared/config';
 
 const defaults = {
-	bangumi: {
-		baseUrl: 'https://api.bgm.tv',
-		userAgent: 'anime-video/1.0',
-		proxy: '',
-		timeout: 15000,
-	},
-	ai: {
-		baseUrl: '',
-		apiKey: '',
-		model: '',
-		proxy: '',
-		timeout: 60000,
-	},
-} as unknown as AppConfig;
+	baseUrl: 'https://api.bgm.tv',
+	userAgent: 'anime-video/1.0',
+	proxy: '',
+	timeout: 15000,
+} satisfies AppConfig['bangumi'];
 
 describe('Bangumi 服务配置', () => {
 	afterEach(() => {
@@ -24,59 +16,39 @@ describe('Bangumi 服务配置', () => {
 	});
 
 	it('没有任何覆盖时使用 config.yaml 默认值', () => {
-		const config = resolveServiceConfig(defaults, {});
-		expect(config.bangumi.baseUrl).toBe('https://api.bgm.tv');
-		expect(config.bangumi.userAgent).toBe('anime-video/1.0');
-		expect(config.bangumi.proxy).toBe('');
-		expect(config.bangumi.timeout).toBe(15000);
-		expect(config.ai.baseUrl).toBe('');
+		const config = resolveBangumiConfig(defaults, {});
+		expect(config).toEqual(defaults);
 	});
 
-	it('.env 覆盖默认值，且兼容 BGM_ 前缀', () => {
-		const config = resolveServiceConfig(defaults, {
-			AI_BASE_URL: 'https://example.com/v1',
-			AI_API_KEY: 'test-key',
-			AI_MODEL: 'test-model',
-			AI_PROXY: 'http://127.0.0.1:7891',
+	it('.env 覆盖默认值，且兼容调试脚本的 BGM_ 前缀', () => {
+		const config = resolveBangumiConfig(defaults, {
 			BGM_PROXY: 'http://127.0.0.1:7890',
 			BGM_USER_AGENT: 'custom-agent',
 		});
-		expect(config.ai.baseUrl).toBe('https://example.com/v1');
-		expect(config.ai.proxy).toBe('http://127.0.0.1:7891');
-		expect(config.bangumi.proxy).toBe('http://127.0.0.1:7890');
-		expect(config.bangumi.userAgent).toBe('custom-agent');
-		// AI 代理不继承 Bangumi 代理
-		expect(config.ai.proxy).not.toBe(config.bangumi.proxy);
+		expect(config.proxy).toBe('http://127.0.0.1:7890');
+		expect(config.userAgent).toBe('custom-agent');
 	});
 
 	it('进程环境变量优先于 .env', () => {
-		vi.stubEnv('AI_BASE_URL', 'https://from-process/v1');
 		vi.stubEnv('BANGUMI_BASE_URL', 'https://process-bgm');
-		const config = resolveServiceConfig(defaults, {
-			AI_BASE_URL: 'https://from-file/v1',
+		const config = resolveBangumiConfig(defaults, {
 			BGM_BASE_URL: 'https://file-bgm',
+			BANGUMI_BASE_URL: 'https://file-bgm-2',
 		});
-		expect(config.ai.baseUrl).toBe('https://from-process/v1');
-		expect(config.bangumi.baseUrl).toBe('https://process-bgm');
+		expect(config.baseUrl).toBe('https://process-bgm');
 	});
 
 	it('空串与纯空白视为未配置', () => {
-		vi.stubEnv('AI_BASE_URL', '   ');
-		const config = resolveServiceConfig(defaults, { AI_BASE_URL: '', AI_MODEL: '  ' });
-		expect(config.ai.baseUrl).toBe('');
-		expect(config.ai.model).toBe('');
+		vi.stubEnv('BANGUMI_PROXY', '   ');
+		const config = resolveBangumiConfig(defaults, { BANGUMI_PROXY: '', BANGUMI_USER_AGENT: '  ' });
+		expect(config.proxy).toBe('');
+		expect(config.userAgent).toBe(defaults.userAgent);
 	});
 
 	it('非法超时回退到默认值', () => {
-		const config = resolveServiceConfig(defaults, { BANGUMI_TIMEOUT: 'abc', AI_TIMEOUT: '-5' });
-		expect(config.bangumi.timeout).toBe(15000);
-		expect(config.ai.timeout).toBe(60000);
-	});
-
-	it('AI 配置不完整时判定为不可用', () => {
-		expect(isAiConfigured({ baseUrl: '', apiKey: '', model: '', proxy: '', timeout: 1 })).toBe(false);
-		expect(isAiConfigured({ baseUrl: 'https://x/v1', apiKey: 'k', model: '', proxy: '', timeout: 1 })).toBe(false);
-		expect(isAiConfigured({ baseUrl: 'https://x/v1', apiKey: 'k', model: 'm', proxy: '', timeout: 1 })).toBe(true);
+		expect(resolveBangumiConfig(defaults, { BANGUMI_TIMEOUT: 'abc' }).timeout).toBe(15000);
+		expect(resolveBangumiConfig(defaults, { BANGUMI_TIMEOUT: '-5' }).timeout).toBe(15000);
+		expect(resolveBangumiConfig(defaults, { BANGUMI_TIMEOUT: '3000' }).timeout).toBe(3000);
 	});
 });
 

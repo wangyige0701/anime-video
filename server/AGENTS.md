@@ -240,6 +240,15 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 - **错误映射**：上游非 2xx 抛 502；拿到响应之前的失败（超时、代理不可用）由 `http.ts` 转成 504/502 并把主机名写进消息——不能让未知异常回落成无消息的 500。状态码一律通过 `Status` 枚举引用。
 - **测试**：内联构造数据，不把真实响应或密钥写入仓库；需要真实响应回归时用 `describe.skipIf()` 读 `.cache`，缺失自动跳过。
 
+## 用户设置
+
+`src/settings/` 保存只属于当前用户的第三方服务配置（AI 接口、Bangumi 地址与代理），与随包分发的 `config.yaml` 分开：前者是「这个人用什么服务」，后者是「这台机器怎么跑」。
+
+- **存储位置**：用户数据目录下的 `settings.json`（Windows `%LOCALAPPDATA%\Anime Video`，可用 `ANIME_VIDEO_DATA_DIR` 覆盖）。路径由 `src/utils/user-data-dir.ts` 统一解析，与目录白名单共用一套规则，不要另写一份。
+- **接口**：`GET/PUT /data/settings`、`POST /data/settings/{ai,bangumi}/probe`，参数模式在 `src/schema/settings.ts`。GET 只返回脱敏视图，密钥仅回显尾部四位，明文不出服务端，也不进日志。
+- **密钥三态**：字段缺省表示不修改，空字符串表示清空，有值表示替换。不要套用「空值恢复默认」的字段约定，否则清空输入框会误删凭据。
+- **生效方式**：`readSettings()` 持有进程内快照，`updateSettings()` 写盘后自行更新，读取方不需要清缓存；手工编辑 `settings.json` 不会热加载，需重启服务。
+
 ## 请求处理架构
 
 ### 中间件顺序

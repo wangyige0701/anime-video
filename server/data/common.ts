@@ -4,28 +4,9 @@ import crypto from 'node:crypto';
 import { Data } from './data';
 import { RestElements } from '@wang-yige/utils';
 import { getServerRoot } from '~server/cli/manager/paths';
+import { getUserDataDirectory } from '~server/src/utils/user-data-dir';
 
 const SERVER = __APP_CONFIG__.server;
-
-function getUserDataDirectory() {
-	const configuredDirectory = process.env.ANIME_VIDEO_DATA_DIR?.trim();
-	if (configuredDirectory) {
-		return path.resolve(configuredDirectory);
-	}
-
-	if (process.platform === 'win32') {
-		const localAppData = process.env.LOCALAPPDATA ?? process.env.APPDATA;
-		const userProfile = process.env.USERPROFILE ?? process.cwd();
-		return path.join(localAppData ?? path.join(userProfile, 'AppData', 'Local'), 'Anime Video');
-	}
-
-	if (process.platform === 'darwin') {
-		return path.join(process.env.HOME ?? process.cwd(), 'Library', 'Application Support', 'Anime Video');
-	}
-
-	const dataHome = process.env.XDG_DATA_HOME ?? path.join(process.env.HOME ?? process.cwd(), '.local', 'share');
-	return path.join(dataHome, 'anime-video');
-}
 
 function getDataDirectory() {
 	if (process.env.ANIME_VIDEO_DESKTOP === '1') {

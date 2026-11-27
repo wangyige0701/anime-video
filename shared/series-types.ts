@@ -179,6 +179,10 @@ export const seriesTypes = [
 		id: 45,
 		name: '催泪',
 	},
+	{
+		id: 46,
+		name: '穿越',
+	},
 ];
 
 export function getSeriesTypeName(id: number) {

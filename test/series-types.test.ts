@@ -8,7 +8,7 @@ describe('系列类型枚举', () => {
 	});
 
 	it('列表末尾是纯爱、节操等新增标签与补充题材', () => {
-		expect(seriesTypes.slice(-17).map((type) => type.name)).toEqual([
+		expect(seriesTypes.slice(-18).map((type) => type.name)).toEqual([
 			'纯爱',
 			'节操',
 			'泡面番',
@@ -26,6 +26,7 @@ describe('系列类型枚举', () => {
 			'儿童向',
 			'致郁',
 			'催泪',
+			'穿越',
 		]);
 	});
 
@@ -41,8 +42,9 @@ describe('系列类型枚举', () => {
 		expect(getSeriesTypeName(28)).toBe('萌系');
 		expect(getSeriesTypeName(29)).toBe('纯爱');
 		expect(getSeriesTypeName(45)).toBe('催泪');
+		expect(getSeriesTypeName(46)).toBe('穿越');
 		expect(getSeriesTypeName(0)).toBe('');
-		expect(getSeriesTypeName(46)).toBe('');
+		expect(getSeriesTypeName(47)).toBe('');
 		expect(getSeriesTypeName(99)).toBe('');
 	});
 });

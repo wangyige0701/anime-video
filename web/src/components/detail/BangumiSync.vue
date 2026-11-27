@@ -486,6 +486,8 @@ body .el-dialog.bangumi-dialog {
 	}
 	.from,
 	.to {
+		// 两列等分剩余宽度，长文本各自省略；不这样写会把短的一侧压成只剩「…」
+		flex: 1 1 0;
 		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;

@@ -157,3 +157,36 @@ hls:
     imageMaxCacheBytes:
         value: 8388608
         comment: 预览图缓存的最大总大小（字节）
+
+# Bangumi 数据源配置
+bangumi:
+    baseUrl:
+        value: https://api.bgm.tv
+        comment: Bangumi API 地址
+    userAgent:
+        value: anime-video/1.0
+        comment: Bangumi 要求的自定义 User-Agent
+    proxy:
+        value: ''
+        comment: Bangumi 请求代理（如 http://127.0.0.1:7890），留空直连
+    timeout:
+        value: 15000
+        comment: 单次 Bangumi 请求超时（毫秒）
+
+# AI 数据整合配置（OpenAI 兼容接口）
+ai:
+    baseUrl:
+        value: ''
+        comment: 接口地址（含 /v1），留空时不可用
+    apiKey:
+        value: ''
+        comment: 接口密钥；请用环境变量 AI_API_KEY 注入，不要写入仓库
+    model:
+        value: ''
+        comment: 模型名称
+    proxy:
+        value: ''
+        comment: AI 请求代理，留空直连；不与 bangumi.proxy 共用
+    timeout:
+        value: 60000
+        comment: 单次 AI 请求超时（毫秒）

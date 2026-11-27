@@ -29,11 +29,13 @@
 			:class="`phase-${dragState.phase}`"
 			:style="dragLayerStyle"
 		>
-			<div class="series-drag-card" :class="{ flipped: dragFlipped }">
+			<div class="series-drag-card" :class="{ flipped: dragFlipped, 'has-cover': hasCover }">
 				<div class="face front">
-					<img :src="dragState.imageUrl" alt="" draggable="false" />
+					<img v-if="hasCover" :src="dragState.imageUrl" alt="" draggable="false" />
+					<span v-else>{{ dragState.title }}</span>
 				</div>
-				<div class="face back">
+				<!-- 背面沿用同一张海报：翻面是为了露出标题，不该把封面换成一张黑底卡片 -->
+				<div class="face back" :style="dragCoverStyle">
 					<span>{{ dragState.title }}</span>
 				</div>
 			</div>
@@ -130,6 +132,17 @@ const dragLayerStyle = computed(() => ({
 	transform: `translate3d(${dragState.x}px, ${dragState.y}px, 0) scale(${dragState.scale})`,
 	opacity: dragState.opacity,
 }));
+
+/** 源系列是否有封面；没有封面时翻面没有意义，两面都用标题占位 */
+const hasCover = computed(() => !!dragState.imageUrl);
+
+/**
+ * 背面背景图。
+ *
+ * 翻转后看到的是背面，如果只给纯色就只剩一张黑卡片，认不出拖的是哪一部；
+ * 沿用正面同一张海报、用遮罩压暗底部，标题和封面就都在。
+ */
+const dragCoverStyle = computed(() => (hasCover.value ? { backgroundImage: `url("${dragState.imageUrl}")` } : {}));
 
 /**
  * 浮层是否已翻面。
@@ -410,6 +423,21 @@ onBeforeMount(() => {
 	border-radius: 10px;
 	backface-visibility: hidden;
 	box-shadow: 0 18px 40px rgb(0 0 0 / 55%);
+	// 没有封面时两面都要有底色，否则浮层会变成一块透明玻璃
+	background: linear-gradient(135deg, map.get(token.$theme, 'd-8'), map.get(token.$theme, 'd-9'));
+}
+
+// 无封面时的标题占位：居中显示，与背面底部的标题区分开
+.front {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12px;
+	text-align: center;
+	word-break: break-all;
+	color: token.$text-color-primary;
+	font-size: 0.875rem;
+	line-height: 1.4;
 }
 
 .front img {
@@ -421,15 +449,29 @@ onBeforeMount(() => {
 .back {
 	transform: rotateY(180deg);
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	justify-content: center;
 	padding: 12px;
 	text-align: center;
 	word-break: break-all;
-	background: linear-gradient(135deg, map.get(token.$theme, 'd-8'), map.get(token.$theme, 'd-9'));
+	background-size: cover;
+	background-position: center;
 	border: 1px solid map.get(token.$theme, 'd-6');
 	color: token.$text-color-primary;
 	font-size: 0.875rem;
 	line-height: 1.4;
+
+	// 有封面时压暗下半部分，底部标题压在亮色海报上也读得清
+	.has-cover &::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		background: linear-gradient(to top, rgb(0 0 0 / 78%), rgb(0 0 0 / 28%) 40%, rgb(0 0 0 / 6%));
+	}
+
+	span {
+		position: relative;
+		z-index: 1;
+	}
 }
 </style>

@@ -23,7 +23,7 @@
 | `scripts/env.mjs`、`scripts/init-env.mjs`              | 删除                                                     | 配置不再由模板生成                               |
 | `scripts/migrate-env.mjs`                              | 新增一次性迁移脚本                                       | 保留旧值搬运能力，不参与启动                     |
 | `config.yaml`、`shared/config.d.ts`                    | 删除 `ai` 与 `bangumi` 两节                              | 随包分发的配置里不保留个人凭据                   |
-| `.env.example`                                         | 清空为说明注释                                           | 模板已无用，保留文件避免误以为配置丢失           |
+| `.env.example`、`.gitignore` 的 `!.env.example` 例外 | 删除                                                     | 模板与生成脚本一并移除后，放行规则也无意义       |
 | `test/server/{ai,bangumi}-config.test.ts`              | 改为测纯函数与归一化                                     | 不再 `vi.stubEnv`                                |
 | `test/server/ai-client.test.ts`                        | 用临时用户数据目录准备设置                               | 不再 mock env，验证真实读取路径                  |
 | `test/server/migrate-env.test.ts`                      | 10 个用例                                                | 解析、映射、优先级、只补空字段、预演不落盘       |

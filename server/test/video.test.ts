@@ -388,6 +388,7 @@ describe('Video Data Config', () => {
 				'description',
 				'date',
 				'types',
+				'mergedIds',
 				'status',
 			]);
 			const seriesDetail = await series.getValue();
@@ -400,6 +401,7 @@ describe('Video Data Config', () => {
 				'description',
 				'date',
 				'types',
+				'mergedIds',
 				'status',
 				'seasons',
 			]);
@@ -531,6 +533,57 @@ describe('Video Data Config', () => {
 			]);
 		} finally {
 			await fs.rm(seriesDirectory, { recursive: true, force: true });
+			await Series.updateSeries();
+			await Series.clearCache();
+		}
+	});
+
+	it('Should merge and detach series', async () => {
+		const memberName = '合并成员';
+		const memberDirectory = path.join(dir, memberName);
+
+		try {
+			await fs.rm(memberDirectory, { recursive: true, force: true });
+			await fs.mkdir(path.join(memberDirectory, '第一季'), { recursive: true });
+			await fs.writeFile(path.join(memberDirectory, '第一季', '1.mp4'), '');
+			await Series.clearCache();
+			await Series.setDirectories(dir);
+
+			const all = await Series.getAllSeries(true);
+			const main = all.find((item) => item.getSeriesName() === '视频1')!;
+			const member = all.find((item) => item.getSeriesName() === memberName)!;
+			const mainId = await main.id;
+			const memberId = await member.id;
+
+			// 合并后关系只记录在主系列上，被合并系列不保存反向引用。
+			await Series.mergeSeries(memberId, mainId);
+			expect(await main.mergedIds).toEqual([memberId]);
+			expect(await member.mergedIds).toEqual([]);
+
+			const merged = await getJsonFIle();
+			expect(merged.find((item: any) => item.id === mainId)?.mergedIds).toEqual([memberId]);
+			expect(merged.find((item: any) => item.id === memberId)?.mergedIds).toEqual([]);
+
+			// 已属于某个组的系列不能再被合并，也不能作为主系列接收新的合并。
+			await expect(Series.mergeSeries(memberId, mainId)).rejects.toThrow('已属于其它合并组');
+			await expect(Series.mergeSeries(mainId, memberId)).rejects.toThrow('已被合并');
+			await expect(Series.mergeSeries(mainId, mainId)).rejects.toThrow('不能将系列合并到自身');
+
+			// 脱离只改主系列。
+			await Series.detachSeries(mainId, memberId);
+			expect(await main.mergedIds).toEqual([]);
+			await expect(Series.detachSeries(mainId, memberId)).rejects.toThrow('不在此合并组中');
+
+			// 合并后成员目录被删除，重新扫描时悬空成员必须被清理，
+			// 否则详情页会去请求一个已经不存在的系列。
+			await Series.mergeSeries(memberId, mainId);
+			await fs.rm(memberDirectory, { recursive: true, force: true });
+			await Series.updateSeries();
+			const pruned = await getJsonFIle();
+			expect(pruned.find((item: any) => item.id === mainId)?.mergedIds).toEqual([]);
+		} finally {
+			await fs.rm(memberDirectory, { recursive: true, force: true });
+			// 移除目录后重新扫描，规范化会清理掉指向已删除系列的悬空成员 id。
 			await Series.updateSeries();
 			await Series.clearCache();
 		}

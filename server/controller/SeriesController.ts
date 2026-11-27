@@ -1,4 +1,5 @@
 import { Status } from '~shared/http-status';
+import type { SeriesMergeResult } from '~types/videos';
 import type Koa from 'koa';
 import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-use-decorator-router';
 import { ServerRoot } from '~shared/server-route-config';
@@ -10,6 +11,7 @@ import {
 	seriesStatusSchema,
 	seriesTitleSchema,
 } from '~server/src/schema/series-fields';
+import { seriesMergeSchema } from '~server/src/schema/series-merge';
 import { seriesTypes } from '~shared/series-types';
 import { ApiError } from '~server/src/error';
 
@@ -49,6 +51,42 @@ export class SeriesController {
 	public async getSeriesDetail(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const series = await Series.getSeriesById(seriesId);
 		return ctx.Success(await series.getValue());
+	}
+
+	/**
+	 * 把某个系列并入路径参数指定的主系列。
+	 *
+	 * 返回主系列与被并入系列的摘要：被并入系列可能自带成员（会一并转移），
+	 * 前端需要据此同步两个实例的 `mergedIds`。
+	 */
+	@HttpMethod.Post('/series/:seriesId/merge')
+	@Validate(() => seriesMergeSchema)
+	public async mergeSeries(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const { memberId } = ctx.request.body as { memberId: string };
+		const { main, member } = await Series.mergeSeries(memberId, seriesId);
+		ctx.log.info({ event: 'series.merged', seriesId, memberId }, 'Series merged');
+		const result: SeriesMergeResult = {
+			main: await main.getValueOmitSeasons(),
+			member: await member.getValueOmitSeasons(),
+		};
+		return ctx.Success(result);
+	}
+
+	/**
+	 * 让某个系列从主系列的合并组中脱离。
+	 *
+	 * 只返回主系列：成员系列自身没有反向引用需要修改。
+	 */
+	@HttpMethod.Delete('/series/:seriesId/merge/:memberId')
+	public async detachSeries(
+		@Context() ctx: Koa.Context,
+		@Inject('seriesId') seriesId: string,
+		@Inject('memberId') memberId: string,
+	) {
+		const main = await Series.detachSeries(seriesId, memberId);
+		ctx.log.info({ event: 'series.detached', seriesId, memberId }, 'Series detached');
+		const result: SeriesMergeResult = { main: await main.getValueOmitSeasons() };
+		return ctx.Success(result);
 	}
 
 	@HttpMethod.Put('/series/:seriesId/title')

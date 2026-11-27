@@ -284,15 +284,15 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 	 */
 	public static async mergeSeries(sourceId: string, targetId: string) {
 		if (sourceId === targetId) {
-			throw new ApiError(Status.Failed, '不能将系列合并到自身');
+			throw new ApiError(Status.Failed, '不能将系列合并到自身', '不能将系列合并到自身');
 		}
 		const [source, target] = await Promise.all([this.getSeriesById(sourceId), this.getSeriesById(targetId)]);
 		const owners = await this.getMergeOwnerIndex();
 		if (owners.has(sourceId)) {
-			throw new ApiError(Status.Failed, '该系列已属于其它合并组，请先脱离');
+			throw new ApiError(Status.Failed, '该系列已属于其它合并组，请先脱离', '该系列已属于其它合并组，请先脱离');
 		}
 		if (owners.has(targetId)) {
-			throw new ApiError(Status.Failed, '目标系列已被合并，不能作为主系列');
+			throw new ApiError(Status.Failed, '目标系列已被合并，不能作为主系列', '目标系列已被合并，不能作为主系列');
 		}
 
 		const sourceMembers = await source.mergedIds;
@@ -311,7 +311,7 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		const main = await this.getSeriesById(mainId);
 		const members = await main.mergedIds;
 		if (!members.includes(memberId)) {
-			throw new ApiError(Status.Failed, '该系列不在此合并组中');
+			throw new ApiError(Status.Failed, '该系列不在此合并组中', '该系列不在此合并组中');
 		}
 		await main.updateMergedIds(members.filter((id) => id !== memberId));
 		await main.waitDataSave();

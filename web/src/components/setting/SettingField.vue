@@ -2,7 +2,7 @@
 	<div class="field">
 		<span class="label">{{ label }}</span>
 		<div class="control">
-			<slot />
+			<slot></slot>
 		</div>
 	</div>
 </template>

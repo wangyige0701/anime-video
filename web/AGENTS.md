@@ -176,11 +176,11 @@
 
 设置页是**左侧菜单 + 嵌套路由**结构，不是单页堆卡片：
 
-| 路由 / 名称              | 文件                          | 内容                                    |
-| ------------------------ | ----------------------------- | --------------------------------------- |
-| `/setting`（`Setting`）  | `views/setting.vue`           | 布局：标题、左侧分组菜单、`<router-view>`；重定向到 `/setting/ai` |
-| `/setting/ai`（`SettingAi`）        | `views/setting/ai.vue`          | AI 接口分组                        |
-| `/setting/bangumi`（`SettingBangumi`） | `views/setting/bangumi.vue` | Bangumi 分组                       |
+| 路由 / 名称                            | 文件                        | 内容                                                              |
+| -------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
+| `/setting`（`Setting`）                | `views/setting.vue`         | 布局：标题、左侧分组菜单、`<router-view>`；重定向到 `/setting/ai` |
+| `/setting/ai`（`SettingAi`）           | `views/setting/ai.vue`      | AI 接口分组                                                       |
+| `/setting/bangumi`（`SettingBangumi`） | `views/setting/bangumi.vue` | Bangumi 分组                                                      |
 
 - 分组菜单由 `setting.vue` 里的 `groups` 定义：**AI 与 Bangumi 同属「外部服务」**，后续的目录、外观等设置另起分组，不要平铺到同一层。
 - 分组内容拆到 `components/setting/`：`SettingSection`（卡片外壳 + 可用状态标签）、`SettingField`（字段行）、`SettingAdvanced`（高级折叠）、`AiSettingsCard`、`BangumiSettingsCard`，探测结果的文案规则在 `useProbe.ts`。页面只负责布局与路由，不要把表单写回页面模板。
@@ -417,6 +417,35 @@ const videoRef = useTemplateRef('videoRef');
 
 禁止使用 `ref<类型>()` 或 `ref<类型>('')` 承接模板元素或子组件实例。普通响应式业务数据仍使用 `ref()`、`reactive()` 等 Vue API。
 
+### 标签闭合
+
+`<slot>` 必须写显式闭合标签，禁止自闭合；其余标签按组件处理，无子内容时用自闭合：
+
+```vue
+<!-- 插槽：必须闭合 -->
+<slot></slot>
+<slot name="footer"></slot>
+
+<!-- 禁止 -->
+<slot />
+<slot name="footer" />
+
+<!-- 组件：自闭合 -->
+<component :is="icon" />
+<Transition name="fade"><div></div></Transition>
+<Refresh />
+<SeriesCard :series="series" />
+<el-input v-model="form.baseUrl" />
+```
+
+只有 `slot` 受此约束：它是内容分发占位，不是组件实例，写成 `<slot />` 时插槽边界和「漏写闭合的标签」在模板里无法区分。`component`、`transition` 这类内置组件以及自定义组件、Element Plus 组件都用自闭合，补成 `<Refresh></Refresh>` 只是噪音。HTML void 元素（`img`、`br`、`input` 等）与 SVG 自闭合图形（`path`、`circle` 等）本来就没有闭合形式。
+
+检查方式（仓库根目录执行，非零退出即有违规）：
+
+```powershell
+node scripts/check-vue-tags.mjs
+```
+
 ### 注释与复杂度
 
 复杂异步流程、竞态处理、缓存边界、坐标或时间换算、资源清理等关键节点应及时添加中文注释。注释应解释设计原因、边界条件和不变量，不要复述代码表面动作。
@@ -457,9 +486,10 @@ const videoRef = useTemplateRef('videoRef');
 1. `git diff --check -- web`，检查补丁格式和空白问题。
 2. 在 `web/` 下执行 `npm run type-check`。
 3. 涉及构建配置、样式资源或生产行为时执行 `npm run build`。
-4. 涉及交互时手动覆盖正常状态、加载状态、失败状态、快速连续操作、视频源切换和组件销毁。
-5. 涉及响应式布局或主题时检查主要桌面/移动尺寸及全部现有主题，确认没有重叠、溢出或主题失配。
-6. 在仓库根目录执行 `pnpm exec vitest run`，新增或修改的逻辑必须有对应用例（见根 `AGENTS.md` 的「测试用例要求」）。
-7. 以上全部通过后，按根 `AGENTS.md` 的「提交时机」立即提交这一批改动，不得留到下一批功能开发后再一起提交。
+4. 修改过模板时，在仓库根目录执行 `node scripts/check-vue-tags.mjs`，确认没有自闭合的 `<slot>`（见「标签闭合」）。
+5. 涉及交互时手动覆盖正常状态、加载状态、失败状态、快速连续操作、视频源切换和组件销毁。
+6. 涉及响应式布局或主题时检查主要桌面/移动尺寸及全部现有主题，确认没有重叠、溢出或主题失配。
+7. 在仓库根目录执行 `pnpm exec vitest run`，新增或修改的逻辑必须有对应用例（见根 `AGENTS.md` 的「测试用例要求」）。
+8. 以上全部通过后，按根 `AGENTS.md` 的「提交时机」立即提交这一批改动，不得留到下一批功能开发后再一起提交。
 
 纯逻辑（过滤、排序、分组、时间换算等）必须先抽到 `src/utils/` 下的纯函数模块并补测试，再写组件；测试放在仓库根目录 `test/web/`，以普通对象作为输入，不依赖 DOM、Pinia 或网络。组件只负责把状态接到这些函数上，避免把可测逻辑埋进模板事件里。

@@ -2,7 +2,7 @@
 	<el-collapse class="advanced">
 		<el-collapse-item title="高级" name="advanced">
 			<div class="body">
-				<slot />
+				<slot></slot>
 			</div>
 		</el-collapse-item>
 	</el-collapse>

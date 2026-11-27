@@ -12,11 +12,11 @@
 		</header>
 
 		<div class="fields">
-			<slot />
+			<slot></slot>
 		</div>
 
 		<footer v-if="$slots.footer" class="actions">
-			<slot name="footer" />
+			<slot name="footer"></slot>
 		</footer>
 	</section>
 </template>

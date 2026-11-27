@@ -7,6 +7,23 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * `.env` 的实际位置。
+ *
+ * 不能只看 `process.cwd()`：`pnpm --filter server run dev` 与 `back.cmd` 都会把工作目录切到
+ * `server/`，而 `.env`（由 `scripts/init-env.mjs` 生成）在仓库根目录，只按 cwd 找会永远读不到，
+ * 代理与 AI 凭据被静默忽略——表现为「接口超时 / 未配置」，排查成本很高。
+ *
+ * 因此按「cwd → 模块位置上溯三级（源码里即仓库根）」的顺序取第一个存在的文件；
+ * 都不存在时返回 cwd 下的路径（读不到就是空配置，行为与之前一致）。
+ * 打包产物里 `.env` 本来就不参与配置，多找一次也不会有副作用。
+ */
+export function resolveEnvFile(startCwd = process.cwd(), startModule = path.dirname(fileURLToPath(import.meta.url))) {
+	const candidates = [path.resolve(startCwd, '.env'), path.resolve(startModule, '../../../.env')];
+	return candidates.find((file) => fs.existsSync(file)) ?? candidates[0]!;
+}
 
 /**
  * 解析 `.env` 文本。
@@ -41,7 +58,7 @@ export function parseEnvText(text: string): Record<string, string> {
 }
 
 /** 读取 `.env`；不存在或不可读时返回空对象，配置继续走环境变量与默认值 */
-export function readEnvFile(file = path.resolve(process.cwd(), '.env')): Record<string, string> {
+export function readEnvFile(file = resolveEnvFile()): Record<string, string> {
 	try {
 		return parseEnvText(fs.readFileSync(file, 'utf8'));
 	} catch {

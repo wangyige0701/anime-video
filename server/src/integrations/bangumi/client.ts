@@ -12,6 +12,16 @@ import type { BangumiEpisodePage, BangumiSearchResponse, BangumiSubjectSummary }
 /** 动画条目在 Bangumi 里的 type 值 */
 const SUBJECT_TYPE_ANIME = 2;
 
+/**
+ * 上游失败的统一错误。
+ *
+ * `ApiError` 第二个参数是响应体、第三个才是 `Error.message`，两处都传同一句，
+ * 前端能拿到原因，日志也有可读消息。
+ */
+function upstreamError(message: string) {
+	return new ApiError(502, message, message);
+}
+
 function endpoint(path: string) {
 	const config = getBangumiConfig();
 	return { url: `${config.baseUrl.replace(/\/+$/, '')}${path}`, config };
@@ -57,7 +67,7 @@ export async function getSubject(subjectId: number): Promise<BangumiSubjectSumma
 		return null;
 	}
 	if (response.status !== 200 || !response.data) {
-		throw new ApiError(502, `Bangumi 条目 ${subjectId} 读取失败（HTTP ${response.status}）`);
+		throw upstreamError(`Bangumi 条目 ${subjectId} 读取失败（HTTP ${response.status}）`);
 	}
 	return response.data;
 }
@@ -80,7 +90,7 @@ export async function getSubjectEpisodes(subjectId: number): Promise<BangumiEpis
 			proxy: config.proxy,
 		});
 		if (response.status !== 200 || !response.data) {
-			throw new ApiError(502, `Bangumi 条目 ${subjectId} 剧集读取失败（HTTP ${response.status}）`);
+			throw upstreamError(`Bangumi 条目 ${subjectId} 剧集读取失败（HTTP ${response.status}）`);
 		}
 		const page = response.data.data ?? [];
 		episodes.push(...page);

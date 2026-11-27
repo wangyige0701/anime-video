@@ -3,12 +3,19 @@
 @use 'sass:map';
 @use '@/scss/function/var.scss' as var;
 
+/**
+ * 主题基色。
+ *
+ * 页面背景是「黑 + 基色」的渐变，基色越亮整页越亮：蓝色系 0.20 亮度底色铺满后
+ * 会变成一块发光的糖果色，不再是暗色主题。除星空紫外的四色都压到与它同一亮度档
+ * （WCAG 相对亮度 ≈ 0.19–0.22），色相保持不变，靠降低明度/饱和度变暗而不是加灰。
+ */
 $themes: (
 	xingyezi: #7b61ff,
-	shenhailan: #4a90e2,
-	boheqing: #21c7ab,
-	yinghuafen: #ff6fa7,
-	riluocheng: #ff9e4d,
+	shenhailan: #2f7ac9,
+	boheqing: #1a8f7d,
+	yinghuafen: #cc4a80,
+	riluocheng: #c26a22,
 );
 
 // css 变量名

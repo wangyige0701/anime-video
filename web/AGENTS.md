@@ -194,7 +194,8 @@
 - **密钥永不回填明文**：视图只有 `hasApiKey` 与 `apiKeyMasked`，UI 提供「替换 / 清除」两个显式动作，输入框只在替换态出现；补丁构造在 `utils/settings.ts`（`buildAiPatch` / `buildBangumiPatch`），只提交实际变化的字段，空值的「替换」不提交，避免误清空。
 - **面板内表单控件走变体类**，不在页面覆盖 `--el-*`：`el-input--panel`（近黑半透明底 + 1px 描边，占位色压到 34% 白，与实值区分）、`el-input-number--panel`（116px 定宽、`align="left"`、按钮透明底 + 细分隔线）、`el-slider--panel`。默认输入框的 `--el-input-bg-color` 是主色混 10% 白，在深色面板上是一块亮砖，不要直接复用。
 - 数字框必须用组件自带的 `align="left"`：Element 的 `.el-input-number.is-center .el-input__inner` 特异性高于普通类选择器，只在 CSS 里写 `text-align` 会被压掉。
-- 外观分组读 `config/theme.ts` 的 `THEME_OPTIONS` 渲染色板，`color` 必须与 `scss/mixin/themes.scss` 的 `$themes` 一致；主题持久化在 `utils/themeStorage.ts`，用同步 `localStorage`（异步存储会让首帧闪一下默认配色），读取时用 `parseTheme` 校验枚举值。`stores/theme.ts` 清 class 必须遍历枚举**值**，`for..in` 拿到的是字符串枚举的键。
+- 外观分组读 `config/theme.ts` 的 `THEME_OPTIONS` 渲染色板，`color` 必须与 `scss/mixin/themes.scss` 的 `$themes` 一致（`test/web/theme-storage.test.ts` 会比对两处并校验亮度）；主题持久化在 `utils/themeStorage.ts`，用同步 `localStorage`（异步存储会让首帧闪一下默认配色），读取时用 `parseTheme` 校验枚举值。`stores/theme.ts` 清 class 必须遍历枚举**值**，`for..in` 拿到的是字符串枚举的键。
+- **主题基色决定整页亮度**：页面背景是「黑 + 基色」的渐变（`themes.scss` 里 `color.mix(#000, $color, 5%…50%)`），基色亮度上去了整页就是一块发光的糖果色。四个非紫主题的基色亮度要压到星夜紫 `#7b61ff` 的 ±15% 以内（WCAG 相对亮度 ≈ 0.19–0.22），变暗靠降明度/饱和度而不是往基色里兑灰，否则色相会发脏。
 - 播放器偏好直接读写 `stores/player.ts`（`setVolume` / `setIsAutoPlay` / `setIsSubtitleTrack`），不另建状态：设置页与播放器共享同一份值，改动即时生效并写入本机存储。
 
 ## 播放器现有架构

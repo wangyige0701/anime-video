@@ -86,6 +86,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `data/`：扫描允许的视频目录，构建 Series/Season/Episode 数据树，维护实例缓存、排序及 `.video.json` 配置持久化；`data/entity.ts` 提供字段派生、写入与失效的公共基类。
 - `src/hls.ts`：原生 HLS 实例、分片预加载、TS/图片缓存和生命周期管理。
 - `src/error/`：`ApiError`、`NotFoundError` 等 HTTP 错误类型。
+- `src/integrations/`：外部服务整合层。`env.ts` / `http.ts` 是共用的配置与 HTTP 基础设施，`bangumi/` 与 `ai/` 是两个互不引用的独立模块。
 - `src/utils/`：文件系统和通用判断工具。
 - `test/`：Vitest 测试和媒体目录 fixture。
 - `*.d.ts`：Koa context 扩展和原生 HLS 类型声明。
@@ -215,6 +216,18 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 - 修改接口在领域对象更新并 `waitDataSave()` 后记录 `ctx.log.info()`，再返回 `ctx.Success()`。
 
 数据层新增功能应先确定配置归属和资源事实来源，再扩展领域对象和装饰器 controller。不得从 controller 直接修改 Data 代理内部结构，也不得在未完成持久化时对外报告修改成功。
+
+## Bangumi 数据同步
+
+`src/integrations/` 把 Bangumi 元数据与本地目录整合，代码分层与规则细节见 [docs/modules/server/bangumi-sync.md](../docs/modules/server/bangumi-sync.md)。
+
+- **三段接口**：`POST /data/series/:seriesId/bangumi/{match,preview,apply}`，前两段只读、最后一段才写库。`BangumiController` 只做「取实体 → 调编排 → 记日志」，参数模式在 `src/schema/bangumi-sync.ts`，归属校验在编排层。
+- **模块边界**：`bangumi/` 与 `ai/` 互不引用，只共用 `env.ts` / `http.ts`。新增外部服务时按同样方式拆目录，不要把第三个服务塞进现有模块。
+- **配置优先级**是「进程环境 → `.env` → `config.yaml` 默认值」，由 `pickString` / `pickNumber` 实现；不要直接读合并后的 `__APP_CONFIG__`，那会让 `config.yaml` 的默认值永久压住 `.env`。`.env` 位置用 `resolveEnvFile()`，它同时看 cwd 与模块位置上溯三级——只按 cwd 找会在 `pnpm --filter server run dev`（cwd 为 `server/`）时静默读不到。
+- **顺序只由本地文件名决定**：Bangumi 的 `ep` 完全不用（跨条目重复、SP 恒为 0），`sort` 只用于核对，落库的排序是 1..N 的位置号，统一走 `Season.rewriteEpisodeOrder(ids)`。不要用字符串排序，混排目录会整季错位。
+- **规则优先**：`alignByRules()` 能形成唯一映射就不调模型，模型只负责「文件 → 官方集」的对应关系与季映射，返回结果必须再做一次双射校验。模型不参与决定播放顺序。
+- **错误映射**：上游非 2xx 抛 502；拿到响应之前的失败（超时、代理不可用）由 `http.ts` 转成 504/502 并把主机名写进消息——不能让未知异常回落成无消息的 500。状态码一律通过 `Status` 枚举引用。
+- **测试**：内联构造数据，不把真实响应或密钥写入仓库；需要真实响应回归时用 `describe.skipIf()` 读 `.cache`，缺失自动跳过。
 
 ## 请求处理架构
 

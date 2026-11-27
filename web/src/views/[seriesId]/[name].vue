@@ -25,6 +25,8 @@
 					:season="season"
 					:active-episode-id="activeEpisodeId"
 					:last-episode-id="lastEpisodeId"
+					:group-title="groupTitleOf.get(season.id) ?? ''"
+					:sortable="seasonSortable"
 					@play="play($event, season, series.value)"
 				></DetailSeason>
 			</template>
@@ -76,16 +78,61 @@ const listRef = useTemplateRef<ComponentPublicInstance>('listRef');
 const seasons = shallowRef<Season[]>([]);
 /** 拖拽前的顺序快照，仅在提交失败时用于恢复 */
 let seasonSnapshot: Season[] = [];
+/**
+ * 被合并系列的分组，顺序与主系列记录的 `mergedIds` 一致。
+ *
+ * 合并只是展示层聚合：季仍然归属各自的系列，编辑标题、播放路径、集排序都按原系列走。
+ */
+const memberGroups = shallowRef<Array<{ id: string; title: string; seasons: Season[] }>>([]);
+/** 合并状态下季来自多个系列，跨系列拖动无法用「移动到第 N 位」表达，因此不提供手柄 */
+const seasonSortable = computed(() => memberGroups.value.length === 0);
+/** 成员季的来源系列标题；主系列自己的季不标注，避免每一项都顶一个多余的标签 */
+const groupTitleOf = computed(() => {
+	const map = new Map<string, string>();
+	for (const group of memberGroups.value) {
+		for (const season of group.seasons) {
+			map.set(season.id, group.title);
+		}
+	}
+	return map;
+});
 
 watch(
 	() => series.value.seasons,
-	(list) => {
-		// 原地替换保持数组引用不变，避免拖拽实例持有过期数组
-		seasons.value.splice(0, seasons.value.length, ...(list ?? []));
-		triggerRef(seasons);
-	},
+	() => rebuildSeasons(),
 	{ immediate: true },
 );
+
+/** 主系列自己的季在前，成员系列按合并顺序依次追加 */
+function rebuildSeasons() {
+	const list = [...(series.value.seasons ?? []), ...memberGroups.value.flatMap((group) => group.seasons)];
+	// 原地替换保持数组引用不变，避免拖拽实例持有过期数组
+	seasons.value.splice(0, seasons.value.length, ...list);
+	triggerRef(seasons);
+}
+
+/**
+ * 拉取被合并系列的季。
+ *
+ * 只对存在的成员生效：数据层的规范化会在下次扫描清理悬空 id，
+ * 这里遇到请求失败就跳过，不让一条失效引用把整页拖垮。
+ */
+async function loadMembers(current: Series) {
+	const ids = [...(current.mergedIds ?? [])];
+	const groups = await Promise.all(
+		ids.map(async (id) => {
+			try {
+				const member = await useVideoStore().getSeriesDetail(id);
+				return { id, title: member.title, seasons: [...member.seasons] };
+			} catch (error) {
+				console.warn('[merge] 成员季加载失败', id, error);
+				return null;
+			}
+		}),
+	);
+	memberGroups.value = groups.filter((group): group is { id: string; title: string; seasons: Season[] } => !!group);
+	rebuildSeasons();
+}
 
 // el-collapse 的模板 ref 是组件实例，拖拽需要挂到它的根元素上
 useDraggable(
@@ -114,6 +161,9 @@ useDraggable(
  * 因此只提交被拖动的那一季，不能逐条提交。
  */
 async function commitSeasonSort(oldIndex?: number, newIndex?: number) {
+	if (!seasonSortable.value) {
+		return;
+	}
 	if (status.sorting || oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) {
 		return;
 	}
@@ -161,6 +211,8 @@ async function updateSeriesTitle(value: string) {
  */
 function handleApplied(next: Series) {
 	series.value = next;
+	// 写入可能改变季结构，成员系列的季要重新拼进来
+	void loadMembers(next);
 }
 
 function play(episode: Episode, season: Season, series: Series) {
@@ -182,13 +234,15 @@ onMounted(async () => {
 	try {
 		const info = await useVideoStore().getSeriesDetail(seriesId);
 		series.value = info;
+		await loadMembers(info);
 		if (!isUnmounted) {
 			playerStore.setSeriesId(series.value.id);
 			const lastSeasonId = await playerStore.getLastSeasonId();
 			if (lastSeasonId) {
 				activeSeasonId.value = lastSeasonId;
 			} else {
-				activeSeasonId.value = series.value.seasons?.[0]?.id || '';
+				// 主系列可能没有季（季都在被合并的系列里），默认展开取拼接后的第一个
+				activeSeasonId.value = seasons.value[0]?.id || '';
 			}
 			const lastEpisodeIdValue = await playerStore.getLastEpisodeId();
 			if (lastEpisodeIdValue) {

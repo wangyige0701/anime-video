@@ -3,7 +3,7 @@
 		<template #title>
 			<div class="season-title" @click="stopEditClick">
 				<!-- 拖拽季顺序的手柄，独立拦截点击避免触发折叠面板的展开/收起 -->
-				<el-icon class="season-handle" :size="16" @click.stop><Rank /></el-icon>
+				<el-icon v-if="props.sortable" class="season-handle" :size="16" @click.stop><Rank /></el-icon>
 				<TextEditor
 					class="season-name"
 					:value="props.season.title"
@@ -12,6 +12,8 @@
 					@blur="updateSeasonTitle"
 				/>
 				<span class="count">（共 {{ seasonCount }} 集）</span>
+				<!-- 合并后的系列里，季可能来自不同目录，标出来源才分得清 -->
+				<span v-if="props.groupTitle" class="group">{{ props.groupTitle }}</span>
 			</div>
 		</template>
 		<div class="episode-panel" v-loading="status.sorting">
@@ -63,11 +65,28 @@ import { Rank } from '@element-plus/icons-vue';
 import { shallowRef, triggerRef } from 'vue';
 import { useDraggable } from 'vue-draggable-plus';
 
-const props = defineProps<{
-	season: Season;
-	activeEpisodeId?: string;
-	lastEpisodeId?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		season: Season;
+		activeEpisodeId?: string;
+		lastEpisodeId?: string;
+		/** 来源系列标题，仅在合并后的系列里传入 */
+		groupTitle?: string;
+		/**
+		 * 是否允许拖动调整季顺序。
+		 *
+		 * 合并后的季来自多个系列，而排序接口只作用于单个系列内部，
+		 * 跨系列拖动无法表达成一次「移动到第 N 位」，因此这种情况下不提供手柄。
+		 */
+		sortable?: boolean;
+	}>(),
+	{
+		activeEpisodeId: '',
+		lastEpisodeId: '',
+		groupTitle: '',
+		sortable: true,
+	},
+);
 defineEmits<{
 	(e: 'play', episode: Episode): void;
 }>();
@@ -232,6 +251,16 @@ async function commitSort(oldIndex?: number, newIndex?: number) {
 	.count {
 		color: token.$text-color-secondary;
 		font-size: 0.875rem;
+	}
+
+	// 合并后季来自不同系列，用浅色描边的小标签区分来源，不抢标题的视觉重心
+	.group {
+		padding: 1px 8px;
+		border: 1px solid map.get(token.$theme, 'l-2');
+		border-radius: 10px;
+		color: map.get(token.$theme, 'l-6');
+		font-size: 0.75rem;
+		line-height: 1.4;
 	}
 }
 

@@ -1,8 +1,8 @@
 import type { Response } from '~types/response';
 import { SERVER_URL } from '~shared/server-route-config';
 import { AxiosRequest, axios } from 'axios-useful';
-import { isBoolean, isNumber, isString } from '@wang-yige/utils';
-import { getPlainErrorMessage } from '@/utils/apiError';
+import { isBoolean, isNumber } from '@wang-yige/utils';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 export const API = new AxiosRequest(SERVER_URL);
 
@@ -18,24 +18,15 @@ API.interceptors.response.use(
 		return data;
 	},
 	(error) => {
+		// 主动取消不算失败：翻页、重发请求都会走到这里，提示反而干扰操作
 		if (error instanceof axios.CanceledError) {
 			throw error;
 		}
-		const plainMessage = getPlainErrorMessage(error);
-		if (plainMessage) {
-			ElMessage.error(plainMessage);
-			throw error;
+		// 文案统一在 utils/apiError 里决定，避免把 axios 的英文原文弹给用户
+		const message = getApiErrorMessage(error);
+		if (message) {
+			ElMessage.error(message);
 		}
-		if (error instanceof Error) {
-			ElMessage.error(error.message);
-			throw error;
-		}
-		const data = error?.response?.data as Response<any> | undefined;
-		if (isString(data?.message)) {
-			ElMessage.error(data.message);
-			throw error;
-		}
-		ElMessage.error('请求失败，请稍后重试');
 		throw error;
 	},
 );

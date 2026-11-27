@@ -342,14 +342,17 @@ export function useSeriesDrag(options: UseSeriesDragOptions) {
 		{ capture: true },
 	);
 
-	// 拖拽中被路由切走时，作用域销毁要一并还原 body 上临时加的内联样式
+	// 拖拽中被路由切走时，作用域销毁要一并还原 body 上临时加的内联样式。
+	// 只在自己仍处于拖拽态时还原，避免误清其它模块写入的 body 样式。
 	onScopeDispose(() => {
 		if (resetTimer) {
 			clearTimeout(resetTimer);
 			resetTimer = undefined;
 		}
-		document.body.style.userSelect = '';
-		document.body.style.cursor = '';
+		if (state.phase !== 'idle') {
+			document.body.style.userSelect = '';
+			document.body.style.cursor = '';
+		}
 	});
 
 	return {

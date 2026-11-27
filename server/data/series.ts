@@ -260,10 +260,10 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 	/**
 	 * 合并关系归属索引：成员 id → 主系列 id。
 	 *
-	 * 合并关系只记录在主系列上，判断「某个系列是否已被合并」必须扫全量，
-	 * 因此单独提供索引方法，避免每个调用方各自实现一遍扫描。
+	 * 合并关系只记录在主系列上，判断「某个系列是否已被合并」必须扫全量。
+	 * 只在合并校验内部使用，不对外暴露：让调用方各自扫描一遍会写出第二套归属规则。
 	 */
-	public static async getMergeOwnerIndex() {
+	private static async getMergeOwnerIndex() {
 		const owners = new Map<string, string>();
 		for (const series of await this.getAllSeries()) {
 			const id = await series.id;

@@ -180,9 +180,9 @@ function detach(memberId: string) {
 	.img {
 		@include image.image;
 		transition: transform 0.3s ease;
-		// 关闭浏览器原生图片拖拽，否则拖卡片时会拖出半透明的图片幽灵
+		// 容器的 user-select 会继承给内部 img；原生拖拽由上面的 :deep(img) 关掉，
+		// 在这里写 -webkit-user-drag 对 el-image 根节点无效
 		user-select: none;
-		-webkit-user-drag: none;
 	}
 	.name {
 		width: 100%;

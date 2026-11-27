@@ -2,8 +2,11 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Series as ISeries, SeriesImagesStoreStruct } from '~types/videos';
+import { Status } from '~shared/http-status';
+import { ApiError } from '~server/src/error';
 import { NotFoundError } from '~server/src/error/notFound';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
+import { normalizeMergeGroups } from '~server/src/utils/merge-groups';
 import { Data } from './data';
 import { Season } from './season';
 import { Episode } from './episode';
@@ -45,6 +48,7 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		'description',
 		'date',
 		'types',
+		'mergedIds',
 		'status',
 	] as const;
 
@@ -137,6 +141,8 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		}
 
 		this.isIndexed = true;
+		// 扫描是全量视角，只有这里能判断合并关系是否还指向存在的系列。
+		await Series.normalizeMergeRelations(result);
 		return result;
 	}
 
@@ -249,6 +255,96 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 			}
 		}
 		throw new NotFoundError('Not Found', `没有找到 id 为 ${episodeId} 的视频集`, 'text/plain');
+	}
+
+	/**
+	 * 合并关系归属索引：成员 id → 主系列 id。
+	 *
+	 * 合并关系只记录在主系列上，判断「某个系列是否已被合并」必须扫全量，
+	 * 因此单独提供索引方法，避免每个调用方各自实现一遍扫描。
+	 */
+	public static async getMergeOwnerIndex() {
+		const owners = new Map<string, string>();
+		for (const series of await this.getAllSeries()) {
+			const id = await series.id;
+			for (const memberId of await series.mergedIds) {
+				owners.set(memberId, id);
+			}
+		}
+		return owners;
+	}
+
+	/**
+	 * 把 `sourceId` 并入 `targetId`（后者成为主系列）。
+	 *
+	 * 合并是展平的：源系列自身的成员会一并转移给目标，源系列的成员列表清空。
+	 * 否则会出现「主系列本身又是别人的成员」的链式结构，详情页季归属无法唯一确定。
+	 *
+	 * @returns 写入后的主系列与被并入的源系列
+	 */
+	public static async mergeSeries(sourceId: string, targetId: string) {
+		if (sourceId === targetId) {
+			throw new ApiError(Status.Failed, '不能将系列合并到自身');
+		}
+		const [source, target] = await Promise.all([this.getSeriesById(sourceId), this.getSeriesById(targetId)]);
+		const owners = await this.getMergeOwnerIndex();
+		if (owners.has(sourceId)) {
+			throw new ApiError(Status.Failed, '该系列已属于其它合并组，请先脱离');
+		}
+		if (owners.has(targetId)) {
+			throw new ApiError(Status.Failed, '目标系列已被合并，不能作为主系列');
+		}
+
+		const sourceMembers = await source.mergedIds;
+		await target.addMergedIds([sourceId, ...sourceMembers]);
+		await source.updateMergedIds([]);
+		await Promise.all([source.waitDataSave(), target.waitDataSave()]);
+		return { main: target, member: source };
+	}
+
+	/**
+	 * 让 `memberId` 从 `mainId` 的合并组中脱离。
+	 *
+	 * 只改动主系列：成员系列自身不保存反向引用，脱离后立即回到独立状态。
+	 */
+	public static async detachSeries(mainId: string, memberId: string) {
+		const main = await this.getSeriesById(mainId);
+		const members = await main.mergedIds;
+		if (!members.includes(memberId)) {
+			throw new ApiError(Status.Failed, '该系列不在此合并组中');
+		}
+		await main.updateMergedIds(members.filter((id) => id !== memberId));
+		await main.waitDataSave();
+		return main;
+	}
+
+	/**
+	 * 扫描完成后修正合并关系。
+	 *
+	 * 磁盘上的系列可能被外部删除，或数据文件被手工编辑，留下悬空 id、重复项、链式合并。
+	 * 规范化结果与内存值不同的系列才写回，避免每次扫描都产生无意义的磁盘写入。
+	 */
+	private static async normalizeMergeRelations(list: Series[]) {
+		const groups = new Map<string, string[]>();
+		const instances = new Map<string, Series>();
+		for (const series of list) {
+			const id = await series.id;
+			instances.set(id, series);
+			groups.set(id, (await series.mergedIds).slice());
+		}
+
+		const normalized = normalizeMergeGroups(groups);
+		const changed: Series[] = [];
+		for (const [id, members] of normalized) {
+			const current = groups.get(id)!;
+			if (current.length === members.length && current.every((member, index) => member === members[index])) {
+				continue;
+			}
+			const series = instances.get(id)!;
+			await series.updateMergedIds(members);
+			changed.push(series);
+		}
+		await Promise.all(changed.map((series) => series.waitDataSave()));
 	}
 
 	private seriesName!: string;
@@ -390,6 +486,11 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 
 	public get types() {
 		return this.field('types');
+	}
+
+	/** 已并入当前系列的成员 id 数组，顺序即叠层顺序与详情页季分组顺序 */
+	public get mergedIds() {
+		return this.field('mergedIds');
 	}
 
 	public get status() {
@@ -543,6 +644,30 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 	}
 
 	/**
+	 * 覆盖合并成员列表。
+	 *
+	 * 追加语义要幂等：已存在的成员不重复写入，也绝不能把自己写成自己的成员。
+	 */
+	public async addMergedIds(ids: string[]) {
+		if (!ids.length) {
+			return;
+		}
+		await this.mutate('mergedIds', (current) => {
+			for (const id of ids) {
+				if (id && id !== this.hashId && !current.includes(id)) {
+					current.push(id);
+				}
+			}
+		});
+	}
+
+	/** 按给定数组覆盖成员列表，用于脱离与规范化写回 */
+	public async updateMergedIds(ids: string[]) {
+		const next = ids.filter((id, index) => id && id !== this.hashId && ids.indexOf(id) === index);
+		await this.write('mergedIds', next);
+	}
+
+	/**
 	 * 读取配置中的原始图片记录（未拼接路径、未排序）。
 	 *
 	 * 仅内部增删逻辑使用，对外统一暴露 `images` 完整路径数组。
@@ -681,6 +806,7 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 				images: images,
 				date: [],
 				types: [],
+				mergedIds: [],
 				status: 0,
 				description: '',
 				seasons: [],
@@ -703,6 +829,8 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		config.images = images;
 		config.date = config.date || [];
 		config.types = config.types || [];
+		// 旧数据没有该字段；规范化在扫描末尾统一处理悬空 id 与重复项。
+		config.mergedIds = Array.isArray(config.mergedIds) ? config.mergedIds : [];
 		config.status = config.status || 0;
 		config.description = config.description || '';
 		config.seasons = config.seasons || [];

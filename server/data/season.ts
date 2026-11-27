@@ -236,6 +236,29 @@ export class Season extends Entity<ISeason, SeasonValue> implements ServerToProm
 	}
 
 	/**
+	 * 按给定顺序整体重写剧集排序。
+	 *
+	 * 与 `updateEpisodeSort` 的「移动到第 N 位」是两件事：这里没有位置参数，也不做
+	 * `Math.max(1, ...)` 钳制 —— 传入的 id 顺序就是最终顺序，内部统一重编号为 1..N。
+	 * 外部数据源（Bangumi 同步、导入清单）一次性覆盖整季顺序时用它，避免逐集调用产生
+	 * 中间态，也避免把「官方集号」这类非项目内语义直接写进 `sort`。
+	 *
+	 * - `ids` 未覆盖的集排在末尾，保持各自原有的相对顺序，不会因为漏传而丢失。
+	 * - 传入不属于本季或重复的 id 直接抛错，不静默丢弃。
+	 *
+	 * @returns 重排后的集数组，顺序与最终 `sort` 一致
+	 */
+	public async rewriteEpisodeOrder(ids: string[]) {
+		const task = this.episodeSortQueue.then(() => this.doRewriteEpisodeOrder(ids));
+		// 队列只关心「上一个任务结束」，不传递返回值，也不让失败中断后续任务。
+		this.episodeSortQueue = task.then(
+			() => {},
+			() => {},
+		);
+		return await task;
+	}
+
+	/**
 	 * 按“移动到第 N 位”重排剧集顺序。
 	 *
 	 * 与季排序同理：不依赖新旧 sort 做区间平移，而是按当前 sort 推导顺序、
@@ -262,6 +285,53 @@ export class Season extends Entity<ISeason, SeasonValue> implements ServerToProm
 			await ordered[index]!.rewriteSort(index + 1);
 		}
 		episodes.splice(0, episodes.length, ...ordered);
+	}
+
+	/**
+	 * 按 id 数组整体重排剧集。
+	 *
+	 * 先把当前集按 `sort` 推导成有序数组，再按传入顺序取出、未列出的追加在后面，
+	 * 最后统一 `rewriteSort(index + 1)` 重编号并原地更新缓存数组 —— 与拖拽排序共用
+	 * 同一套「重编号 + 原地重排」的写法，避免接口返回顺序滞后于落库结果。
+	 *
+	 * 校验发生在写入之前：只要有任何一个 id 不合法，整次重排都不会落盘。
+	 */
+	private async doRewriteEpisodeOrder(ids: string[]): Promise<Episode[]> {
+		const episodes = await this.episodes;
+		if (!episodes.length) {
+			return episodes;
+		}
+		const entries = await Promise.all(
+			episodes.map(async (episode) => ({ episode, id: await episode.id, sort: await episode.sort })),
+		);
+		entries.sort((a, b) => a.sort - b.sort);
+		const byId = new Map(entries.map((item) => [item.id, item]));
+
+		const ordered: Episode[] = [];
+		const picked = new Set<string>();
+		for (const id of ids) {
+			const entry = byId.get(id);
+			if (!entry) {
+				throw new Error(`集 ${id} 不属于季 ${this.seasonName}，无法参与排序`);
+			}
+			if (picked.has(id)) {
+				throw new Error(`集 ${id} 在排序数组中重复出现`);
+			}
+			picked.add(id);
+			ordered.push(entry.episode);
+		}
+		// 没有出现在 ids 里的集保持原有相对顺序，追加在末尾，避免调用方漏传导致集被排除
+		for (const entry of entries) {
+			if (!picked.has(entry.id)) {
+				ordered.push(entry.episode);
+			}
+		}
+
+		for (let index = 0; index < ordered.length; index++) {
+			await ordered[index]!.rewriteSort(index + 1);
+		}
+		episodes.splice(0, episodes.length, ...ordered);
+		return episodes;
 	}
 	// endregion
 

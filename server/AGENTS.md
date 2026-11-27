@@ -202,6 +202,8 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 内存数组必须与 `sort` 保持同序，`getAllSeasons()` / `getAllEpisodes()` 只在初始化时排序一次；排序后不重排数组会导致 `GET` 返回旧顺序，并使后续拖拽算出的目标位置与当前顺序错位。不要绕过父级队列单独改一个 `sort`，否则会产生重复或空缺位置。
 
+内部 `sort` 是 **1..N 的连续顺序号**，不承载「第几集」的语义。外部数据源（Bangumi 同步、导入清单）给出的集号不能直接写进 `sort`：`Season.rewriteEpisodeOrder(ids)` 接收按最终顺序排列的集 id，内部按 `1..n` 重编号并原地重排数组，未列出的集追加在末尾；传入不属于本季或重复的 id 会在写入前整次抛错。需要「整体覆盖顺序」时用它，不要循环调用 `updateSort`——位置语义会互相覆盖并产生中间态。
+
 ### 数据接口边界
 
 - `DirectoryController` 负责允许根目录读取和设置。

@@ -7,9 +7,26 @@ describe('系列类型枚举', () => {
 		expect(seriesTypes.map((type) => type.id)).toEqual(seriesTypes.map((_, index) => index + 1));
 	});
 
-	it('列表末尾是新增的美少女、魔法少女、战斗、恋爱与萌系', () => {
-		expect(seriesTypes.length).toBe(28);
-		expect(seriesTypes.slice(-5).map((type) => type.name)).toEqual(['美少女', '魔法少女', '战斗', '恋爱', '萌系']);
+	it('列表末尾是纯爱、节操等新增标签与补充题材', () => {
+		expect(seriesTypes.slice(-17).map((type) => type.name)).toEqual([
+			'纯爱',
+			'节操',
+			'泡面番',
+			'无厘头',
+			'热血',
+			'机战',
+			'妖怪',
+			'推理',
+			'恐怖',
+			'历史',
+			'音乐',
+			'偶像',
+			'美食',
+			'青春',
+			'儿童向',
+			'致郁',
+			'催泪',
+		]);
 	});
 
 	it('类型名称唯一且非空', () => {
@@ -22,7 +39,10 @@ describe('系列类型枚举', () => {
 		expect(getSeriesTypeName(1)).toBe('TV');
 		expect(getSeriesTypeName(23)).toBe('日常');
 		expect(getSeriesTypeName(28)).toBe('萌系');
+		expect(getSeriesTypeName(29)).toBe('纯爱');
+		expect(getSeriesTypeName(45)).toBe('催泪');
 		expect(getSeriesTypeName(0)).toBe('');
+		expect(getSeriesTypeName(46)).toBe('');
 		expect(getSeriesTypeName(99)).toBe('');
 	});
 });

@@ -77,6 +77,20 @@ body .el-popover.el-popper.detail-metadata-popover {
 	margin-left: -15px;
 	&.detail-types-popover {
 		margin-left: -5px;
+		// 类型标签数量增长后限制下拉高度，避免弹层超出视口底部
+		.types {
+			max-height: 240px;
+			overflow-y: auto;
+			scrollbar-width: thin;
+			scrollbar-color: #{map.get(token.$theme, 'l-2')} transparent;
+			&::-webkit-scrollbar {
+				width: 4px;
+			}
+			&::-webkit-scrollbar-thumb {
+				background-color: map.get(token.$theme, 'l-2');
+				border-radius: 2px;
+			}
+		}
 	}
 }
 

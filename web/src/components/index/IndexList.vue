@@ -20,6 +20,7 @@ import { refreshEmitter } from '@/events/refresh';
 import { useIndexFilterStore } from '@/stores/indexFilter';
 import { useVideoStore } from '@/stores/video';
 import { applySeriesQuery, groupSeriesByMonth } from '@/utils/seriesQuery';
+import { excludeMergedMembers } from '@/utils/seriesMerge';
 
 /** 列表渲染片段：分割线或单个系列卡片 */
 type ListSegment =
@@ -108,7 +109,9 @@ endReachedEmitter.on('endReached', (event) => {
  * 否则会把不符合过滤条件的系列塞回列表。
  */
 refreshEmitter.on('series', (series) => {
-	const list = applySeriesQuery(series, keyword.value, filter.query);
+	// 全量刷新给的是未过滤列表，被合并的系列在这里同样要剔除，
+	// 否则刚合并完的成员会立即被刷新事件重新塞回列表。
+	const list = applySeriesQuery(excludeMergedMembers(series), keyword.value, filter.query);
 	const shown = list.slice(0, page.value * props.pageSize);
 	datas.splice(0, datas.length, ...shown);
 	// 刷新后可能出现新的可加载数据，解除「已加载完」标记

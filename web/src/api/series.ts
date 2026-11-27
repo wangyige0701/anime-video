@@ -1,4 +1,4 @@
-import type { Series } from '~types/videos';
+import type { Series, SeriesMergeResult } from '~types/videos';
 import { AxiosRequest } from 'axios-useful';
 import { ServerRoot } from '~shared/server-route-config';
 import { API } from '@/api';
@@ -36,6 +36,32 @@ export function getSeriesDetail(seriesId: string) {
 		retry: {
 			count: 2,
 			delay: 500,
+		},
+	});
+}
+
+/**
+ * 把 `memberId` 并入 `mainId`（后者成为主系列）。
+ *
+ * 返回主系列与被并入系列的摘要：被并入系列可能自带成员，前端的两个实例都要同步。
+ */
+export function mergeSeries(mainId: string, memberId: string) {
+	return API.post<any, SeriesMergeResult>(
+		`${ServerRoot.DATA}/series/${mainId}/merge`,
+		{ memberId },
+		{
+			single: {
+				type: AxiosRequest.Single.PREV,
+			},
+		},
+	);
+}
+
+/** 让 `memberId` 从 `mainId` 的合并组中脱离 */
+export function detachSeries(mainId: string, memberId: string) {
+	return API.delete<any, SeriesMergeResult>(`${ServerRoot.DATA}/series/${mainId}/merge/${memberId}`, {
+		single: {
+			type: AxiosRequest.Single.PREV,
 		},
 	});
 }

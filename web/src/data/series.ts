@@ -14,9 +14,12 @@ import {
 	updateSeriesTitle,
 	updateSeriesTypes,
 	removeSeriesDate,
+	mergeSeries,
+	detachSeries,
 } from '@/api/series';
 import { getSeasons } from '@/api/season';
 import { applySeriesQuery, paginateSeries, type SeriesQuery } from '@/utils/seriesQuery';
+import { excludeMergedMembers } from '@/utils/seriesMerge';
 import { getSeriesImageName, mergeUnique } from '@/utils/series';
 import { Common, patchField, serverTitle, type FieldRefs } from './common';
 import { Season } from './season';
@@ -172,9 +175,12 @@ export class Series extends Common implements SeriesValue {
 	 *
 	 * 过滤和排序都在前端本地完成，接口只提供全量数据；
 	 * 分页交给 `getSeriesByPage()`，避免两处重复实现同一条流水线。
+	 *
+	 * 被合并的系列不参与列表：它们的内容通过主系列的详情页呈现，
+	 * 因此必须在分页之前排除，否则每页会空出被过滤掉的坑位。
 	 */
 	public static async querySeries(keyword = '', query?: Partial<SeriesQuery>) {
-		const list = await this.getAllSeries();
+		const list = excludeMergedMembers(await this.getAllSeries());
 		return applySeriesQuery(list, keyword, query);
 	}
 
@@ -187,6 +193,7 @@ export class Series extends Common implements SeriesValue {
 		description: ref(''),
 		date: ref<[number?, number?]>([]),
 		types: ref<number[]>([]),
+		mergedIds: ref<string[]>([]),
 		status: ref(0),
 	};
 
@@ -209,6 +216,8 @@ export class Series extends Common implements SeriesValue {
 		for (const key of Object.keys(this.values) as Array<keyof SeriesValue>) {
 			(this.values[key] as Ref<unknown>).value = series[key];
 		}
+		// 服务端始终返回数组；旧版本接口没有该字段，这里兜底避免叠层相关计算读到 undefined。
+		this.values.mergedIds.value = Array.isArray(series.mergedIds) ? series.mergedIds.slice() : [];
 
 		if (!Series.hasBindCache(series.id)) {
 			const { ref, track, update } = Series.createRef<Season>();
@@ -261,6 +270,11 @@ export class Series extends Common implements SeriesValue {
 
 	public get types() {
 		return this.values.types.value;
+	}
+
+	/** 已并入当前系列的成员 id 数组，顺序即叠层顺序与详情页季分组顺序 */
+	public get mergedIds() {
+		return this.values.mergedIds.value;
 	}
 
 	public get status() {
@@ -435,6 +449,33 @@ export class Series extends Common implements SeriesValue {
 	// region 删除状态
 	public async removeStatus() {
 		await patchField(this.values, this.requestStatus, 'status', 0, () => removeSeriesStatus(this.id));
+	}
+	// endregion
+
+	// region 合并关系
+	/**
+	 * 把 `memberId` 并入当前系列（当前系列成为主系列）。
+	 *
+	 * 服务端会同时改动两个实例的 `mergedIds`：主系列追加成员，成员自身清空。
+	 * 被并入的系列如果自带成员，那些成员会一并转移给当前系列，因此成员的旧列表也要同步清空。
+	 */
+	public async mergeMember(memberId: string) {
+		const result = await mergeSeries(this.id, memberId);
+		this.values.mergedIds.value = result.main.mergedIds.slice();
+		const member = Series.cache.get(memberId);
+		if (member && result.member) {
+			member.values.mergedIds.value = result.member.mergedIds.slice();
+		}
+	}
+
+	/**
+	 * 让 `memberId` 从当前系列的合并组中脱离。
+	 *
+	 * 只影响主系列：成员系列没有反向引用，脱离后立即恢复为独立条目。
+	 */
+	public async detachMember(memberId: string) {
+		const result = await detachSeries(this.id, memberId);
+		this.values.mergedIds.value = result.main.mergedIds.slice();
 	}
 	// endregion
 }

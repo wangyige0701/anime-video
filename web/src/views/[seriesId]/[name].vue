@@ -12,7 +12,8 @@
 						show-edit-icon
 						@blur="updateSeriesTitle"
 					/>
-					<BangumiSync :series-id="seriesId" @applied="handleApplied" />
+					<!-- 未配置 AI 或 Bangumi 时不展示入口：点击后必然失败，不如引导去设置页 -->
+					<BangumiSync v-if="settingsStore.syncAvailable" :series-id="seriesId" @applied="handleApplied" />
 				</div>
 				<DetailMetadata />
 				<DetailDescription :series="series.value" :disabled="status.waiting" />
@@ -48,6 +49,7 @@ import VideoBox from '@/components/detail/VideoBox.vue';
 import BangumiSync from '@/components/detail/BangumiSync.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { usePlayerStore } from '@/stores/player';
+import { useSettingsStore } from '@/stores/settings';
 import { useDraggable } from 'vue-draggable-plus';
 
 definePage({
@@ -60,6 +62,7 @@ route.meta.setTitle!(name);
 
 let isUnmounted = false;
 const playerStore = usePlayerStore();
+const settingsStore = useSettingsStore();
 const seriesId = useRoute(WebRoute.DETAIL).params.seriesId;
 const status = useVueStatusRef('waiting', 'sorting').onWaiting();
 const videoBoxRef = useTemplateRef('videoBoxRef');
@@ -231,6 +234,8 @@ function play(episode: Episode, season: Season, series: Series) {
 }
 
 onMounted(async () => {
+	// 与详情请求并行：同步入口只依赖设置状态，不必等它返回再加载页面
+	void settingsStore.ensure();
 	try {
 		const info = await useVideoStore().getSeriesDetail(seriesId);
 		series.value = info;

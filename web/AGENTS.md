@@ -170,6 +170,23 @@
 - 写入成功后调用 `refreshSeries()` 重新扫描装配，并用返回的新 `Series` 实例整体替换详情页的 `series.value`；不要逐字段打补丁，标题、排序、季与集都可能变化。
 - `apply` 失败保留对话框与勾选状态。请求失败的提示统一由 `api.ts` 拦截器给出，组件内不重复 `ElMessage`。
 - 对话框与下拉面板挂载在 `body` 上，非 scoped 块只写业务布局与内容排版；组件主题（底色、描边、三级文字、选中态）由 `src/assets/elements/` 统一提供，见 `docs/modules/web/element-theme.md`。
+- **未配置时隐藏入口**：`AiSettingsCard` / `BangumiSettingsCard` 对应服务端 `ai.configured` 与 `bangumi.configured`，详情页用 `settingsStore.syncAvailable` 控制 `v-if`。判断只做在详情页一处，不要在 `BangumiSync.vue` 内部再放第二套兜底。
+
+## 设置页
+
+设置页是**左侧菜单 + 嵌套路由**结构，不是单页堆卡片：
+
+| 路由 / 名称              | 文件                          | 内容                                    |
+| ------------------------ | ----------------------------- | --------------------------------------- |
+| `/setting`（`Setting`）  | `views/setting.vue`           | 布局：标题、左侧分组菜单、`<router-view>`；重定向到 `/setting/ai` |
+| `/setting/ai`（`SettingAi`）        | `views/setting/ai.vue`          | AI 接口分组                        |
+| `/setting/bangumi`（`SettingBangumi`） | `views/setting/bangumi.vue` | Bangumi 分组                       |
+
+- 分组菜单由 `setting.vue` 里的 `groups` 定义：**AI 与 Bangumi 同属「外部服务」**，后续的目录、外观等设置另起分组，不要平铺到同一层。
+- 分组内容拆到 `components/setting/`：`SettingSection`（卡片外壳 + 可用状态标签）、`SettingField`（字段行）、`SettingAdvanced`（高级折叠）、`AiSettingsCard`、`BangumiSettingsCard`，探测结果的文案规则在 `useProbe.ts`。页面只负责布局与路由，不要把表单写回页面模板。
+- 数据层：`api/settings.ts`（`GET/PUT /data/settings`、两个 probe）与 `stores/settings.ts`（`view` / `syncAvailable` / `ensure()` / `save()`）。详情页首次进入调用 `ensure()`，并发请求共用同一个 Promise；加载中状态用 `useVueStatusRef`，store 不再维护重复的布尔值。
+- **密钥永不回填明文**：视图只有 `hasApiKey` 与 `apiKeyMasked`，UI 提供「替换 / 清除」两个显式动作，输入框只在替换态出现；补丁构造在 `utils/settings.ts`（`buildAiPatch` / `buildBangumiPatch`），只提交实际变化的字段，空值的「替换」不提交，避免误清空。
+- 样式沿用主题梯度：卡片用 `detail-metadata-bg` 深色半透明面板，标签不用 `el-tag`（深色主题下是亮砖），改为低透明度底色 + 状态点；文本按钮默认主色在紫色底上不可见，需要按分组覆盖 `--el-button-text-color`。
 
 ## 播放器现有架构
 

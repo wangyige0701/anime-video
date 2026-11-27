@@ -1,0 +1,21 @@
+/**
+ * 文字块的统一写法：字号与行高必须成对出现。
+ *
+ * 行高不给就会落到 `line-height: normal`，行盒高度由实际命中的字体决定：
+ * 同样是 0.6875rem，中文文案的行盒是 15px，纯拉丁文案只有 12px。
+ * 多列并排（设置面板的生效值摘要）时，同一行的文字会错开 3px 的基线。
+ *
+ * 颜色仍由调用方传表达式（`token.$text-color-primary` 或 `map.get(token.$theme, 'l-6')`），
+ * 不在这里再包一层主题查找：有些文字用固定色（成功绿、危险红），统一按 tone 取色反而受限。
+ *
+ * @example
+ *   @include text.text(0.8125rem, 1.5, map.get(token.$theme, 'l-9'));
+ */
+@mixin text($size, $line-height: 1.5, $color: null) {
+	font-size: $size;
+	line-height: $line-height;
+
+	@if $color {
+		color: $color;
+	}
+}

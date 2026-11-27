@@ -23,6 +23,7 @@ const props = defineProps<{
 
 <style scoped lang="scss">
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/text.scss' as text;
 @use 'sass:map';
 
 .field {
@@ -35,9 +36,8 @@ const props = defineProps<{
 .label {
 	grid-column: 1;
 	grid-row: 1;
-	font-size: 0.875rem;
-	line-height: 1.5;
-	color: map.get(token.$theme, 'l-9');
+
+	@include text.text(0.875rem, 1.5, map.get(token.$theme, 'l-9'));
 }
 
 .control {
@@ -65,9 +65,8 @@ const props = defineProps<{
 	grid-column: 2;
 	grid-row: 2;
 	margin: 0;
-	font-size: 0.75rem;
-	line-height: 1.5;
-	color: map.get(token.$theme, 'l-6');
+
+	@include text.text(0.75rem, 1.5, map.get(token.$theme, 'l-6'));
 }
 
 @media (max-width: 720px) {

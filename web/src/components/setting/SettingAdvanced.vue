@@ -37,6 +37,7 @@ const status = useVueStatusRef('open');
 
 <style scoped lang="scss">
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/text.scss' as text;
 @use 'sass:map';
 
 .advanced {
@@ -52,8 +53,9 @@ const status = useVueStatusRef('open');
 	padding: 12px 0;
 	border: 0;
 	background: none;
-	font-size: 0.8125rem;
-	color: map.get(token.$theme, 'l-8');
+
+	@include text.text(0.8125rem, 1.5, map.get(token.$theme, 'l-8'));
+
 	text-align: left;
 	cursor: pointer;
 	transition: color 0.18s ease;
@@ -82,8 +84,9 @@ const status = useVueStatusRef('open');
 	width: 20px;
 	height: 20px;
 	border-radius: 50%;
-	font-size: 11px;
-	color: currentColor;
+
+	@include text.text(11px, 1, currentColor);
+
 	transition:
 		transform 0.2s ease,
 		background-color 0.18s ease;
@@ -99,8 +102,8 @@ const status = useVueStatusRef('open');
 
 .summary {
 	margin-left: auto;
-	font-size: 0.75rem;
-	color: map.get(token.$theme, 'l-6');
+
+	@include text.text(0.75rem, 1.5, map.get(token.$theme, 'l-6'));
 }
 
 .body {

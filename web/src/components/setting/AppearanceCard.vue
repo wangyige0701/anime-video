@@ -45,6 +45,7 @@ function selectTheme(theme: Theme) {
 
 <style scoped lang="scss">
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/text.scss' as text;
 @use 'sass:map';
 
 .themes {
@@ -93,8 +94,9 @@ function selectTheme(theme: Theme) {
 	width: 30px;
 	height: 30px;
 	border-radius: 50%;
-	font-size: 14px;
-	color: #fff;
+
+	@include text.text(14px, 1, #fff);
+
 	box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.16);
 	transition: transform 0.18s ease;
 }
@@ -104,7 +106,6 @@ function selectTheme(theme: Theme) {
 }
 
 .name {
-	font-size: 0.75rem;
-	line-height: 1;
+	@include text.text(0.75rem, 1);
 }
 </style>

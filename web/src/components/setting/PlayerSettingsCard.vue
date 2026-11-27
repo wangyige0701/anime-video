@@ -45,12 +45,14 @@ const meta = computed(() => [
 
 <style scoped lang="scss">
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/text.scss' as text;
 @use 'sass:map';
 
 .value {
 	flex: 0 0 42px;
-	font-size: 0.8125rem;
-	color: map.get(token.$theme, 'l-9');
+
+	@include text.text(0.8125rem, 1.5, map.get(token.$theme, 'l-9'));
+
 	font-variant-numeric: tabular-nums;
 	text-align: right;
 }

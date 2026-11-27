@@ -128,12 +128,13 @@ async function testConnection() {
 
 <style scoped lang="scss">
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/text.scss' as text;
 @use 'sass:map';
 
 .unit {
 	flex: 0 0 auto;
-	font-size: 0.75rem;
-	color: map.get(token.$theme, 'l-6');
+
+	@include text.text(0.75rem, 1.5, map.get(token.$theme, 'l-6'));
 }
 
 .result {
@@ -141,8 +142,8 @@ async function testConnection() {
 	align-items: center;
 	gap: 6px;
 	margin-left: 4px;
-	font-size: 0.8125rem;
-	color: #8fd67a;
+
+	@include text.text(0.8125rem, 1.5, #8fd67a);
 
 	.dot {
 		width: 6px;

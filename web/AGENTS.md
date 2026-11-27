@@ -187,6 +187,7 @@
 - 分组菜单由 `setting.vue` 的 `groups` 定义：**「通用」放本机偏好（外观、播放器），「外部服务」放需要凭据的第三方接口**；新增分组往 `groups` 加一项即可，模板不变。窄屏（≤760px）菜单变横向标签行。
 - 分组内容拆到 `components/setting/`：`SettingSection`（面板外壳 + 说明 + 生效值摘要 + 操作条）、`SettingField`（字段行）、`SettingAdvanced`（进阶参数折叠）、`AppearanceCard`、`PlayerSettingsCard`、`AiSettingsCard`、`BangumiSettingsCard`，探测文案规则在 `useProbe.ts`。页面只负责布局与路由，不要把表单写回页面模板。
 - **左基线统一**：标题、说明、摘要、字段标签都从面板内边距起排。面板头部不放图标块——图标会把标题整体右移，与下面的字段列形成两条竖线。`SettingField` 的标签列固定 116px，说明文字落在控件下方而不是标签列里。
+- **文字样式必须显式声明 `line-height`**：`line-height: normal` 的行盒高度由实际命中的字体决定，纯拉丁文案（`User-Agent`）比中文文案的行盒矮约 3px，多列并排时同一行的文字就会错开基线。设置模块统一走 `scss/mixin/text.scss` 的 `text($size, $line-height, $color)`，字号与行高成对给出，不要手写 `font-size` 后漏掉行高；颜色仍由调用方传表达式（固定色如成功绿不能少）。
 - `SettingSection` 的可用状态用 `stateLabel` / `stateOk` 两个 prop，不用布尔 props 控制显隐：Vue 会把未传的 `Boolean` 转成 `false`，外观、播放器这类没有可用性概念的分组会平白多出一个「未配置」标签。
 - `SettingAdvanced` 用原生 `button` + `el-collapse-transition`，不用 `el-collapse`：后者在深色面板上是一条通栏横线，没有 hover 反馈、箭头也不转。箭头在标题右侧，展开时旋转 90°，状态用 `useVueStatusRef('open')`。
 - 数据层：`api/settings.ts`（`GET/PUT /data/settings`、两个 probe）与 `stores/settings.ts`（`view` / `syncAvailable` / `ensure()` / `save()`）。详情页首次进入调用 `ensure()`，并发请求共用同一个 Promise；加载中状态用 `useVueStatusRef`，store 不再维护重复的布尔值。

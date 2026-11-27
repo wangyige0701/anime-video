@@ -203,6 +203,7 @@ async function testConnection() {
 
 <style scoped lang="scss">
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/text.scss' as text;
 @use 'sass:map';
 
 .secret {
@@ -220,8 +221,9 @@ async function testConnection() {
 .secret-state {
 	flex: 1;
 	min-width: 0;
-	font-size: 0.8125rem;
-	color: map.get(token.$theme, 'l-9');
+
+	@include text.text(0.8125rem, 1.5, map.get(token.$theme, 'l-9'));
+
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;
@@ -239,8 +241,8 @@ async function testConnection() {
 
 .unit {
 	flex: 0 0 auto;
-	font-size: 0.75rem;
-	color: map.get(token.$theme, 'l-6');
+
+	@include text.text(0.75rem, 1.5, map.get(token.$theme, 'l-6'));
 }
 
 .result {
@@ -248,8 +250,8 @@ async function testConnection() {
 	align-items: center;
 	gap: 6px;
 	margin-left: 4px;
-	font-size: 0.8125rem;
-	color: #8fd67a;
+
+	@include text.text(0.8125rem, 1.5, #8fd67a);
 
 	.dot {
 		width: 6px;

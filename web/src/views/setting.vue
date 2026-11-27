@@ -74,6 +74,7 @@ const groups: SettingGroup[] = [
 
 <style scoped lang="scss">
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/text.scss' as text;
 @use 'sass:map';
 
 .setting {
@@ -86,10 +87,10 @@ const groups: SettingGroup[] = [
 
 	h1 {
 		margin: 0;
-		font-size: 1.5rem;
+
+		@include text.text(1.5rem, 1.3, token.$text-color-primary);
+
 		font-weight: 600;
-		line-height: 1.3;
-		color: token.$text-color-primary;
 	}
 }
 
@@ -120,9 +121,10 @@ const groups: SettingGroup[] = [
 
 .group-label {
 	padding: 4px 10px 6px;
-	font-size: 0.6875rem;
+
+	@include text.text(0.6875rem, 1.4, map.get(token.$theme, 'l-6'));
+
 	letter-spacing: 0.06em;
-	color: map.get(token.$theme, 'l-6');
 }
 
 .menu-item {
@@ -132,17 +134,17 @@ const groups: SettingGroup[] = [
 	gap: 9px;
 	padding: 9px 10px;
 	border-radius: token.$radius-sm;
-	font-size: 0.875rem;
-	line-height: 1.3;
-	color: map.get(token.$theme, 'l-8');
+
+	@include text.text(0.875rem, 1.3, map.get(token.$theme, 'l-8'));
+
 	text-decoration: none;
 	transition:
 		background-color 0.18s ease,
 		color 0.18s ease;
 
 	.icon {
-		font-size: 15px;
-		color: map.get(token.$theme, 'l-7');
+		@include text.text(15px, 1, map.get(token.$theme, 'l-7'));
+
 		transition: color 0.18s ease;
 	}
 

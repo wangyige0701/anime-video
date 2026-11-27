@@ -56,6 +56,7 @@ const props = defineProps<{
 
 <style scoped lang="scss">
 @use '@/scss/token.scss' as token;
+@use '@/scss/mixin/text.scss' as text;
 @use 'sass:map';
 
 .panel {
@@ -75,11 +76,10 @@ const props = defineProps<{
 	gap: 10px;
 
 	h2 {
+		@include text.text(1rem, 1.5, token.$text-color-primary);
+
 		margin: 0;
-		font-size: 1rem;
 		font-weight: 600;
-		line-height: 1.5;
-		color: token.$text-color-primary;
 	}
 }
 
@@ -93,9 +93,8 @@ const props = defineProps<{
 	display: inline-flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 0.75rem;
-	line-height: 1;
-	color: map.get(token.$theme, 'l-6');
+
+	@include text.text(0.75rem, 1, map.get(token.$theme, 'l-6'));
 
 	.dot {
 		width: 6px;
@@ -116,9 +115,8 @@ const props = defineProps<{
 
 .hint {
 	margin: 5px 0 0;
-	font-size: 0.8125rem;
-	line-height: 1.6;
-	color: map.get(token.$theme, 'l-7');
+
+	@include text.text(0.8125rem, 1.6, map.get(token.$theme, 'l-7'));
 }
 
 .panel-meta {
@@ -136,16 +134,17 @@ const props = defineProps<{
 	gap: 3px;
 	min-width: 90px;
 
+	// 摘要标签与值同用 1.4 行高，中英混排下行盒等高，三列才能共基线
 	dt {
-		font-size: 0.6875rem;
+		@include text.text(0.6875rem, 1.4, map.get(token.$theme, 'l-6'));
+
 		letter-spacing: 0.02em;
-		color: map.get(token.$theme, 'l-6');
 	}
 
 	dd {
+		@include text.text(0.8125rem, 1.4, map.get(token.$theme, 'l-9'));
+
 		margin: 0;
-		font-size: 0.8125rem;
-		color: map.get(token.$theme, 'l-9');
 		font-variant-numeric: tabular-nums;
 		// 超长地址不换行，截断处保留可读前缀
 		overflow: hidden;

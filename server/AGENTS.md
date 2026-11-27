@@ -81,7 +81,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `cli/worker.ts`：管理器派生的服务 worker 入口，只动态导入目标服务并处理 ready、IPC shutdown 和 manager 断开。
 - `cli/manager/`：CLI 管理器的本地 IPC 客户端、常驻 daemon、协议和运行端点；不参与 HTTP 请求路由。`status` 在管理器端点不存在时返回停止状态且不启动 daemon。停止 worker 先通过 IPC 优雅关闭；超时后 Windows 使用 `taskkill /T /F` 终止整个 worker 进程树，避免 tsx 子进程继续占用服务端口。
 - `controller/`：装饰器控制器；按 data、video、image、system 等领域暴露 HTTP 接口。
-- `decorators/`：项目自定义装饰器，当前 `Validate` 使用 Zod 校验并替换解析后的 request body。
+- `decorators/`：项目自定义装饰器，当前 `Validate` 使用 Zod 校验并替换解析后的 request body。校验失败的响应 `message` 由 `formatValidationMessage()` 组装成「字段路径：中文原因」一行，只取第一条问题——`ZodError.message` 是整段 issues 的 JSON，直接回传会让前端弹出一大段 JSON；因此参数模式里每个约束都要带中文提示，不要依赖 Zod 的默认英文文案。
 - `middlewares/`：请求日志、统一异常映射和 JSON 响应辅助。
 - `data/`：扫描允许的视频目录，构建 Series/Season/Episode 数据树，维护实例缓存、排序及 `.video.json` 配置持久化；`data/entity.ts` 提供字段派生、写入与失效的公共基类。
 - `src/hls.ts`：原生 HLS 实例、分片预加载、TS/图片缓存和生命周期管理。

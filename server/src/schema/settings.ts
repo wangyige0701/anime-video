@@ -18,7 +18,12 @@ const proxy = z
 	.max(500)
 	.refine((value) => value === '' || /^https?:\/\//i.test(value), '代理必须是 http(s) 地址');
 
-const timeout = z.number().int().min(1000).max(300000);
+// 上下界带中文提示：装饰器只回传第一条问题，默认文案是英文的 "Too small"
+const timeout = z
+	.number()
+	.int('超时必须是整数毫秒数')
+	.min(1000, '超时不能小于 1000 毫秒')
+	.max(300000, '超时不能大于 300000 毫秒');
 
 export const settingsUpdateSchema = z
 	.object({

@@ -9,6 +9,7 @@
  *   收到 4xx 时逐项剥离重试，而不是要求用户换模型；
  * - 不主动 `stream`，一次请求拿完整结果，便于校验与日志。
  */
+import { Status } from '~shared/http-status';
 import { ApiError } from '~server/src/error';
 import { getAiConfig, isAiConfigured } from './config';
 import { requestJsonWithRetry } from '../http';
@@ -36,7 +37,7 @@ export interface ChatResult {
  * 保证前端能拿到原因、服务端日志也有可读消息。不改变既有错误响应形状。
  */
 function upstreamError(message: string) {
-	return new ApiError(502, message, message);
+	return new ApiError(Status.BadGateway, message, message);
 }
 
 interface ChatResponse {
@@ -75,8 +76,7 @@ export function extractJsonObject(text: string): unknown {
 export async function chatJson(messages: ChatMessage[], timeout?: number): Promise<ChatResult> {
 	if (!isAiConfigured()) {
 		const message = '未配置 AI 接口（AI_BASE_URL / AI_API_KEY / AI_MODEL），无法完成数据整合';
-		// 只用项目已声明的状态码（500/502），503 不在 Status 枚举内
-		throw new ApiError(502, message, message);
+		throw new ApiError(Status.ServiceUnavailable, message, message);
 	}
 	const config = getAiConfig();
 	const url = `${config.baseUrl.replace(/\/+$/, '')}/chat/completions`;

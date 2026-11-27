@@ -1,3 +1,4 @@
+import { Status } from '~shared/http-status';
 import type Koa from 'koa';
 import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-use-decorator-router';
 import { ServerRoot } from '~shared/server-route-config';
@@ -187,7 +188,7 @@ export class SeriesController {
 
 function validateOperation(param: string) {
 	if (!['add', 'remove', 'set'].includes(param)) {
-		throw new ApiError(400, 'operation 参数必须是 add, remove, 或 set');
+		throw new ApiError(Status.Failed, 'operation 参数必须是 add, remove, 或 set');
 	}
 	return param;
 }

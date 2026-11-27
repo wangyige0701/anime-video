@@ -4,6 +4,7 @@
  * 只读接口，不需要 token；但 Bangumi 会拒绝没有自定义 User-Agent 的请求，
  * 所以 UA 必须来自配置而不是 Node 默认值。
  */
+import { Status } from '~shared/http-status';
 import { ApiError } from '~server/src/error';
 import { getBangumiConfig } from './config';
 import { requestJsonWithRetry } from '../http';
@@ -19,7 +20,7 @@ const SUBJECT_TYPE_ANIME = 2;
  * 前端能拿到原因，日志也有可读消息。
  */
 function upstreamError(message: string) {
-	return new ApiError(502, message, message);
+	return new ApiError(Status.BadGateway, message, message);
 }
 
 function endpoint(path: string) {

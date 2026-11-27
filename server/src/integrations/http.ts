@@ -10,6 +10,8 @@
  */
 import http from 'node:http';
 import https from 'node:https';
+import { Status } from '~shared/http-status';
+import { ApiError } from '~server/src/error';
 
 export interface JsonRequestOptions {
 	method?: 'GET' | 'POST';
@@ -118,6 +120,20 @@ function isRetryable(status: number) {
 }
 
 /**
+ * 把网络层异常转成接口层能直接用的错误。
+ *
+ * 超时、代理不可用、DNS 失败都发生在拿到响应之前。如果原样抛出，Koa 会把它当成未捕获异常
+ * 返回 500 且没有 message，前端只能看到「请求失败」；调用方也无法区分「上游超时」与「自己的 bug」。
+ */
+function toUpstreamError(url: string, error: unknown) {
+	const host = new URL(url).host;
+	const reason = error instanceof Error ? error.message : String(error);
+	const timeout = /超时|timeout/i.test(reason);
+	const message = timeout ? `${host} 请求超时` : `无法访问 ${host}：${reason}`;
+	return new ApiError(timeout ? Status.GatewayTimeout : Status.BadGateway, message, message);
+}
+
+/**
  * 带退避的 JSON 请求。
  *
  * 优先使用 `Retry-After`，其次按次数线性退避。Bangumi 对高频请求会返回 429，
@@ -128,7 +144,12 @@ export async function requestJsonWithRetry<T>(
 	options: JsonRequestOptions = {},
 	attempt = 0,
 ): Promise<JsonResponse<T>> {
-	const response = await requestJson<T>(url, options);
+	let response: JsonResponse<T>;
+	try {
+		response = await requestJson<T>(url, options);
+	} catch (error) {
+		throw toUpstreamError(url, error);
+	}
 	if (!isRetryable(response.status) || attempt >= 3) {
 		return response;
 	}

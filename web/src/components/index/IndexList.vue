@@ -1,5 +1,5 @@
 <template>
-	<div class="index-list">
+	<div class="index-list" @pointerdown="onPointerDown">
 		<template v-for="segment in segments" :key="segment.key">
 			<!-- 按上线时间排序时，每个月插入一条通栏分割线 -->
 			<div v-if="segment.type === 'divider'" class="divider">
@@ -8,19 +8,50 @@
 				<span class="count">{{ segment.count }} 部</span>
 			</div>
 			<!-- 卡片抽成 SeriesCard，首页与搜索页共用同一套模板与样式 -->
-			<SeriesCard v-else class="item" :series="segment.series" :replace="props.replace" />
+			<SeriesCard
+				v-else
+				class="item"
+				:series="segment.series"
+				:replace="props.replace"
+				:members="membersOf(segment.series)"
+				:dragging="dragState.sourceId === segment.series.id"
+				:drop-target="dragTargetId === segment.series.id"
+				@detach="handleDetach(segment.series, $event)"
+			/>
 		</template>
 	</div>
+
+	<!-- 拖拽浮层：脱离列表的布局流，用 transform 跟随指针 -->
+	<Teleport to="body">
+		<div
+			v-if="dragState.phase !== 'idle'"
+			class="series-drag-layer"
+			:class="`phase-${dragState.phase}`"
+			:style="dragLayerStyle"
+		>
+			<div class="series-drag-card" :class="{ flipped: dragFlipped }">
+				<div class="face front">
+					<img :src="dragState.imageUrl" alt="" draggable="false" />
+				</div>
+				<div class="face back">
+					<span>{{ dragState.title }}</span>
+				</div>
+			</div>
+		</div>
+	</Teleport>
 </template>
 
 <script setup lang="ts">
 import type { Series } from '@/data/series';
+import { Series as SeriesModel } from '@/data/series';
 import { endReachedEmitter } from '@/events/end-reached';
 import { refreshEmitter } from '@/events/refresh';
 import { useIndexFilterStore } from '@/stores/indexFilter';
 import { useVideoStore } from '@/stores/video';
 import { applySeriesQuery, groupSeriesByMonth } from '@/utils/seriesQuery';
-import { excludeMergedMembers } from '@/utils/seriesMerge';
+import { buildMergeOwnerIndex, excludeMergedMembers, getGroupMembers } from '@/utils/seriesMerge';
+import { getSeriesCoverUrl } from '@/utils/series';
+import { useSeriesDrag } from './useSeriesDrag';
 
 /** 列表渲染片段：分割线或单个系列卡片 */
 type ListSegment =
@@ -73,6 +104,121 @@ const segments = computed<ListSegment[]>(() => {
 	});
 });
 
+/**
+ * 全量系列索引。
+ *
+ * 被合并的成员不会出现在 `datas` 里（列表查询已把它们过滤掉），
+ * 但卡片背后的叠层和成员面板要能解析出它们的标题与首图，因此必须持有全量数据。
+ */
+const allSeries = shallowRef<SeriesModel[]>([]);
+const seriesById = computed(() => new Map(allSeries.value.map((series) => [series.id, series])));
+const owners = computed(() => buildMergeOwnerIndex(allSeries.value));
+
+const {
+	state: dragState,
+	targetId: dragTargetId,
+	begin: beginDrag,
+} = useSeriesDrag({
+	owners: () => owners.value,
+	onMerge: handleMerge,
+});
+
+/** 拖拽浮层的几何与动效：位置用 transform，过渡交给阶段类名 */
+const dragLayerStyle = computed(() => ({
+	width: `${dragState.width}px`,
+	height: `${dragState.height}px`,
+	transform: `translate3d(${dragState.x}px, ${dragState.y}px, 0) scale(${dragState.scale})`,
+	opacity: dragState.opacity,
+}));
+
+/**
+ * 浮层是否已翻面。
+ *
+ * 挂载时如果直接是终态，浏览器没有起始值可插值，翻转动画不会执行；
+ * 因此等浮层渲染完、下一帧再切换，才有「拿起时翻过来」的效果。
+ */
+const dragFlipped = ref(false);
+watch(
+	() => dragState.phase,
+	async (phase) => {
+		if (phase === 'idle') {
+			dragFlipped.value = false;
+			return;
+		}
+		if (phase !== 'drag') {
+			return;
+		}
+		await nextTick();
+		requestAnimationFrame(() => {
+			dragFlipped.value = true;
+		});
+	},
+);
+
+/**
+ * 解析某个系列的合并成员。
+ *
+ * 顺序取自主系列记录的 `mergedIds`，与服务端一致；悬空 id 会被跳过。
+ */
+function membersOf(series: Series) {
+	return getGroupMembers(series, seriesById.value);
+}
+
+/**
+ * 卡片上按下指针：只有落在卡片主体时才准备拖拽。
+ *
+ * 角标与成员面板标记了 `data-no-drag`，按下时直接放行，避免点「脱离」被当成拖拽起点。
+ */
+function onPointerDown(event: PointerEvent) {
+	const target = event.target as HTMLElement | null;
+	if (!target || target.closest('[data-no-drag]')) {
+		return;
+	}
+	const card = target.closest<HTMLElement>('[data-series-id]');
+	const id = card?.dataset.seriesId;
+	if (!card || !id) {
+		return;
+	}
+	const series = seriesById.value.get(id) ?? datas.find((item) => item.id === id);
+	if (!series) {
+		return;
+	}
+	beginDrag(event, card, { id, title: series.title, imageUrl: getSeriesCoverUrl(series) });
+}
+
+/**
+ * 把 `sourceId` 并入 `targetId`。
+ *
+ * 成功后广播全量列表：成员从列表消失、主卡片长出叠层，两者的位置都会变，
+ * 局部打补丁不如复用同一条刷新管线。
+ */
+async function handleMerge(sourceId: string, targetId: string) {
+	const main = seriesById.value.get(targetId);
+	if (!main) {
+		return false;
+	}
+	try {
+		await main.mergeMember(sourceId);
+		refreshEmitter.emit('series', await SeriesModel.getAllSeries());
+		ElMessage.success(`已合并到「${main.title}」`);
+		return true;
+	} catch (error: any) {
+		ElMessage.error(error?.message || '合并失败');
+		return false;
+	}
+}
+
+/** 让成员脱离当前系列的合并组；成员卡片会重新出现在列表里 */
+async function handleDetach(series: Series, memberId: string) {
+	try {
+		await series.detachMember(memberId);
+		refreshEmitter.emit('series', await SeriesModel.getAllSeries());
+		ElMessage.success('已脱离合并');
+	} catch (error: any) {
+		ElMessage.error(error?.message || '脱离失败');
+	}
+}
+
 // 搜索页的关键词来自路由参数，变化后从第一页重新加载
 watch(
 	() => props.keyword,
@@ -109,6 +255,8 @@ endReachedEmitter.on('endReached', (event) => {
  * 否则会把不符合过滤条件的系列塞回列表。
  */
 refreshEmitter.on('series', (series) => {
+	// 全量数据是叠层与成员面板的唯一来源，先更新它再重算列表
+	allSeries.value = series;
 	// 全量刷新给的是未过滤列表，被合并的系列在这里同样要剔除，
 	// 否则刚合并完的成员会立即被刷新事件重新塞回列表。
 	const list = applySeriesQuery(excludeMergedMembers(series), keyword.value, filter.query);
@@ -148,6 +296,8 @@ async function load(reset: boolean) {
 		} else {
 			datas.push(...data);
 		}
+		// 列表只含当前页，合并成员的标题与首图要从全量缓存里取
+		allSeries.value = await SeriesModel.getAllSeries();
 	} catch (error) {}
 	if (version === requestVersion) {
 		status.offLoading();
@@ -218,5 +368,66 @@ onBeforeMount(() => {
 		line-height: 1;
 		color: map.get(token.$theme, 'l-5');
 	}
+}
+
+// 拖拽浮层：固定在视口上，用 transform 跟随指针，因此不会参与列表布局
+.series-drag-layer {
+	position: fixed;
+	top: 0;
+	left: 0;
+	z-index: 2600;
+	pointer-events: none;
+	perspective: 900px;
+	will-change: transform, opacity;
+
+	// 拖拽阶段逐帧写入位置，不能有过渡；飞入/飞回才需要缓动
+	&.phase-drop,
+	&.phase-return {
+		transition:
+			transform 0.26s cubic-bezier(0.2, 0.8, 0.2, 1),
+			opacity 0.26s ease;
+	}
+}
+
+.series-drag-card {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	transform-style: preserve-3d;
+	// 拿起时翻面：正面是海报，背面是标题，翻过去更容易辨认正在拖哪一部
+	transition: transform 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+	&.flipped {
+		transform: rotateY(180deg);
+	}
+}
+
+.face {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	border-radius: 10px;
+	backface-visibility: hidden;
+	box-shadow: 0 18px 40px rgb(0 0 0 / 55%);
+}
+
+.front img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+}
+
+.back {
+	transform: rotateY(180deg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 12px;
+	text-align: center;
+	word-break: break-all;
+	background: linear-gradient(135deg, map.get(token.$theme, 'd-8'), map.get(token.$theme, 'd-9'));
+	border: 1px solid map.get(token.$theme, 'd-6');
+	color: token.$text-color-primary;
+	font-size: 0.875rem;
+	line-height: 1.4;
 }
 </style>

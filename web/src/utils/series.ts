@@ -1,5 +1,18 @@
+import { getImageUrl } from '~shared/server-route-config';
+
 export function getSeriesPath(...paths: string[]) {
 	return paths.join('\\');
+}
+
+/**
+ * 系列首图的展示地址。
+ *
+ * 没有图片时返回空串而不是拼一个空路径：后者会发出一次必然 404 的请求，
+ * `el-image` 拿到空串才会直接显示占位。
+ */
+export function getSeriesCoverUrl(series: { images?: string[] }) {
+	const image = series.images?.[0];
+	return image ? getImageUrl(getSeriesPath(image)) : '';
 }
 
 /**

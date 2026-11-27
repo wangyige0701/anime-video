@@ -75,7 +75,8 @@ export function extractJsonObject(text: string): unknown {
 export async function chatJson(messages: ChatMessage[], timeout?: number): Promise<ChatResult> {
 	if (!isAiConfigured()) {
 		const message = '未配置 AI 接口（AI_BASE_URL / AI_API_KEY / AI_MODEL），无法完成数据整合';
-		throw new ApiError(503, message, message);
+		// 只用项目已声明的状态码（500/502），503 不在 Status 枚举内
+		throw new ApiError(502, message, message);
 	}
 	const config = getAiConfig();
 	const url = `${config.baseUrl.replace(/\/+$/, '')}/chat/completions`;

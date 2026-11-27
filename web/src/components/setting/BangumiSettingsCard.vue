@@ -1,44 +1,53 @@
 <template>
 	<SettingSection
 		title="Bangumi"
-		hint="同步时从这里读取条目信息；Bangumi 要求请求携带自定义 User-Agent。"
-		:configured="!!view?.bangumi.configured"
-		:loading="loading"
+		hint="同步时从这里读取条目与剧集信息；Bangumi 会拒绝没有自定义 User-Agent 的请求。"
+		:state-label="props.view?.bangumi.configured ? '已配置' : '未配置'"
+		:state-ok="!!props.view?.bangumi.configured"
+		:meta="meta"
+		:loading="props.loading"
 	>
-		<SettingField label="接口地址">
-			<el-input v-model="form.baseUrl" placeholder="https://api.bgm.tv" clearable />
+		<SettingField label="接口地址" hint="Bangumi 的公开 API 根地址">
+			<el-input v-model="form.baseUrl" class="el-input--panel" placeholder="https://api.bgm.tv" clearable />
 		</SettingField>
 
-		<SettingField label="User-Agent">
-			<el-input v-model="form.userAgent" placeholder="anime-video/1.0" clearable />
+		<SettingField label="User-Agent" hint="Bangumi 要求能识别调用方的 UA">
+			<el-input v-model="form.userAgent" class="el-input--panel" placeholder="anime-video/1.0" clearable />
 		</SettingField>
 
-		<SettingAdvanced>
-			<SettingField label="代理">
-				<el-input v-model="form.proxy" placeholder="http://127.0.0.1:7890，留空直连" clearable />
+		<SettingAdvanced summary="代理 · 超时">
+			<SettingField label="代理" hint="留空直连，只作用于 Bangumi 请求">
+				<el-input v-model="form.proxy" class="el-input--panel" placeholder="http://127.0.0.1:7890" clearable />
 			</SettingField>
-			<SettingField label="超时">
+			<SettingField label="超时" hint="单次请求上限，1000 – 300000 毫秒">
 				<el-input-number
 					v-model="form.timeout"
+					class="el-input-number--panel"
 					:min="1000"
 					:max="300000"
 					:step="1000"
 					controls-position="right"
+					align="left"
 				/>
 				<span class="unit">毫秒</span>
 			</SettingField>
 		</SettingAdvanced>
 
 		<template #footer>
-			<el-button type="primary" :loading="status.saving" :disabled="loading" @click="save">保存</el-button>
+			<el-button type="primary" :loading="status.saving" :disabled="props.loading" @click="save">
+				保存
+			</el-button>
 			<el-button
 				:loading="status.probing"
-				:disabled="loading || !view?.bangumi.configured"
+				:disabled="props.loading || !props.view?.bangumi.configured"
 				@click="testConnection"
 			>
 				测试连接
 			</el-button>
-			<span v-if="probeState" class="result" :class="{ failed: !probeState.ok }">{{ probeState.text }}</span>
+			<span v-if="probeState" class="result" :class="{ failed: !probeState.ok }">
+				<i class="dot"></i>
+				{{ probeState.text }}
+			</span>
 		</template>
 	</SettingSection>
 </template>
@@ -53,7 +62,7 @@ import SettingField from './SettingField.vue';
 import SettingSection from './SettingSection.vue';
 import { useProbe } from './useProbe';
 
-defineProps<{
+const props = defineProps<{
 	view: SettingsView | null;
 	loading?: boolean;
 }>();
@@ -62,6 +71,13 @@ const settingsStore = useSettingsStore();
 const form = reactive<BangumiFormValues>(bangumiFormFrom(null));
 const status = useVueStatusRef('saving', 'probing');
 const { state: probeState, probe, reset: resetProbe } = useProbe(probeBangumiSettings);
+
+/** 头部摘要取已保存值，与表单里正在编辑的内容分开 */
+const meta = computed(() => [
+	{ label: '接口地址', value: props.view?.bangumi.baseUrl || '未填写' },
+	{ label: 'User-Agent', value: props.view?.bangumi.userAgent || '未填写' },
+	{ label: '超时', value: props.view?.bangumi.timeout ? `${props.view.bangumi.timeout} ms` : '—' },
+]);
 
 /** 只在首次拿到设置时回填，避免保存 AI 分组后覆盖本组未保存的编辑 */
 let initialized = false;
@@ -115,16 +131,28 @@ async function testConnection() {
 @use 'sass:map';
 
 .unit {
+	flex: 0 0 auto;
 	font-size: 0.75rem;
 	color: map.get(token.$theme, 'l-6');
 }
 
 .result {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-left: 4px;
 	font-size: 0.8125rem;
-	color: map.get(token.$theme, 'l-8');
+	color: #8fd67a;
+
+	.dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background-color: currentColor;
+	}
 
 	&.failed {
-		color: var(--danger-color, #f56c6c);
+		color: var(--el-color-danger);
 	}
 }
 </style>

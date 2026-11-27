@@ -1,0 +1,42 @@
+@use 'sass:map';
+@use '@/scss/token.scss' as token;
+
+body {
+	/**
+	 * 深色面板上的滑块。
+	 *
+	 * 默认滑轨是浅灰、按钮是白描边，在深色面板上像一条异物；
+	 * 这里把滑轨压到 12% 白、已滑过部分用主题亮色、按钮用白色实心 + 主题描边。
+	 */
+	.el-slider--panel {
+		--el-slider-main-bg-color: #{map.get(token.$theme, 'l-8')};
+		--el-slider-runway-bg-color: rgba(255, 255, 255, 0.12);
+		--el-slider-stop-bg-color: rgba(255, 255, 255, 0.2);
+		--el-slider-disabled-color: rgba(255, 255, 255, 0.2);
+		height: 26px;
+
+		.el-slider__runway {
+			height: 4px;
+		}
+
+		.el-slider__bar {
+			height: 4px;
+		}
+
+		.el-slider__button-wrapper {
+			top: -16px;
+		}
+
+		.el-slider__button {
+			width: 14px;
+			height: 14px;
+			border: 2px solid #{map.get(token.$theme, 'l-9')};
+			background-color: #fff;
+			transition: box-shadow 0.18s ease;
+
+			&:hover {
+				box-shadow: 0 0 0 5px rgba(255, 255, 255, 0.12);
+			}
+		}
+	}
+}

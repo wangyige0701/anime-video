@@ -176,17 +176,25 @@
 
 设置页是**左侧菜单 + 嵌套路由**结构，不是单页堆卡片：
 
-| 路由 / 名称                            | 文件                        | 内容                                                              |
-| -------------------------------------- | --------------------------- | ----------------------------------------------------------------- |
-| `/setting`（`Setting`）                | `views/setting.vue`         | 布局：标题、左侧分组菜单、`<router-view>`；重定向到 `/setting/ai` |
-| `/setting/ai`（`SettingAi`）           | `views/setting/ai.vue`      | AI 接口分组                                                       |
-| `/setting/bangumi`（`SettingBangumi`） | `views/setting/bangumi.vue` | Bangumi 分组                                                      |
+| 路由 / 名称                                  | 文件                           | 内容                                                                      |
+| -------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------- |
+| `/setting`（`Setting`）                      | `views/setting.vue`            | 布局：标题、左侧分组菜单、`<router-view>`；重定向到 `/setting/appearance` |
+| `/setting/appearance`（`SettingAppearance`） | `views/setting/appearance.vue` | 外观：主题色板                                                            |
+| `/setting/player`（`SettingPlayer`）         | `views/setting/player.vue`     | 播放器：默认音量、自动连播、字幕开关                                      |
+| `/setting/ai`（`SettingAi`）                 | `views/setting/ai.vue`         | AI 接口                                                                   |
+| `/setting/bangumi`（`SettingBangumi`）       | `views/setting/bangumi.vue`    | Bangumi                                                                   |
 
-- 分组菜单由 `setting.vue` 里的 `groups` 定义：**AI 与 Bangumi 同属「外部服务」**，后续的目录、外观等设置另起分组，不要平铺到同一层。
-- 分组内容拆到 `components/setting/`：`SettingSection`（卡片外壳 + 可用状态标签）、`SettingField`（字段行）、`SettingAdvanced`（高级折叠）、`AiSettingsCard`、`BangumiSettingsCard`，探测结果的文案规则在 `useProbe.ts`。页面只负责布局与路由，不要把表单写回页面模板。
+- 分组菜单由 `setting.vue` 的 `groups` 定义：**「通用」放本机偏好（外观、播放器），「外部服务」放需要凭据的第三方接口**；新增分组往 `groups` 加一项即可，模板不变。窄屏（≤760px）菜单变横向标签行。
+- 分组内容拆到 `components/setting/`：`SettingSection`（面板外壳 + 说明 + 生效值摘要 + 操作条）、`SettingField`（字段行）、`SettingAdvanced`（进阶参数折叠）、`AppearanceCard`、`PlayerSettingsCard`、`AiSettingsCard`、`BangumiSettingsCard`，探测文案规则在 `useProbe.ts`。页面只负责布局与路由，不要把表单写回页面模板。
+- **左基线统一**：标题、说明、摘要、字段标签都从面板内边距起排。面板头部不放图标块——图标会把标题整体右移，与下面的字段列形成两条竖线。`SettingField` 的标签列固定 116px，说明文字落在控件下方而不是标签列里。
+- `SettingSection` 的可用状态用 `stateLabel` / `stateOk` 两个 prop，不用布尔 props 控制显隐：Vue 会把未传的 `Boolean` 转成 `false`，外观、播放器这类没有可用性概念的分组会平白多出一个「未配置」标签。
+- `SettingAdvanced` 用原生 `button` + `el-collapse-transition`，不用 `el-collapse`：后者在深色面板上是一条通栏横线，没有 hover 反馈、箭头也不转。箭头在标题右侧，展开时旋转 90°，状态用 `useVueStatusRef('open')`。
 - 数据层：`api/settings.ts`（`GET/PUT /data/settings`、两个 probe）与 `stores/settings.ts`（`view` / `syncAvailable` / `ensure()` / `save()`）。详情页首次进入调用 `ensure()`，并发请求共用同一个 Promise；加载中状态用 `useVueStatusRef`，store 不再维护重复的布尔值。
 - **密钥永不回填明文**：视图只有 `hasApiKey` 与 `apiKeyMasked`，UI 提供「替换 / 清除」两个显式动作，输入框只在替换态出现；补丁构造在 `utils/settings.ts`（`buildAiPatch` / `buildBangumiPatch`），只提交实际变化的字段，空值的「替换」不提交，避免误清空。
-- 样式沿用主题梯度：卡片用 `detail-metadata-bg` 深色半透明面板，标签不用 `el-tag`（深色主题下是亮砖），改为低透明度底色 + 状态点；文本按钮默认主色在紫色底上不可见，需要按分组覆盖 `--el-button-text-color`。
+- **面板内表单控件走变体类**，不在页面覆盖 `--el-*`：`el-input--panel`（近黑半透明底 + 1px 描边，占位色压到 34% 白，与实值区分）、`el-input-number--panel`（116px 定宽、`align="left"`、按钮透明底 + 细分隔线）、`el-slider--panel`。默认输入框的 `--el-input-bg-color` 是主色混 10% 白，在深色面板上是一块亮砖，不要直接复用。
+- 数字框必须用组件自带的 `align="left"`：Element 的 `.el-input-number.is-center .el-input__inner` 特异性高于普通类选择器，只在 CSS 里写 `text-align` 会被压掉。
+- 外观分组读 `config/theme.ts` 的 `THEME_OPTIONS` 渲染色板，`color` 必须与 `scss/mixin/themes.scss` 的 `$themes` 一致；主题持久化在 `utils/themeStorage.ts`，用同步 `localStorage`（异步存储会让首帧闪一下默认配色），读取时用 `parseTheme` 校验枚举值。`stores/theme.ts` 清 class 必须遍历枚举**值**，`for..in` 拿到的是字符串枚举的键。
+- 播放器偏好直接读写 `stores/player.ts`（`setVolume` / `setIsAutoPlay` / `setIsSubtitleTrack`），不另建状态：设置页与播放器共享同一份值，改动即时生效并写入本机存储。
 
 ## 播放器现有架构
 

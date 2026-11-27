@@ -107,7 +107,7 @@ function describeStatus(status: number, target: string) {
 		return `${target}鉴权失败（HTTP ${status}），请检查密钥`;
 	}
 	if (status === 404) {
-		return `${target}地址不存在（HTTP 404），请确认地址是否包含版本段（如 /v1）`;
+		return `${target}地址不存在（HTTP 404），请按服务商文档核对路径`;
 	}
 	if (status === 429) {
 		return `${target}被限流（HTTP 429），请稍后重试`;

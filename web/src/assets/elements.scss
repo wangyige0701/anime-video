@@ -7,6 +7,8 @@
 // 新增组件的适配请在这里加文件并登记，避免样式又散落到各个页面。
 @use './elements/button.scss';
 @use './elements/input.scss';
+@use './elements/input-number.scss';
+@use './elements/slider.scss';
 @use './elements/select.scss';
 @use './elements/checkbox.scss';
 @use './elements/switch.scss';

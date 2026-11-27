@@ -58,4 +58,29 @@ body {
 		--el-button-hover-border-color: #{map.get(token.$theme, 'l-2')};
 		--el-button-hover-text-color: #fff;
 	}
+
+	/**
+	 * 面板内的文本按钮（`.el-button--panel`）。
+	 *
+	 * Element 的 text 按钮默认文字取主色、hover 底色取 `--el-fill-color-light`（近白）：
+	 * 深色面板上文字几乎看不见，鼠标一悬停就变成一块白板。
+	 *
+	 * 只做变体、不改全局：播放器控制条与详情页的 text 按钮各自有透明底的设计
+	 * （`VideoCore` 显式把 `--el-fill-color-light` 置为 transparent），全局覆盖会把它们一起改掉。
+	 */
+	.el-button.is-text.el-button--panel {
+		&:not(.el-button--danger) {
+			--el-button-text-color: #{map.get(token.$theme, 'l-9')};
+			--el-button-hover-text-color: #fff;
+			--el-button-active-text-color: #fff;
+		}
+
+		&:not(.is-disabled):hover {
+			background-color: rgba(255, 255, 255, 0.1);
+		}
+
+		&:not(.is-disabled):active {
+			background-color: rgba(255, 255, 255, 0.14);
+		}
+	}
 }

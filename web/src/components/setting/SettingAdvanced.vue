@@ -1,20 +1,38 @@
 <template>
-	<el-collapse class="advanced">
-		<el-collapse-item title="高级" name="advanced">
-			<div class="body">
+	<div class="advanced" :class="{ open: status.open }">
+		<button type="button" class="toggle" :aria-expanded="status.open" @click="status.toggleOpen()">
+			<span class="title">{{ props.title }}</span>
+			<el-icon class="chevron"><ArrowRight /></el-icon>
+			<span v-if="props.summary" class="summary">{{ props.summary }}</span>
+		</button>
+		<el-collapse-transition>
+			<div v-show="status.open" class="body">
 				<slot></slot>
 			</div>
-		</el-collapse-item>
-	</el-collapse>
+		</el-collapse-transition>
+	</div>
 </template>
 
 <script setup lang="ts">
+import { ArrowRight } from '@element-plus/icons-vue';
+
 /**
- * 分组内的高级项折叠。
+ * 分组内的进阶参数折叠。
  *
- * Element Plus 的折叠面板默认是浅色主题，这里只覆盖必要的 CSS 变量，
- * 不重写组件内部结构，避免与详情页的折叠面板维护两套样式。
+ * 用原生 button 而不是 el-collapse：后者在深色面板里是一条通栏横线，
+ * 没有 hover 反馈、箭头也不会转，看不出可点。这里整行可点、hover 提亮、
+ * 箭头旋转、内容用 Element 的折叠过渡展开，键盘与读屏都能识别状态。
  */
+const props = withDefaults(
+	defineProps<{
+		title?: string;
+		/** 收起时显示的摘要，例如「代理 · 超时」 */
+		summary?: string;
+	}>(),
+	{ title: '高级参数' },
+);
+
+const status = useVueStatusRef('open');
 </script>
 
 <style scoped lang="scss">
@@ -22,27 +40,73 @@
 @use 'sass:map';
 
 .advanced {
-	border-top: 0;
-	border-bottom: 0;
-	--el-collapse-border-color: #{map.get(token.$theme, 'l-4')};
-	--el-collapse-header-bg-color: transparent;
-	--el-collapse-content-bg-color: transparent;
-	--el-collapse-header-text-color: #{map.get(token.$theme, 'l-7')};
-	--el-collapse-content-text-color: #{token.$text-color-primary};
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+	margin-top: 2px;
+}
 
-	:deep(.el-collapse-item__header) {
-		padding-left: 0;
-		font-size: 0.8125rem;
+.toggle {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	width: 100%;
+	padding: 12px 0;
+	border: 0;
+	background: none;
+	font-size: 0.8125rem;
+	color: map.get(token.$theme, 'l-8');
+	text-align: left;
+	cursor: pointer;
+	transition: color 0.18s ease;
+
+	&:hover {
+		color: #fff;
+
+		.chevron {
+			background-color: rgba(255, 255, 255, 0.1);
+		}
 	}
 
-	:deep(.el-collapse-item__content) {
-		padding-bottom: 0;
-	}
+	&:focus-visible {
+		outline: none;
 
-	.body {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
+		.chevron {
+			box-shadow: 0 0 0 2px map.get(token.$theme, 'l-7');
+		}
 	}
+}
+
+.chevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	font-size: 11px;
+	color: currentColor;
+	transition:
+		transform 0.2s ease,
+		background-color 0.18s ease;
+}
+
+.open .chevron {
+	transform: rotate(90deg);
+}
+
+.title {
+	font-weight: 500;
+}
+
+.summary {
+	margin-left: auto;
+	font-size: 0.75rem;
+	color: map.get(token.$theme, 'l-6');
+}
+
+.body {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+	padding: 4px 0 16px;
 }
 </style>

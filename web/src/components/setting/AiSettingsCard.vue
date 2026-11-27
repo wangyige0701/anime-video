@@ -1,71 +1,94 @@
 <template>
 	<SettingSection
 		title="AI 接口"
-		hint="用于同步时的季映射、标签识别与剧集对齐，需兼容 OpenAI 的 chat/completions 协议。"
-		:configured="!!view?.ai.configured"
-		:loading="loading"
+		hint="同步时用它做季映射、标签识别与剧集对齐，需要兼容 OpenAI 的 chat/completions 协议。"
+		:state-label="props.view?.ai.configured ? '已配置' : '未配置'"
+		:state-ok="!!props.view?.ai.configured"
+		:meta="meta"
+		:loading="props.loading"
 	>
-		<SettingField label="接口地址">
-			<el-input v-model="form.baseUrl" placeholder="https://api.deepseek.com/v1" clearable />
+		<SettingField label="接口地址" hint="OpenAI 兼容的根地址，按服务商文档填写">
+			<el-input v-model="form.baseUrl" class="el-input--panel" placeholder="https://api.deepseek.com" clearable />
 		</SettingField>
 
-		<SettingField label="模型">
-			<el-input v-model="form.model" placeholder="deepseek-chat" clearable />
+		<SettingField label="模型" hint="请求体里的 model，需与服务端实际能力一致">
+			<el-input v-model="form.model" class="el-input--panel" placeholder="deepseek-chat" clearable />
 		</SettingField>
 
-		<SettingField label="密钥">
+		<SettingField label="密钥" hint="只保存在本机，页面不回显明文">
 			<div class="secret">
 				<el-input
 					v-if="apiKeyMode === 'replace'"
 					v-model="apiKeyDraft"
+					class="el-input--panel"
 					type="password"
 					show-password
 					placeholder="粘贴新的 API Key"
-					clearable
 				/>
-				<span v-else-if="apiKeyMode === 'clear'" class="secret-state">保存后清除密钥</span>
+				<span v-else-if="apiKeyMode === 'clear'" class="secret-state pending">保存后清除密钥</span>
 				<span v-else class="secret-state">
-					{{ view?.ai.hasApiKey ? `已设置 ${view.ai.apiKeyMasked}` : '未设置' }}
+					{{ props.view?.ai.hasApiKey ? `已设置 ${props.view.ai.apiKeyMasked}` : '未设置' }}
 				</span>
+
 				<div class="secret-actions">
 					<template v-if="apiKeyMode === 'replace'">
-						<el-button text @click="cancelReplace">取消</el-button>
+						<el-button size="small" text class="el-button--panel" @click="cancelReplace">取消</el-button>
 					</template>
 					<template v-else-if="apiKeyMode === 'clear'">
-						<el-button text @click="apiKeyMode = 'keep'">撤销</el-button>
+						<el-button size="small" text class="el-button--panel" @click="apiKeyMode = 'keep'"
+							>撤销</el-button
+						>
 					</template>
 					<template v-else>
-						<el-button text @click="startReplace">替换</el-button>
-						<el-button v-if="view?.ai.hasApiKey" text type="danger" @click="apiKeyMode = 'clear'"
-							>清除</el-button
+						<el-button size="small" @click="startReplace">替换</el-button>
+						<el-button
+							v-if="props.view?.ai.hasApiKey"
+							size="small"
+							text
+							class="el-button--panel"
+							type="danger"
+							@click="apiKeyMode = 'clear'"
 						>
+							清除
+						</el-button>
 					</template>
 				</div>
 			</div>
 		</SettingField>
 
-		<SettingAdvanced>
-			<SettingField label="代理">
-				<el-input v-model="form.proxy" placeholder="http://127.0.0.1:7890，留空直连" clearable />
+		<SettingAdvanced summary="代理 · 超时">
+			<SettingField label="代理" hint="留空直连，只作用于 AI 请求">
+				<el-input v-model="form.proxy" class="el-input--panel" placeholder="http://127.0.0.1:7890" clearable />
 			</SettingField>
-			<SettingField label="超时">
+			<SettingField label="超时" hint="单次请求上限，1000 – 300000 毫秒">
 				<el-input-number
 					v-model="form.timeout"
+					class="el-input-number--panel"
 					:min="1000"
 					:max="300000"
 					:step="1000"
 					controls-position="right"
+					align="left"
 				/>
 				<span class="unit">毫秒</span>
 			</SettingField>
 		</SettingAdvanced>
 
 		<template #footer>
-			<el-button type="primary" :loading="status.saving" :disabled="loading" @click="save">保存</el-button>
-			<el-button :loading="status.probing" :disabled="loading || !view?.ai.configured" @click="testConnection"
-				>测试连接</el-button
+			<el-button type="primary" :loading="status.saving" :disabled="props.loading" @click="save">
+				保存
+			</el-button>
+			<el-button
+				:loading="status.probing"
+				:disabled="props.loading || !props.view?.ai.configured"
+				@click="testConnection"
 			>
-			<span v-if="probeState" class="result" :class="{ failed: !probeState.ok }">{{ probeState.text }}</span>
+				测试连接
+			</el-button>
+			<span v-if="probeState" class="result" :class="{ failed: !probeState.ok }">
+				<i class="dot"></i>
+				{{ probeState.text }}
+			</span>
 		</template>
 	</SettingSection>
 </template>
@@ -80,7 +103,7 @@ import SettingField from './SettingField.vue';
 import SettingSection from './SettingSection.vue';
 import { useProbe } from './useProbe';
 
-defineProps<{
+const props = defineProps<{
 	view: SettingsView | null;
 	loading?: boolean;
 }>();
@@ -92,6 +115,13 @@ const apiKeyMode = ref<ApiKeyIntent['type']>('keep');
 const apiKeyDraft = ref('');
 const status = useVueStatusRef('saving', 'probing');
 const { state: probeState, probe, reset: resetProbe } = useProbe(probeAiSettings);
+
+/** 头部摘要取已保存值，与表单里正在编辑的内容分开 */
+const meta = computed(() => [
+	{ label: '接口地址', value: props.view?.ai.baseUrl || '未填写' },
+	{ label: '模型', value: props.view?.ai.model || '未填写' },
+	{ label: '超时', value: props.view?.ai.timeout ? `${props.view.ai.timeout} ms` : '—' },
+]);
 
 /**
  * 只在首次拿到设置时回填表单。
@@ -176,45 +206,60 @@ async function testConnection() {
 @use 'sass:map';
 
 .secret {
-	width: 100%;
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
+	width: 100%;
+	min-width: 0;
 
 	.el-input {
 		flex: 1;
 	}
+}
 
-	.secret-state {
-		font-size: 0.8125rem;
-		color: map.get(token.$theme, 'l-8');
-	}
+.secret-state {
+	flex: 1;
+	min-width: 0;
+	font-size: 0.8125rem;
+	color: map.get(token.$theme, 'l-9');
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 
-	.secret-actions {
-		display: flex;
-		align-items: center;
-		margin-left: auto;
+	&.pending {
+		color: var(--el-color-warning);
 	}
 }
 
-// 文本按钮的默认文字色是主色，在深色底上几乎看不见；只调整无色按钮，danger 保持不变
-:deep(.el-button.is-text:not(.el-button--danger)) {
-	--el-button-text-color: #{map.get(token.$theme, 'l-8')};
-	--el-button-hover-text-color: #{map.get(token.$theme, 'l-9')};
-	--el-button-hover-bg-color: #{map.get(token.$theme, 'l-2')};
+.secret-actions {
+	display: flex;
+	gap: 6px;
+	margin-left: auto;
 }
 
 .unit {
+	flex: 0 0 auto;
 	font-size: 0.75rem;
 	color: map.get(token.$theme, 'l-6');
 }
 
 .result {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	margin-left: 4px;
 	font-size: 0.8125rem;
-	color: map.get(token.$theme, 'l-8');
+	color: #8fd67a;
+
+	.dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background-color: currentColor;
+	}
 
 	&.failed {
-		color: var(--danger-color, #f56c6c);
+		color: var(--el-color-danger);
 	}
 }
 </style>

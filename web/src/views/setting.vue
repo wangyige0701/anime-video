@@ -1,11 +1,6 @@
 <template>
 	<div class="setting">
-		<header class="page-head">
-			<h1>设置</h1>
-			<p class="page-hint">
-				这里的配置只保存在本机用户数据目录，不会随程序分发；未配置完成时，详情页不会显示 Bangumi 同步入口。
-			</p>
-		</header>
+		<h1>设置</h1>
 
 		<div class="setting-body">
 			<!-- 每个分组是独立子路由，刷新后仍停留在当前分组 -->
@@ -33,26 +28,26 @@
 
 <script setup lang="ts">
 import type { Component } from 'vue';
-import { Connection, MagicStick } from '@element-plus/icons-vue';
+import { Brush, Connection, MagicStick, VideoPlay } from '@element-plus/icons-vue';
 
 definePage({
 	name: 'Setting',
 	meta: {
 		title: '设置',
 	},
-	// 侧边栏「设置」指向父级，进入时默认打开第一个分组
+	// 侧边栏「设置」指向父级，进入时先落在外观分组
 	redirect: {
-		name: 'SettingAi',
+		name: 'SettingAppearance',
 	},
 });
 
 /**
  * 设置分组。
  *
- * AI 接口与 Bangumi 是同一块「外部服务」配置，与后续新增的通用设置（目录、外观等）区分开：
- * 新增分组时往这里加一项即可，菜单会按组渲染，不需要改模板。
+ * 「通用」放本机偏好（外观、播放器），「外部服务」放需要凭据的第三方接口；
+ * 新增分组时往这里加一项即可，菜单按组渲染，不需要改模板。
  */
-type SettingRouteName = 'SettingAi' | 'SettingBangumi';
+type SettingRouteName = 'SettingAppearance' | 'SettingPlayer' | 'SettingAi' | 'SettingBangumi';
 
 interface SettingGroup {
 	label: string;
@@ -60,6 +55,13 @@ interface SettingGroup {
 }
 
 const groups: SettingGroup[] = [
+	{
+		label: '通用',
+		items: [
+			{ label: '外观', name: 'SettingAppearance', icon: Brush },
+			{ label: '播放器', name: 'SettingPlayer', icon: VideoPlay },
+		],
+	},
 	{
 		label: '外部服务',
 		items: [
@@ -75,90 +77,134 @@ const groups: SettingGroup[] = [
 @use 'sass:map';
 
 .setting {
-	width: 100%;
-	max-width: 960px;
 	display: flex;
 	flex-direction: column;
 	gap: 18px;
+	width: 100%;
+	max-width: 980px;
 	padding-bottom: 20px;
-}
 
-.page-head {
 	h1 {
 		margin: 0;
 		font-size: 1.5rem;
+		font-weight: 600;
+		line-height: 1.3;
 		color: token.$text-color-primary;
-	}
-
-	.page-hint {
-		margin: 8px 0 0;
-		font-size: 0.8125rem;
-		line-height: 1.7;
-		color: map.get(token.$theme, 'l-7');
 	}
 }
 
 .setting-body {
 	display: flex;
 	align-items: flex-start;
-	gap: 18px;
+	gap: 20px;
 }
 
 .setting-menu {
-	flex: 0 0 156px;
 	position: sticky;
 	top: 0;
 	display: flex;
+	flex: 0 0 164px;
 	flex-direction: column;
-	gap: 10px;
-	padding: 8px;
-	border: 1px solid map.get(token.$theme, 'l-2');
-	border-radius: token.$radius-lg;
-	background-color: map.get(token.$theme, 'detail-metadata-bg');
+	gap: 14px;
+	padding: 10px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: token.$radius-ex-lg;
+	background-color: rgba(0, 0, 0, 0.22);
 }
 
 .menu-group {
 	display: flex;
 	flex-direction: column;
-	gap: 4px;
+	gap: 2px;
 }
 
 .group-label {
-	padding: 2px 10px;
+	padding: 4px 10px 6px;
 	font-size: 0.6875rem;
-	letter-spacing: 0.04em;
+	letter-spacing: 0.06em;
 	color: map.get(token.$theme, 'l-6');
 }
 
 .menu-item {
+	position: relative;
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 9px;
 	padding: 9px 10px;
 	border-radius: token.$radius-sm;
 	font-size: 0.875rem;
-	line-height: 1;
+	line-height: 1.3;
 	color: map.get(token.$theme, 'l-8');
 	text-decoration: none;
 	transition:
-		background-color 0.2s ease,
-		color 0.2s ease;
+		background-color 0.18s ease,
+		color 0.18s ease;
+
+	.icon {
+		font-size: 15px;
+		color: map.get(token.$theme, 'l-7');
+		transition: color 0.18s ease;
+	}
 
 	&:hover {
+		color: #fff;
 		background-color: rgba(255, 255, 255, 0.06);
+
+		.icon {
+			color: #fff;
+		}
 	}
 
 	// 子路由激活时同时带 router-link-active，不需要额外维护选中态
 	&.router-link-active {
-		color: token.$text-color-primary;
-		background-color: rgba(255, 255, 255, 0.12);
-		// 左侧主题色标记：比整块变亮更能指明当前位置
-		box-shadow: inset 2px 0 0 map.get(token.$theme, 'l-9');
+		color: #fff;
+		background-color: rgba(255, 255, 255, 0.1);
+
+		.icon {
+			color: #fff;
+		}
+
+		&::before {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 0;
+			width: 2px;
+			height: 16px;
+			border-radius: 0 2px 2px 0;
+			background-color: map.get(token.$theme, 'l-9');
+			transform: translateY(-50%);
+		}
 	}
 }
 
 .setting-content {
 	flex: 1;
 	min-width: 0;
+}
+
+// 窄屏下侧边菜单横占一列会把面板挤到 400px 以内，改成一行标签
+@media (max-width: 760px) {
+	.setting-body {
+		flex-direction: column;
+	}
+
+	.setting-menu {
+		position: static;
+		flex: none;
+		flex-flow: row wrap;
+		gap: 4px;
+		width: 100%;
+	}
+
+	.menu-group {
+		flex-flow: row wrap;
+		align-items: center;
+		gap: 4px;
+	}
+
+	.group-label {
+		display: none;
+	}
 }
 </style>

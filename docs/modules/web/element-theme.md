@@ -76,9 +76,22 @@ simple 模式的三个状态各自要能一眼分辨，且都不能出现「纯�
 
 ## 7. 已覆盖的组件
 
-`button`、`input`、`select`、`checkbox`、`switch`、`segmented`、`steps`、`dialog`、`popover`、`tooltip`、`scrollbar`、`loading`。
+`button`、`input`、`input-number`、`slider`、`select`、`checkbox`、`switch`、`segmented`、`steps`、`dialog`、`popover`、`tooltip`、`scrollbar`、`loading`。
 
 新增适配时：在 `elements/` 下建 `<组件名>.scss` → 只写变量映射与默认尺寸 → 在 `elements.scss` 里 `@use` → 补一条变更记录。
+
+### 变体类
+
+设置页这类「深色面板上的表单」不重写全局变量，改用变体类，只在显式加类的控件上生效：
+
+| 变体类                      | 作用                                                              |
+| --------------------------- | ----------------------------------------------------------------- |
+| `.el-input--panel`          | 近黑半透明底 + 1px 描边，占位色压到 34% 白，与实值区分            |
+| `.el-input-number--panel`   | 116px 定宽，加减按钮透明底 + 细分隔线，需配合组件 `align="left"`  |
+| `.el-slider--panel`         | 滑轨 12% 白、已滑过部分取 `l-8`、按钮白色实心 + `l-9` 描边        |
+| `.el-button--panel`（text） | 亮色文字 + 半透明白底 hover，避免默认主色文字看不见、hover 变白板 |
+
+数字框的对齐必须走 `align="left"` 属性：Element 的 `.el-input-number.is-center .el-input__inner` 特异性高于普通类选择器，只在变体里写 `text-align` 会被压掉。
 
 ## 8. 已知限制
 

@@ -13,9 +13,12 @@ export default defineConfig({
 		},
 	},
 	resolve: {
-		alias: {
-			'~server': path.resolve(__dirname, 'server'),
-			'~shared': path.resolve(__dirname, 'shared'),
-		},
+		alias: [
+			{ find: '~server', replacement: path.resolve(__dirname, 'server') },
+			{ find: '~shared', replacement: path.resolve(__dirname, 'shared') },
+			// web 源码内部用 `@/` 指向 `web/src`；必须限定 `@/` 前缀，
+			// 否则 `@element-plus/icons-vue` 这类包名会被当成路径改写到 web/src 下
+			{ find: /^@\//, replacement: `${path.resolve(__dirname, 'web/src')}/` },
+		],
 	},
 });

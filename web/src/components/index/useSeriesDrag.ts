@@ -1,5 +1,5 @@
 import { useEventListener, useRafFn } from '@vueuse/core';
-import { reactive, ref } from 'vue';
+import { onScopeDispose, reactive, ref } from 'vue';
 import { endReachedEmitter } from '@/events/end-reached';
 import { getMergeRejection } from '@/utils/seriesMerge';
 
@@ -90,6 +90,8 @@ export function useSeriesDrag(options: UseSeriesDragOptions) {
 	let endReachedAt = 0;
 	/** 松手瞬间的目标矩形，飞入动画期间不再重新测量，避免列表重排导致落点漂移 */
 	let dropRect: DOMRect | null = null;
+	/** 回位动画的收尾定时器，作用域销毁时必须清掉，否则会在已卸载的实例上改 body 样式 */
+	let resetTimer: ReturnType<typeof setTimeout> | undefined;
 
 	/** 拖拽期间的逐帧任务：自动滚动 + 命中检测 */
 	const loop = useRafFn(
@@ -262,10 +264,14 @@ export function useSeriesDrag(options: UseSeriesDragOptions) {
 			flyTo(source.getBoundingClientRect(), 'return');
 		}
 		// 回位动画结束后统一收尾
-		setTimeout(reset, 280);
+		resetTimer = setTimeout(reset, 280);
 	}
 
 	function reset() {
+		if (resetTimer) {
+			clearTimeout(resetTimer);
+			resetTimer = undefined;
+		}
 		if (state.phase === 'idle') {
 			return;
 		}
@@ -335,6 +341,16 @@ export function useSeriesDrag(options: UseSeriesDragOptions) {
 		},
 		{ capture: true },
 	);
+
+	// 拖拽中被路由切走时，作用域销毁要一并还原 body 上临时加的内联样式
+	onScopeDispose(() => {
+		if (resetTimer) {
+			clearTimeout(resetTimer);
+			resetTimer = undefined;
+		}
+		document.body.style.userSelect = '';
+		document.body.style.cursor = '';
+	});
 
 	return {
 		state,

@@ -64,3 +64,4 @@ docs/modules/
 | web  | [first-load.md](web/first-load.md)                   | 首屏加载：全局遮罩状态、入口不能引入播放器库、服务端扫描并发与真实路径缓存 |
 | web  | [index-filter.md](web/index-filter.md)               | 首页本地过滤与排序：状态持久化、月分割线、时间轴划选与布局约束             |
 | web  | [search.md](web/search.md)                           | 搜索结果页：路径参数、跳转时的 push/replace 规则、卡片复用                 |
+| web  | [series-merge.md](web/series-merge.md)               | 首页系列合并：拖拽四阶段、`mergedIds` 单一数据源、叠层上限与季拼接         |

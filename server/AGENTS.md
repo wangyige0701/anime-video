@@ -205,10 +205,21 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 内部 `sort` 是 **1..N 的连续顺序号**，不承载「第几集」的语义。外部数据源（Bangumi 同步、导入清单）给出的集号不能直接写进 `sort`：`Season.rewriteEpisodeOrder(ids)` 接收按最终顺序排列的集 id，内部按 `1..n` 重编号并原地重排数组，未列出的集追加在末尾；传入不属于本季或重复的 id 会在写入前整次抛错。需要「整体覆盖顺序」时用它，不要循环调用 `updateSort`——位置语义会互相覆盖并产生中间态。
 
+### 合并关系（mergedIds）
+
+合并关系只存在主系列的 `mergedIds` 上，被合并系列不保存反向引用——脱离只改一处，不会两侧不同步。数组顺序是语义数据（叠层顺序与详情页季分组顺序），不要排序或去重后丢失顺序。
+
+`src/utils/merge-groups.ts` 的 `normalizeMergeGroups()` 是唯一收敛点，在 `getAllSeries()` 扫描末尾执行，保证三条不变式：成员存在且不为自身且不重复；一个系列最多属于一个主系列（被多个主系列声明时先到先得）；不允许链式合并（成员的成员被展平转移，原列表清空）。因此「A 持有 B、B 持有 A」会自然消解，不需要单独的成环检测。
+
+- 合法性依赖「全量系列是否存在」，只能在扫描期判断；不要在 `Series` 初始化时校验 `mergedIds`。
+- 规范化必须逐项比对、只写回真正变化的系列，否则每次扫描都会产生磁盘写入。
+- 对外接口是 `POST /series/:seriesId/merge`（body `{ memberId }`）与 `DELETE /series/:seriesId/merge/:memberId`，返回 `SeriesMergeResult { main, member? }`，DTO 里 `mergedIds` 排在 `types` 与 `status` 之间；参数模式在 `src/schema/series-merge.ts`。
+- 合并是**纯展示层聚合**：不搬迁文件、不搬迁季，成员系列的季仍归属自己，标题编辑/集排序/播放路径都走原系列。
+
 ### 数据接口边界
 
 - `DirectoryController` 负责允许根目录读取和设置。
-- `SeriesController` 负责列表、详情、刷新及 series 可编辑字段。
+- `SeriesController` 负责列表、详情、刷新及 series 可编辑字段与合并关系。
 - series 的 title、description、date、status 字段端点保持「一个字段一个接口」，公共流程由 `SeriesController.commitSeries()` 统一完成「取实体 → 写入 → `waitDataSave()` → 日志」，参数模式集中在 `src/schema/series-fields.ts`。新增字段写接口时复用这两处，不要复制流程或另写一套校验。
 - `SeasonController`、`EpisodeController` 负责按父级/ID 读取和 title/sort 更新，参数模式分别位于 `src/schema/season-fields.ts`、`src/schema/episode-fields.ts`。三者共用的约定是：参数模式集中在 `src/schema/`（不写进装饰器）、`@Validate()` 只负责解析与校验、控制器不重复实现校验规则。
 - 标题端点（series/season/episode）在写入后返回 `ctx.Success(实际标题)`：空标题会被数据层还原为默认标题，前端依赖该返回值同步本地值。不要改回返回 `null`。

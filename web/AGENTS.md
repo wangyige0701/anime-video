@@ -133,6 +133,17 @@
 
 状态写入 `localStorage`（键见 `config/constants.ts` 的 `INDEX_FILTER_STORAGE_KEY`），刷新页面后保持上次选择；读取时对过滤方式、排序方式、数组与时间范围逐项校验，脏数据回退到默认值。规则细节、状态流与已知限制见 `docs/modules/web/index-filter.md`。
 
+## 首页系列合并
+
+合并把同一作品散落的多个系列聚合成一个入口：拖动一张卡片压到另一张上松手，后者成为**主系列**，前者从列表消失并作为叠层首图留在主系列卡片背后；主系列的详情页会把自己的季与被合并系列的季拼接展示。**不搬迁文件、不搬迁季**，`mergedIds` 只影响展示。
+
+- 合并关系只有一个数据源：主系列的 `mergedIds`（有序数组），成员不保存反向引用。数组顺序既是叠层顺序也是详情页季分组顺序，属于语义数据。
+- 可测规则集中在 `utils/seriesMerge.ts`（纯函数）：`buildMergeOwnerIndex()`、`excludeMergedMembers()`、`getGroupMembers()`、`getMergeStack()`、`getMergeRejection()`；用例在 `test/web/series-merge.test.ts`。
+- `IndexList.vue` 必须同时持有**全量** `allSeries` 与列表用的 `querySeries` 结果：成员被排除出列表后，叠层仍需要它的标题与首图。
+- 拖拽实现在 `components/index/useSeriesDrag.ts`，四阶段 `idle / drag / drop / return`，只做「卡片 → 卡片」的搬运，不接通用拖拽库（其占位与镜像机制会和翻转、飞入、边缘滚动冲突）。
+- 卡片海报是原生 `<img>`，按下后移动会先触发浏览器图片拖拽并吞掉后续 `pointermove`；CSS `-webkit-user-drag: none` 与捕获阶段拦截 `dragstart` 两道都要保留。
+- 浮层与叠层动画细节、命中检测前提、已知限制见 `docs/modules/web/series-merge.md`。
+
 ## 详情页文本编辑
 
 `components/common/TextEditor.vue` 是唯一的文本编辑组件，`showEditIcon` 默认 `false`：默认不渲染内置图标，由外层提供更稳定的编辑入口，需要内联编辑时才显式开启。`hideEditIcon` 用于强制隐藏图标，配合 `v-model:editing` 暴露的编辑态，外层可以在「进入编辑或保存中」把入口收起来、保存完成后再显示。

@@ -40,7 +40,9 @@ definePage({
 	bottom: var(--filter-bar-gap);
 	width: 100%;
 	height: var(--filter-bar-height);
-	// 时间轴与标签在悬浮时向上展开，需要盖住列表内容
-	z-index: 2;
+	// 必须高于卡片内部的所有层级（`.link` 10、`.drop-target::after` 30、`.merge-badge` 40）：
+	// 这些 z-index 挂在 `.series-card`（未建立层叠上下文）的子元素上，会与外层直接比较，
+	// 过滤栏只给 2 时会被滚到底部的卡片整块盖住。低于拖拽浮层（2600）与弹层。
+	z-index: 100;
 }
 </style>

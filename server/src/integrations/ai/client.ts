@@ -11,7 +11,8 @@
  */
 import { Status } from '~shared/http-status';
 import { ApiError } from '~server/src/error';
-import { getAiConfig, isAiConfigured } from './config';
+import { isAiConfigured, readSettings } from '~server/src/settings/store';
+import { resolveAiConfig } from './config';
 import { requestJsonWithRetry } from '../http';
 
 export interface ChatMessage {
@@ -74,12 +75,13 @@ export function extractJsonObject(text: string): unknown {
  * 避免把「上下文超限」表现成模型输出为空。
  */
 export async function chatJson(messages: ChatMessage[], timeout?: number): Promise<ChatResult> {
-	if (!isAiConfigured()) {
-		const message = '未配置 AI 接口（AI_BASE_URL / AI_API_KEY / AI_MODEL），无法完成数据整合';
+	const settings = await readSettings();
+	if (!isAiConfigured(settings)) {
+		const message = '未配置 AI 接口，请到 设置 → AI 接口 填写接口地址、密钥和模型';
 		throw new ApiError(Status.ServiceUnavailable, message, message);
 	}
-	const config = getAiConfig();
-	const url = `${config.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+	const config = resolveAiConfig(settings.ai);
+	const url = `${config.baseUrl}/chat/completions`;
 	const body: Record<string, unknown> = {
 		model: config.model,
 		messages,

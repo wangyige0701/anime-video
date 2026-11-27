@@ -1,11 +1,12 @@
 /**
  * Bangumi 服务配置。
  *
- * 来源优先级：进程环境（`BANGUMI_*`）→ 仓库根 `.env`（含调试脚本沿用的 `BGM_*`）→ `config.yaml`。
- * 本地调试脚本历史上用 `BGM_` 前缀，这里一并接受，避免同一台机器维护两套变量。
+ * 来源只有用户设置（`src/settings/store.ts`）。早期版本支持 `BANGUMI_*` / `BGM_*` 环境变量与
+ * 仓库根 `.env`，现在统一由设置页维护；旧值可用 `scripts/migrate-env.mjs` 一次性迁移。
+ * 不要在运行时再加环境变量回退，否则「设置页填了却没生效」会变成难以解释的现象。
  */
-import type { AppConfig } from '~shared/config';
-import { pickNumber, pickString, readEnvFile } from '../env';
+import { DEFAULT_SETTINGS, readSettings } from '~server/src/settings/store';
+import type { BangumiSettings } from '~server/src/settings/store';
 
 export interface BangumiConfig {
 	baseUrl: string;
@@ -14,26 +15,23 @@ export interface BangumiConfig {
 	timeout: number;
 }
 
-/** 从默认配置与 `.env` 合并 Bangumi 配置；纯函数便于测试，不读进程环境以外的全局状态 */
-export function resolveBangumiConfig(defaults: AppConfig['bangumi'], dotenv: Record<string, string>): BangumiConfig {
+/** 纯函数：把用户设置归一化成请求参数，便于直接以普通对象测试 */
+export function resolveBangumiConfig(settings: BangumiSettings): BangumiConfig {
 	return {
-		baseUrl: pickString(['BANGUMI_BASE_URL', 'BGM_BASE_URL'], dotenv, defaults.baseUrl),
-		userAgent: pickString(['BANGUMI_USER_AGENT', 'BGM_USER_AGENT'], dotenv, defaults.userAgent),
-		proxy: pickString(['BANGUMI_PROXY', 'BGM_PROXY'], dotenv, defaults.proxy),
-		timeout: pickNumber(['BANGUMI_TIMEOUT'], dotenv, defaults.timeout),
+		baseUrl: settings.baseUrl.trim().replace(/\/+$/, ''),
+		// Bangumi 会拒绝默认 UA；手改 settings.json 把 UA 清空时回退到内置标识，而不是发出必然被拒的请求
+		userAgent: settings.userAgent.trim() || DEFAULT_SETTINGS.bangumi.userAgent,
+		proxy: settings.proxy.trim(),
+		timeout: normalizeTimeout(settings.timeout, DEFAULT_SETTINGS.bangumi.timeout),
 	};
 }
 
-let cached: BangumiConfig | null = null;
-
-export function getBangumiConfig(): BangumiConfig {
-	if (!cached) {
-		cached = resolveBangumiConfig(__APP_CONFIG__.bangumi, readEnvFile());
-	}
-	return cached;
+/** 读取当前生效的 Bangumi 配置；设置更新后下一次调用即可拿到新值 */
+export async function getBangumiConfig(): Promise<BangumiConfig> {
+	return resolveBangumiConfig((await readSettings()).bangumi);
 }
 
-/** 清空缓存，测试与配置热加载使用 */
-export function clearBangumiConfigCache() {
-	cached = null;
+/** 手改 `settings.json` 可能写出 0、负数或非数字，统一回退默认值，避免请求一发出就超时 */
+function normalizeTimeout(value: number, fallback: number) {
+	return Number.isFinite(value) && value > 0 ? value : fallback;
 }

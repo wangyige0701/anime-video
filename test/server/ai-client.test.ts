@@ -1,17 +1,14 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearAiConfigCache } from '~server/src/integrations/ai/config';
+import { clearSettingsCache, updateSettings } from '~server/src/settings/store';
 
 const mocks = vi.hoisted(() => ({ requestJsonWithRetry: vi.fn() }));
 
 vi.mock('~server/src/integrations/http', () => ({
 	requestJsonWithRetry: mocks.requestJsonWithRetry,
 }));
-
-// 测试环境不读取仓库根 .env：否则本机配置会渗进用例，断言「配置缺失」时永远不成立
-vi.mock('~server/src/integrations/env', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('~server/src/integrations/env')>();
-	return { ...actual, readEnvFile: () => ({}) };
-});
 
 const { chatJson, extractJsonObject } = await import('~server/src/integrations/ai/client');
 
@@ -24,18 +21,24 @@ function ok(content: string) {
 	};
 }
 
+let directory: string;
+
 describe('AI 客户端', () => {
-	beforeEach(() => {
-		vi.stubEnv('AI_BASE_URL', 'https://ai.test/v1');
-		vi.stubEnv('AI_API_KEY', 'test-key');
-		vi.stubEnv('AI_MODEL', 'test-model');
-		clearAiConfigCache();
+	beforeEach(async () => {
+		// 每个用例独立的设置文件：不让开发机已保存的凭据渗进断言
+		directory = await fs.mkdtemp(path.join(os.tmpdir(), 'anime-ai-client-'));
+		process.env.ANIME_VIDEO_DATA_DIR = directory;
+		clearSettingsCache();
+		await updateSettings({
+			ai: { baseUrl: 'https://ai.test/v1', apiKey: 'test-key', model: 'test-model' },
+		});
 		mocks.requestJsonWithRetry.mockReset();
 	});
 
-	afterEach(() => {
-		vi.unstubAllEnvs();
-		clearAiConfigCache();
+	afterEach(async () => {
+		clearSettingsCache();
+		delete process.env.ANIME_VIDEO_DATA_DIR;
+		await fs.rm(directory, { recursive: true, force: true });
 	});
 
 	it('请求 chat/completions 并返回内容与用量', async () => {
@@ -84,10 +87,15 @@ describe('AI 客户端', () => {
 	});
 
 	it('配置缺失时直接拒绝，不发出请求', async () => {
-		vi.stubEnv('AI_BASE_URL', '');
-		clearAiConfigCache();
+		// 清空地址即视为未配置：不能把「没填设置」表现成必然失败的 401
+		await updateSettings({ ai: { baseUrl: '' } });
 		await expect(chatJson([{ role: 'user', content: 'hi' }])).rejects.toThrow(/未配置 AI 接口/);
 		expect(mocks.requestJsonWithRetry).not.toHaveBeenCalled();
+	});
+
+	it('错误信息提示去设置页填写', async () => {
+		await updateSettings({ ai: { apiKey: '' } });
+		await expect(chatJson([{ role: 'user', content: 'hi' }])).rejects.toThrow(/设置/);
 	});
 
 	it('错误信息不包含密钥', async () => {

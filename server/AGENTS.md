@@ -86,7 +86,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `data/`：扫描允许的视频目录，构建 Series/Season/Episode 数据树，维护实例缓存、排序及 `.video.json` 配置持久化；`data/entity.ts` 提供字段派生、写入与失效的公共基类。
 - `src/hls.ts`：原生 HLS 实例、分片预加载、TS/图片缓存和生命周期管理。
 - `src/error/`：`ApiError`、`NotFoundError` 等 HTTP 错误类型。
-- `src/integrations/`：外部服务整合层。`env.ts` / `http.ts` 是共用的配置与 HTTP 基础设施，`bangumi/` 与 `ai/` 是两个互不引用的独立模块。
+- `src/integrations/`：外部服务整合层。`http.ts` 是共用的 HTTP 基础设施，`bangumi/` 与 `ai/` 是两个互不引用的独立模块，配置都从 `src/settings/store.ts` 读取。
 - `src/utils/`：文件系统和通用判断工具。
 - `test/`：Vitest 测试和媒体目录 fixture。
 - `*.d.ts`：Koa context 扩展和原生 HLS 类型声明。
@@ -233,8 +233,8 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 `src/integrations/` 把 Bangumi 元数据与本地目录整合，代码分层与规则细节见 [docs/modules/server/bangumi-sync.md](../docs/modules/server/bangumi-sync.md)。
 
 - **三段接口**：`POST /data/series/:seriesId/bangumi/{match,preview,apply}`，前两段只读、最后一段才写库。`BangumiController` 只做「取实体 → 调编排 → 记日志」，参数模式在 `src/schema/bangumi-sync.ts`，归属校验在编排层。
-- **模块边界**：`bangumi/` 与 `ai/` 互不引用，只共用 `env.ts` / `http.ts`。新增外部服务时按同样方式拆目录，不要把第三个服务塞进现有模块。
-- **配置优先级**是「进程环境 → `.env` → `config.yaml` 默认值」，由 `pickString` / `pickNumber` 实现；不要直接读合并后的 `__APP_CONFIG__`，那会让 `config.yaml` 的默认值永久压住 `.env`。`.env` 位置用 `resolveEnvFile()`，它同时看 cwd 与模块位置上溯三级——只按 cwd 找会在 `pnpm --filter server run dev`（cwd 为 `server/`）时静默读不到。
+- **模块边界**：`bangumi/` 与 `ai/` 互不引用，只共用 `http.ts`。新增外部服务时按同样方式拆目录，不要把第三个服务塞进现有模块。
+- **配置来源**：只读用户设置（`src/settings/store.ts`），`config.yaml` 与 `.env` 都不参与。`resolveBangumiConfig()` / `resolveAiConfig()` 是纯函数，客户端每次从 `readSettings()` 快照解析，不自建缓存；未配置时抛 503 并提示去设置页，不要发出必然失败的请求。旧 `.env` 用 `scripts/migrate-env.mjs` 一次性迁移。
 - **顺序只由本地文件名决定**：Bangumi 的 `ep` 完全不用（跨条目重复、SP 恒为 0），`sort` 只用于核对，落库的排序是 1..N 的位置号，统一走 `Season.rewriteEpisodeOrder(ids)`。不要用字符串排序，混排目录会整季错位。
 - **规则优先**：`alignByRules()` 能形成唯一映射就不调模型，模型只负责「文件 → 官方集」的对应关系与季映射，返回结果必须再做一次双射校验。模型不参与决定播放顺序。
 - **错误映射**：上游非 2xx 抛 502；拿到响应之前的失败（超时、代理不可用）由 `http.ts` 转成 504/502 并把主机名写进消息——不能让未知异常回落成无消息的 500。状态码一律通过 `Status` 枚举引用。
@@ -248,6 +248,7 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 - **接口**：`GET/PUT /data/settings`、`POST /data/settings/{ai,bangumi}/probe`，参数模式在 `src/schema/settings.ts`。GET 只返回脱敏视图，密钥仅回显尾部四位，明文不出服务端，也不进日志。
 - **密钥三态**：字段缺省表示不修改，空字符串表示清空，有值表示替换。不要套用「空值恢复默认」的字段约定，否则清空输入框会误删凭据。
 - **生效方式**：`readSettings()` 持有进程内快照，`updateSettings()` 写盘后自行更新，读取方不需要清缓存；手工编辑 `settings.json` 不会热加载，需重启服务。
+- **唯一配置来源**：`src/integrations/` 的 AI 与 Bangumi 配置只从这里读取，`config.yaml` 不再声明这些字段，运行时也不读 `.env`；不要再加环境变量回退，否则设置页的修改会被静默压住。
 
 ## 请求处理架构
 

@@ -17,6 +17,12 @@ server.dataFileSaveDelay -> SERVER_DATA_FILE_SAVE_DELAY
 hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 ```
 
+## 个人凭据
+
+AI 接口与 Bangumi 的地址、密钥、代理、超时**不在 `config.yaml`**，也不读 `.env`：它们只属于当前用户，保存在用户数据目录的 `settings.json`（Windows `%LOCALAPPDATA%\Anime Video`，可用 `ANIME_VIDEO_DATA_DIR` 覆盖），由应用内「设置」页维护。仓库与安装包里不含任何凭据。
+
+旧 `.env` 中的 `AI_*`、`BANGUMI_*`、`BGM_*` 可用 `node scripts/migrate-env.mjs` 一次性迁移（只补空字段，不覆盖设置页已有值；`--dry-run` 只报告字段名）。迁移后 `.env` 不再参与运行，可自行删除。
+
 ## Application
 
 | 配置项 | 环境变量 | 启动参数 | 默认值 |

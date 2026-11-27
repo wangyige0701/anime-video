@@ -3,14 +3,17 @@
 		<div class="top">
 			<DetailImage :images="series.value.images" />
 			<div class="info">
-				<TextEditor
-					class="title"
-					:value="series.value.title"
-					:loading="series.value.titleRef"
-					:disabled="status.waiting"
-					show-edit-icon
-					@blur="updateSeriesTitle"
-				/>
+				<div class="title-row">
+					<TextEditor
+						class="title"
+						:value="series.value.title"
+						:loading="series.value.titleRef"
+						:disabled="status.waiting"
+						show-edit-icon
+						@blur="updateSeriesTitle"
+					/>
+					<BangumiSync :series-id="seriesId" @applied="handleApplied" />
+				</div>
 				<DetailMetadata />
 				<DetailDescription :series="series.value" :disabled="status.waiting" />
 			</div>
@@ -40,6 +43,7 @@ import { useVideoStore } from '@/stores/video';
 import { WebRoute } from '~shared/web-route-config';
 import router from '@/router';
 import VideoBox from '@/components/detail/VideoBox.vue';
+import BangumiSync from '@/components/detail/BangumiSync.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { usePlayerStore } from '@/stores/player';
 import { useDraggable } from 'vue-draggable-plus';
@@ -149,6 +153,16 @@ async function updateSeriesTitle(value: string) {
 	await series.value.updateTitle(value);
 }
 
+/**
+ * Bangumi 同步写入后会重新扫描并装配整个系列。
+ *
+ * 这里整体替换详情数据而不是逐字段打补丁：标题、排序、季与集都可能变化，
+ * 新实例已经带完整的关系树，直接替换最不容易和缓存中的旧对象混淆。
+ */
+function handleApplied(next: Series) {
+	series.value = next;
+}
+
 function play(episode: Episode, season: Season, series: Series) {
 	if (episode.id && videoBoxRef.value) {
 		activeEpisodeId.value = episode.id;
@@ -219,7 +233,14 @@ onBeforeUnmount(() => {
 		color: token.$text-color-secondary;
 		font-size: 1rem;
 	}
+	.title-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
 	.title {
+		flex: 1;
+		min-width: 0;
 		color: token.$text-color-primary;
 		font-size: 1.6rem;
 		/* 标题字号较大，编辑图标跟随会过大，单独收敛到正文尺寸 */

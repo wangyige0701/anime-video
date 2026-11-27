@@ -143,6 +143,19 @@
 - 四个入口都遵循同一写入流程：本地 trim → 调用领域对象 `updateTitle()` / `updateDescription()`（乐观更新 + 失败回滚）→ 由数据层的请求状态驱动加载态。组件内不直接调用 API。
 - 空值语义见根 `AGENTS.md`「可编辑文本字段的空值语义」：**标题为空恢复默认标题、描述为空清空描述，组件不得拦截空值提交**，也不要自行计算默认标题。
 
+## 详情页 Bangumi 同步
+
+`components/detail/BangumiSync.vue` 是详情页标题行右侧的同步入口，对接服务端 `POST /data/series/:id/bangumi/{match,preview,apply}` 三段接口。接口与推断规则见 `docs/modules/server/bangumi-sync.md`，变更记录见 `docs/changes/web/2026-11-27-bangumi-sync-ui.md`。
+
+- 对话框分两步：第一步确认「本地季 → Bangumi 条目」的对应（AI 已给出建议，可改可清空），第二步逐项确认要写入的系列字段、季标题、集标题与整体重排。`apply` 只在第二步点确认后调用一次。
+- **前端不做任何推断**：不解析文件名、不猜集号、不重排。预览里的顺序由服务端给出，前端只按预览顺序把集 id 拼成 `order`。
+- 可测逻辑集中在 `utils/bangumiSync.ts`（纯函数）：`orderSeasonsBySuggestion()` 稳定排序、`buildSeasonMapping()` 去重并生成 preview 入参、`createSelection()` 默认勾选、`buildApplyInput()` 生成 apply 入参、`summarizeSelection()` 统计写入数量。组件只把状态接到这些函数上，用例在 `test/web/bangumi-sync.test.ts`。
+- 默认勾选只包含「一定能写」的内容：空标题、空描述、无日期、无状态、无类型的字段都不勾。服务端把「描述传空串」当作清空，默认全选会把 Bangumi 缺失的数据写成清空本地数据。
+- `order` 必须是该季全部集的一个排列，无法按集部分勾选，因此它对应季级别的「按预览顺序重排 N 集」一个开关，只有一集时默认关闭。
+- 写入成功后调用 `refreshSeries()` 重新扫描装配，并用返回的新 `Series` 实例整体替换详情页的 `series.value`；不要逐字段打补丁，标题、排序、季与集都可能变化。
+- `apply` 失败保留对话框与勾选状态；`match` 失败收起对话框。请求失败的提示统一由 `api.ts` 拦截器给出，组件内不重复 `ElMessage`。
+- 对话框与下拉面板挂载在 `body` 上，主题样式写在非 scoped 块中，颜色只用 `map.get(token.$theme, ...)` 与 `--el-*` 变量覆盖。
+
 ## 播放器现有架构
 
 播放器采用“状态集中、组件分层、事件向上”的结构：`stores/player.ts` 保存跨播放器组件共享的播放状态，`VideoCore.vue` 负责整体编排，`VideoPlayer.vue` 负责媒体实例，`VideoController.vue` 组合控制器，其他 `Video*.vue` 组件负责单一交互区域。不要让时间轴或控制器直接管理主 Hls 实例，也不要让 `VideoPlayer` 反向操作控制器组件。

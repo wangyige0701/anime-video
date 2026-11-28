@@ -76,7 +76,7 @@ simple 模式的三个状态各自要能一眼分辨，且都不能出现「纯�
 
 ## 7. 已覆盖的组件
 
-`button`、`input`、`input-number`、`slider`、`select`、`checkbox`、`switch`、`segmented`、`steps`、`dialog`、`popover`、`tooltip`、`scrollbar`、`loading`。
+`button`、`input`、`input-number`、`slider`、`select`、`checkbox`、`switch`、`segmented`、`dialog`、`popover`、`tooltip`、`scrollbar`、`loading`。
 
 新增适配时：在 `elements/` 下建 `<组件名>.scss` → 只写变量映射与默认尺寸 → 在 `elements.scss` 里 `@use` → 补一条变更记录。
 

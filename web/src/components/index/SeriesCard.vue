@@ -43,8 +43,20 @@
 			popper-class="series-merge-popper"
 		>
 			<template #reference>
-				<button type="button" class="merge-badge" data-no-drag :title="`已合并 ${members.length} 个系列`">
-					{{ members.length }}
+				<!--
+					只给数字看不出含义：常态是「叠层图标 + 数字」，悬停时原地展开成「已合并 N 个系列」。
+					不用 el-tooltip：套在 popover 的 reference 里会吃掉 click，成员面板打不开（实测）。
+					也不用自绘浮层：角标贴着卡片右边缘，浮层向左会溢出卡片、压到相邻项。
+				-->
+				<button
+					type="button"
+					class="merge-badge"
+					data-no-drag
+					:aria-label="`已合并 ${members.length} 个系列，点击查看成员`"
+				>
+					<el-icon class="merge-icon"><Files /></el-icon>
+					<span class="merge-count">{{ members.length }}</span>
+					<span class="merge-label">已合并 {{ members.length }} 个系列</span>
 				</button>
 			</template>
 			<div class="merge-panel">
@@ -63,6 +75,7 @@
 
 <script setup lang="ts">
 import type { Series } from '@/data/series';
+import { Files } from '@element-plus/icons-vue';
 import { getMergeStack } from '@/utils/seriesMerge';
 import { getSeriesCoverUrl } from '@/utils/series';
 import { WebRoute } from '~shared/web-route-config';
@@ -170,7 +183,9 @@ function detach(memberId: string) {
 
 	.img-wrap {
 		@include image.image-wrap;
-		transition: box-shadow 0.3s ease;
+		transition:
+			box-shadow 0.3s ease,
+			transform 0.3s ease;
 		// el-image 最终渲染的是原生 <img>，不关掉原生拖拽会吞掉拖拽合并后续的 pointermove
 		:deep(img) {
 			-webkit-user-drag: none;
@@ -199,23 +214,34 @@ function detach(memberId: string) {
 		overflow: hidden;
 		white-space: nowrap;
 		text-overflow: ellipsis;
-		transition:
-			filter 0.3s ease,
-			color 0.3s ease;
+		color: map.get(token.$theme, 'l-8');
+		transition: color 0.3s ease;
 	}
+	/**
+	 * 悬停反馈。
+	 *
+	 * 原来叠了三层 `l-5 / l-9` 的模糊阴影，在暗色主题下就是一圈白光晕，
+	 * 海报边界被糊掉、和页面底色也打架。改成「主题色细描边 + 中性深投影」：
+	 * 描边负责勾出边界（任意主题自动跟随），投影只负责让卡片浮起来，不带颜色。
+	 */
 	&:hover {
 		.img-wrap {
+			transform: translateY(-2px);
+			// 描边取 l-6（主题提亮两档）而不是 primary：深蓝、深绿这类主题的 primary
+			// 与页面底色几乎同色，75% 透明后完全看不出边界
 			box-shadow:
-				0 0 4px 0 map.get(token.$theme, 'primary'),
-				0 0 8px 0 map.get(token.$theme, 'l-5'),
-				0 0 12px 0 map.get(token.$theme, 'l-9');
+				0 0 0 1px map.get(token.$theme, 'l-6'),
+				0 16px 32px -12px rgba(0, 0, 0, 0.75);
 		}
 		.img {
-			transform: scale(1.1);
+			transform: scale(1.06);
 		}
 		.name-text {
-			color: token.$text-color-regular;
-			filter: drop-shadow(0 0 6px map.get(token.$theme, 'l-9'));
+			color: map.get(token.$theme, 'l-9');
+		}
+		// 叠层再退开几像素，暗示下面确实还压着卡片
+		.stack {
+			transform: translate(-3px, -3px);
 		}
 	}
 }
@@ -229,6 +255,7 @@ function detach(memberId: string) {
 	padding-top: token.$image-radio;
 	z-index: 0;
 	pointer-events: none;
+	transition: transform 0.3s ease;
 }
 
 .stack-layer {
@@ -271,7 +298,7 @@ function detach(memberId: string) {
 		animation: target-breathe 0.7s ease-in-out infinite alternate;
 		box-shadow:
 			0 0 0 2px map.get(token.$theme, 'primary'),
-			0 0 18px 2px map.get(token.$theme, 'l-5');
+			0 0 24px rgba(0, 0, 0, 0.55);
 	}
 	// 整个卡片都是落点，用虚线框把可投放区域说清楚
 	&::after {
@@ -294,27 +321,92 @@ function detach(memberId: string) {
 	}
 }
 
+/**
+ * 合并角标。
+ *
+ * 只有数字时用户看不出这代表什么，补一个「叠层」图标 + 悬浮说明。
+ * 海报底色不可控（可能整张偏亮或偏紫），所以用深色描边 + 投影压出边界，
+ * 否则角标会「融进」图里；悬停时外扩一圈主题色光环，明确它是可点的控件。
+ */
 .merge-badge {
 	position: absolute;
 	top: 6px;
 	right: 6px;
 	z-index: 40;
-	min-width: 20px;
-	height: 20px;
-	padding: 0 6px;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	height: 22px;
+	padding: 0 7px 0 6px;
 	border: 0;
-	border-radius: 10px;
-	background: map.get(token.$theme, 'primary');
+	border-radius: 11px;
+	// 窄屏下卡片可能只有一百来像素，展开的文字不能把角标顶出海报
+	max-width: calc(100% - 12px);
+	// 底色比主题色提亮一档：纯 primary 在深蓝/深绿主题下与海报同族，角标会糊进图里
+	background: color-mix(in srgb, var(--theme) 86%, #fff);
 	color: map.get(token.$theme, 'l-9');
 	font-size: 0.6875rem;
-	line-height: 20px;
-	text-align: center;
+	font-weight: 500;
+	line-height: 1;
 	cursor: pointer;
-	box-shadow: 0 2px 6px map.get(token.$theme, 'd-8');
-	transition: transform 0.15s ease;
+	// 三层边界：深色外描边压出轮廓、投影拉开距离、内侧白高光做出凸起感。
+	// 只有主题色底时，深蓝/深绿主题下角标会和同色系海报融成一片。
+	box-shadow:
+		0 0 0 1.5px rgba(0, 0, 0, 0.5),
+		0 2px 10px rgba(0, 0, 0, 0.55),
+		inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+	transition:
+		transform 0.15s ease,
+		background-color 0.15s ease,
+		box-shadow 0.15s ease;
+
 	&:hover {
-		transform: scale(1.1);
+		transform: scale(1.06);
+		// 悬停时底色整体提亮一档，比加一圈浅色光环更稳，也不受海报底色影响
+		background: color-mix(in srgb, var(--theme) 72%, #fff);
+		box-shadow:
+			0 0 0 1.5px rgba(0, 0, 0, 0.5),
+			0 0 0 4px color-mix(in srgb, var(--theme) 32%, transparent),
+			0 4px 12px rgba(0, 0, 0, 0.6),
+			inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+
+		.merge-count {
+			max-width: 0;
+			opacity: 0;
+		}
+
+		.merge-label {
+			max-width: 120px;
+			opacity: 1;
+		}
 	}
+}
+
+.merge-icon {
+	font-size: 0.75rem;
+}
+
+.merge-count,
+.merge-label {
+	display: inline-block;
+	overflow: hidden;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+	transition:
+		max-width 0.2s ease,
+		opacity 0.15s ease;
+}
+
+.merge-count {
+	max-width: 1.6em;
+	opacity: 1;
+}
+
+// 悬停展开的说明文字：靠 max-width 过渡，宽度为 0 时不占位
+.merge-label {
+	max-width: 0;
+	opacity: 0;
+	text-overflow: ellipsis;
 }
 
 .merge-panel-title {

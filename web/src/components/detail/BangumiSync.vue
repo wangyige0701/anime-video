@@ -62,7 +62,11 @@ async function loadMembers(series: Series) {
 		seasons: list.flatMap((member) =>
 			[...member.seasons].map((season) => ({
 				id: season.id,
-				episodes: [...season.episodes].map((episode) => ({ id: episode.id, title: episode.title })),
+				episodes: [...season.episodes].map((episode) => ({
+					id: episode.id,
+					title: episode.title,
+					kind: episode.kind,
+				})),
 			})),
 		),
 	};

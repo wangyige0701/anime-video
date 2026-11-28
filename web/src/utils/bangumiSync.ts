@@ -1,7 +1,9 @@
 import { isUndefined } from '@wang-yige/utils';
+import type { EpisodeKind } from '~shared/episode-kind';
 import type {
 	BangumiApplyInput,
 	BangumiMatchSeason,
+	BangumiPreviewEpisode,
 	BangumiPreviewResult,
 	BangumiPreviewSeason,
 } from '@/@types/bangumi-sync';
@@ -59,6 +61,8 @@ export interface BangumiCurrentSnapshot {
 		episodeIds: string[];
 		/** episodeId → 当前标题 */
 		episodeTitles: Record<string, string>;
+		/** episodeId → 当前集类型；同步会把类型一起写入，比对时必须带上 */
+		episodeKinds: Record<string, EpisodeKind>;
 	}>;
 }
 
@@ -88,7 +92,7 @@ export interface BangumiSnapshotSource {
 	types: number[];
 	seasons: Array<{
 		id: string;
-		episodes: Array<{ id: string; title: string }>;
+		episodes: Array<{ id: string; title: string; kind: EpisodeKind }>;
 	}>;
 }
 
@@ -118,6 +122,7 @@ export function buildCurrentSnapshot(
 			seasonId: season.id,
 			episodeIds: season.episodes.map((episode) => episode.id),
 			episodeTitles: Object.fromEntries(season.episodes.map((episode) => [episode.id, episode.title])),
+			episodeKinds: Object.fromEntries(season.episodes.map((episode) => [episode.id, episode.kind])),
 		})),
 	};
 }
@@ -233,7 +238,8 @@ export function diffPreview(preview: BangumiPreviewResult, current: BangumiCurre
 					season.episodes.map((episode) => [
 						episode.episodeId,
 						!!episode.title.trim() &&
-							sameText(episode.title, local?.episodeTitles[episode.episodeId] ?? ''),
+							sameText(episode.title, local?.episodeTitles[episode.episodeId] ?? '') &&
+							sameEpisodeKind(episode.kind, local?.episodeKinds[episode.episodeId]),
 					]),
 				),
 			};
@@ -248,6 +254,19 @@ function normalizeText(value: string) {
 
 function sameText(a: string, b: string) {
 	return normalizeText(a) === normalizeText(b);
+}
+
+/**
+ * 集类型是否与当前一致。
+ *
+ * 预览的 `unmatched` 表示没对上官方集，同步不会写 kind、本地原值保持不变，
+ * 所以按「一致」处理——否则这类集会被判成有变化却永远应用不掉。
+ */
+function sameEpisodeKind(next: BangumiPreviewEpisode['kind'], current?: EpisodeKind) {
+	if (next === 'unmatched') {
+		return true;
+	}
+	return next === current;
 }
 
 /** 类型是无序集合，顺序不同不算变更 */

@@ -26,19 +26,23 @@ function season(seasonId: string, order?: number, subjectIds: number[] = []): Ba
 	};
 }
 
-function previewSeason(seasonId: string, episodes: Array<[string, string]>, extra?: Partial<BangumiPreviewSeason>) {
+function previewSeason(
+	seasonId: string,
+	episodes: Array<[string, string] | [string, string, 'main' | 'special' | 'unmatched']>,
+	extra?: Partial<BangumiPreviewSeason>,
+) {
 	return {
 		seasonId,
 		path: `无职转生/${seasonId}`,
 		fromTitle: '旧标题',
 		title: '新标题',
 		alignment: 'rule' as const,
-		episodes: episodes.map(([episodeId, title], index) => ({
+		episodes: episodes.map(([episodeId, title, kind], index) => ({
 			episodeId,
 			fileName: `${index + 1}.mp4`,
 			position: index + 1,
 			officialSort: index + 1,
-			kind: 'main' as const,
+			kind: kind ?? ('main' as const),
 			title,
 			officialTitle: title,
 		})),
@@ -266,6 +270,7 @@ describe('diffPreview', () => {
 					seasonId: 'a',
 					episodeIds: ['e1', 'e2'],
 					episodeTitles: { e1: '第一话', e2: '第二话' },
+					episodeKinds: { e1: 'main', e2: 'main' },
 				},
 			],
 			...overrides,
@@ -301,6 +306,28 @@ describe('diffPreview', () => {
 		expect(diff.series.title).toBe(true);
 		expect(diff.series.description).toBe(true);
 		expect(diff.series.types).toBe(true);
+	});
+
+	it('标题一致但集类型不同也算有变化，否则改不回特别篇', () => {
+		const data = preview([
+			previewSeason('a', [
+				['e1', '第一话'],
+				['e2', '第二话', 'special'],
+			]),
+		]);
+		const diff = diffPreview(data, snapshot());
+		expect(diff.seasons[0]!.episodes).toEqual({ e1: true, e2: false });
+	});
+
+	it('未匹配的集不写类型，本地原值不变所以视为一致', () => {
+		const data = preview([
+			previewSeason('a', [
+				['e1', '第一话'],
+				['e2', '第二话', 'unmatched'],
+			]),
+		]);
+		const diff = diffPreview(data, snapshot());
+		expect(diff.seasons[0]!.episodes.e2).toBe(true);
 	});
 
 	it('顺序不同或集数不同都判为重排有意义', () => {
@@ -357,8 +384,8 @@ describe('buildCurrentSnapshot', () => {
 				{
 					id: 's1',
 					episodes: [
-						{ id: 'e2', title: '第二话' },
-						{ id: 'e1', title: '第一话' },
+						{ id: 'e2', title: '第二话', kind: 'main' },
+						{ id: 'e1', title: '第一话', kind: 'special' },
 					],
 				},
 			],
@@ -366,7 +393,14 @@ describe('buildCurrentSnapshot', () => {
 
 		expect(result).toEqual({
 			series: { title: '白圣女与黑牧师', description: '简介', date: [2023, 7], status: 2, types: [100, 1] },
-			seasons: [{ seasonId: 's1', episodeIds: ['e2', 'e1'], episodeTitles: { e2: '第二话', e1: '第一话' } }],
+			seasons: [
+				{
+					seasonId: 's1',
+					episodeIds: ['e2', 'e1'],
+					episodeTitles: { e2: '第二话', e1: '第一话' },
+					episodeKinds: { e2: 'main', e1: 'special' },
+				},
+			],
 		});
 	});
 
@@ -384,13 +418,14 @@ describe('buildCurrentSnapshot', () => {
 				description: '',
 				status: 0,
 				types: [],
-				seasons: [{ id: 'main-1', episodes: [{ id: 'm1', title: '第一话' }] }],
+				seasons: [{ id: 'main-1', episodes: [{ id: 'm1', title: '第一话', kind: 'main' }] }],
 			},
-			[{ id: 'member-1', episodes: [{ id: 'x1', title: '第一话' }] }],
+			[{ id: 'member-1', episodes: [{ id: 'x1', title: '第一话', kind: 'special' }] }],
 		);
 
 		expect(result.seasons.map((season) => season.seasonId)).toEqual(['main-1', 'member-1']);
 		expect(result.seasons[1]!.episodeTitles).toEqual({ x1: '第一话' });
+		expect(result.seasons[1]!.episodeKinds).toEqual({ x1: 'special' });
 	});
 
 	it('没有任何季时给出空数组，不报错', () => {

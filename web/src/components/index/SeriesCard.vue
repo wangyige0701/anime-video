@@ -37,6 +37,7 @@
 		<!-- 合并角标与成员面板：脱离入口放在这里，卡片主体仍然只负责跳转 -->
 		<el-popover
 			v-if="members.length"
+			v-model:visible="panelVisible"
 			trigger="click"
 			placement="bottom-end"
 			:width="280"
@@ -47,12 +48,15 @@
 					只给数字看不出含义：常态是「叠层图标 + 数字」，悬停时原地展开成「已合并 N 个系列」。
 					不用 el-tooltip：套在 popover 的 reference 里会吃掉 click，成员面板打不开（实测）。
 					也不用自绘浮层：角标贴着卡片右边缘，浮层向左会溢出卡片、压到相邻项。
+					面板打开期间钉住展开态：鼠标移进面板后角标不再收到 hover，否则会中途缩回去。
 				-->
 				<button
 					type="button"
 					class="merge-badge"
+					:class="{ 'is-pinned': panelVisible }"
 					data-no-drag
 					:aria-label="`已合并 ${members.length} 个系列，点击查看成员`"
+					:aria-expanded="panelVisible"
 				>
 					<el-icon class="merge-icon"><Files /></el-icon>
 					<span class="merge-count">{{ members.length }}</span>
@@ -120,6 +124,15 @@ const emit = defineEmits<{
 }>();
 
 const cover = computed(() => getSeriesCoverUrl(props.series));
+
+/**
+ * 成员面板是否打开。
+ *
+ * 角标的展开态原来只靠 CSS `:hover`。面板是 teleport 到 body 的独立弹层，
+ * 鼠标移进面板后角标就失去 hover，文字会缩回数字——用户还在看面板，角标却已经收起。
+ * 因此把展开态拆成「悬停」与「面板打开」两个来源，任一成立就展开。
+ */
+const panelVisible = ref(false);
 
 /** 叠层把图片路径转成可直接渲染的地址，没有首图的成员保留空串占位 */
 const stackImages = computed(() => {
@@ -360,7 +373,9 @@ function detach(memberId: string) {
 		background-color 0.15s ease,
 		box-shadow 0.15s ease;
 
-	&:hover {
+	// 展开态有两个来源：指针悬停，或成员面板正打开（此时指针已移进弹层）
+	&:hover,
+	&.is-pinned {
 		transform: scale(1.06);
 		// 悬停时底色整体提亮一档，比加一圈浅色光环更稳，也不受海报底色影响
 		background: color-mix(in srgb, var(--theme) 72%, #fff);

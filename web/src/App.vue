@@ -11,7 +11,7 @@
 				</div>
 			</el-header>
 			<el-main class="main">
-				<el-scrollbar ref="scrollbar" view-class="main-container" @end-reached="endReached">
+				<el-scrollbar ref="scrollbar" view-class="main-container" @scroll="onScroll" @end-reached="endReached">
 					<div class="scroll-container">
 						<router-view v-slot="{ Component }">
 							<keep-alive :include="[WebRoute.INDEX]">
@@ -22,6 +22,7 @@
 				</el-scrollbar>
 
 				<Sidebar />
+				<BackToTop :visible="scrolled > BACK_TO_TOP_THRESHOLD" @click="backToTop" />
 			</el-main>
 		</el-container>
 
@@ -42,12 +43,26 @@ import { useThemeStore } from './stores/theme';
 import { useSystemStore } from './stores/system';
 import { routeLoading } from './router/loading';
 import { setScrollTarget } from './router/scroll';
+import BackToTop from './components/common/BackToTop.vue';
 
 useThemeStore().initialize();
 const systemStore = useSystemStore();
 const videoStore = useVideoStore();
 
+/** 滚过这个距离才显示回到顶部按钮：顶部附近没有可回的位置，出现反而碍事 */
+const BACK_TO_TOP_THRESHOLD = 400;
+
 const scrollbarRef = useTemplateRef('scrollbar');
+const scrolled = ref(0);
+
+function onScroll({ scrollTop }: { scrollTop: number }) {
+	scrolled.value = scrollTop;
+}
+
+/** 平滑回到顶部；滚动容器是 el-scrollbar 的 wrap，`window` 不参与 */
+function backToTop() {
+	scrollbarRef.value?.wrapRef?.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 /**
  * 把主滚动容器交给路由层，供返回时恢复位置。

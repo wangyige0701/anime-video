@@ -97,7 +97,12 @@ export function scrollGuard(router: Router) {
 		}
 	});
 
-	router.afterEach(async (to, from) => {
+	router.afterEach(async (to, from, failure) => {
+		// 失败或被拦下的导航（重复导航、守卫取消）不会改变历史记录，
+		// 此时恢复位置只会把用户刚滚到的位置拉回去——典型是已在本页再点一次侧边栏「首页」
+		if (failure) {
+			return;
+		}
 		const position = historyPosition();
 		// 序号没变却换了地址 = 同一条历史记录被 replace；序号没变且地址也没变 = 原地刷新，保持位置
 		const replaced = position !== null && position === currentPosition && to.fullPath !== from.fullPath;

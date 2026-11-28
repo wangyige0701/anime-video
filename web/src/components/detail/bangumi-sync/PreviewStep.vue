@@ -120,8 +120,12 @@
 							>
 								合并 {{ episode.coveredCount }} 集
 							</span>
-							<span v-if="episode.kind !== 'main'" class="chip chip--muted">
-								{{ episode.kind === 'special' ? '特别篇' : '未匹配' }}
+							<span
+								v-if="kindLabel(season.seasonId, episode)"
+								class="chip"
+								:class="kindClass(season.seasonId, episode)"
+							>
+								{{ kindLabel(season.seasonId, episode) }}
 							</span>
 							<span class="spacer"></span>
 						</div>
@@ -157,9 +161,10 @@
 
 <script setup lang="ts">
 import type { BangumiPreviewDiff, BangumiCurrentSnapshot, BangumiSelection } from '@/utils/bangumiSync';
-import type { BangumiPreviewResult } from '@/@types/bangumi-sync';
+import type { BangumiPreviewEpisode, BangumiPreviewResult } from '@/@types/bangumi-sync';
 import type { BangumiSeriesField } from './useBangumiSync';
 import type { CheckboxValueType } from 'element-plus';
+import type { EpisodeKind } from '~shared/episode-kind';
 import { Right } from '@element-plus/icons-vue';
 import { describeAlignment } from '@/utils/bangumiSync';
 
@@ -204,6 +209,37 @@ function sameEpisode(index: number, episodeId: string) {
 /** 一集在本地的当前标题，用于「原集标题」提示 */
 function localEpisodeTitle(seasonId: string, episodeId: string) {
 	return props.snapshot.seasons.find((item) => item.seasonId === seasonId)?.episodeTitles[episodeId] ?? '';
+}
+
+/** 一集在本地的当前类型；快照里没有该集时按正片处理，与数据层默认值一致 */
+function localEpisodeKind(seasonId: string, episodeId: string): EpisodeKind {
+	return props.snapshot.seasons.find((item) => item.seasonId === seasonId)?.episodeKinds[episodeId] ?? 'main';
+}
+
+/**
+ * 集类型标签文案。
+ *
+ * 只在「有分类信息」或「分类会变化」时出现：正片且本地也是正片没有任何信息量，
+ * 返回空串让整块不渲染。变化态单独用「标为 / 改回」，让用户知道勾选后会发生什么。
+ */
+function kindLabel(seasonId: string, episode: BangumiPreviewEpisode) {
+	if (episode.kind === 'unmatched') {
+		return '未匹配';
+	}
+	if (episode.kind === localEpisodeKind(seasonId, episode.episodeId)) {
+		return episode.kind === 'special' ? '特别篇' : '';
+	}
+	return episode.kind === 'special' ? '标为特别篇' : '改回正片';
+}
+
+function kindClass(seasonId: string, episode: BangumiPreviewEpisode) {
+	if (episode.kind === 'unmatched') {
+		return 'chip--unmatched';
+	}
+	if (episode.kind === localEpisodeKind(seasonId, episode.episodeId)) {
+		return 'chip--special';
+	}
+	return episode.kind === 'special' ? 'chip--kind-add' : 'chip--kind-remove';
 }
 
 /** 一个季里有多少处会变化：集标题、季标题、重排分别计数 */
@@ -278,28 +314,67 @@ function onEpisodeChange(index: number, episodeId: string, value: CheckboxValueT
 	@include text.text(0.75rem, 1.5, map.get(token.$theme, 'l-6'));
 }
 
+/**
+ * 集标签。
+ *
+ * 原来用胶囊 + `d-3` 底压在 `d-4` 分组上，只亮一档、11px 灰字，几乎看不出是标签。
+ * 改成小圆角 + 实线描边 + 同色低透明底：靠「边框 + 色相」区分类型，不依赖明度差。
+ */
 .chip {
 	flex-shrink: 0;
-	padding: 1px 8px;
-	border-radius: 999px;
+	padding: 0 6px;
+	border: 1px solid transparent;
+	border-radius: 4px;
 	@include text.text(0.6875rem, 1.7);
 	white-space: nowrap;
 }
 
+/** 中性标签：季头的对齐状态等，不承载语义色 */
 .chip--muted {
-	color: map.get(token.$theme, 'l-6');
-	background-color: map.get(token.$theme, 'd-3');
+	border-color: map.get(token.$theme, 'd-1');
+	color: map.get(token.$theme, 'l-7');
 }
 
 /**
- * 合并集标签。
+ * 合并集标签（`01-03` 一个文件装了连续几集）。
  *
- * 只提示「这个文件是几集压成一集」，覆盖了哪几集放在 title 里；
- * 标题本身已经是 AI 合并后的结果，不再重复展开。
+ * 用主题色表达「信息」：这个文件覆盖了多集，和「特别篇」的分类语义分开。
+ * 主题色是 `var(--theme)`，SCSS 侧拿不到色值、不能 color.change，只能用原生 color-mix
+ * 让它按比例混进底色。覆盖了哪几集放在 title 里，标题本身已是模型合并的结果，不再展开。
  */
 .chip--merge {
-	color: map.get(token.$theme, 'primary');
-	background-color: map.get(token.$theme, 'd-3');
+	border-color: color-mix(in srgb, var(--theme) 55%, transparent);
+	background-color: color-mix(in srgb, var(--theme) 20%, transparent);
+	color: map.get(token.$theme, 'l-9');
+	font-weight: 500;
+}
+
+/** 特别篇：静态标记，琥珀色与正片区分；不用主题色以免和「合并」混淆 */
+.chip--special {
+	border-color: rgba(232, 178, 104, 0.45);
+	background-color: rgba(232, 178, 104, 0.12);
+	color: #e8b268;
+}
+
+/** 本次会新增特别篇：更实的边与底，强调「勾选后才会变」 */
+.chip--kind-add {
+	border-color: rgba(232, 178, 104, 0.9);
+	background-color: rgba(232, 178, 104, 0.22);
+	color: #f0c684;
+	font-weight: 500;
+}
+
+/** 本次会把特别篇改回正片：中性灰，避免被误读成「新增」 */
+.chip--kind-remove {
+	border-color: map.get(token.$theme, 'd-1');
+	color: map.get(token.$theme, 'l-6');
+}
+
+/** 未匹配：红色警示，与正片、特别篇都不混 */
+.chip--unmatched {
+	border-color: rgba(255, 143, 143, 0.45);
+	background-color: rgba(255, 143, 143, 0.12);
+	color: #ff8f8f;
 }
 
 /**

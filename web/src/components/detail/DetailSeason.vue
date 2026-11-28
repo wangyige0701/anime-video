@@ -359,13 +359,27 @@ async function commitSort(oldIndex?: number, newIndex?: number) {
 		font-size: 0.625rem;
 		line-height: 1.6;
 		white-space: nowrap;
+		cursor: pointer;
+		user-select: none;
 		opacity: 0;
-		transition: opacity 0.2s ease;
+		transition:
+			opacity 0.2s ease,
+			border-color 0.15s ease,
+			background-color 0.15s ease,
+			color 0.15s ease;
 	}
 
 	&:hover .kind,
 	&.active .kind {
 		opacity: 1;
+	}
+
+	// 悬停才把虚线换成实边、字提亮：虚线本身看不出可点，靠这一下反馈
+	.kind:hover {
+		border-style: solid;
+		border-color: map.get(token.$theme, 'l-4');
+		background-color: map.get(token.$theme, 'd-2');
+		color: map.get(token.$theme, 'l-9');
 	}
 
 	.kind--special {
@@ -374,6 +388,12 @@ async function commitSort(oldIndex?: number, newIndex?: number) {
 		border-color: map.get(token.$theme, 'l-3');
 		background-color: map.get(token.$theme, 'd-2');
 		color: map.get(token.$theme, 'l-9');
+	}
+
+	// 已经标了特别篇，悬停表示「点了会改回去」，所以反而压暗，和新增态区分开
+	.kind--special:hover {
+		border-color: map.get(token.$theme, 'l-2');
+		color: map.get(token.$theme, 'l-7');
 	}
 
 	.kind--busy {

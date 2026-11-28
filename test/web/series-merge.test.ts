@@ -5,6 +5,7 @@ import {
 	getGroupMembers,
 	getMergeRejection,
 	getMergeCovers,
+	orderDisplayImages,
 	orderMergedImages,
 	orderMergedSeasons,
 	type MergeableSeries,
@@ -176,5 +177,32 @@ describe('orderMergedImages', () => {
 
 	it('空输入返回空数组', () => {
 		expect(orderMergedImages([], [], ['E:/a/1.jpg'])).toEqual([]);
+	});
+});
+
+describe('orderDisplayImages', () => {
+	const main = ['a1.png', 'a2.png'];
+	const members = ['b1.png'];
+
+	it('成员就位后按最终顺序合成', () => {
+		expect(orderDisplayImages(main, members, ['b1.png', 'a1.png'])).toEqual(['b1.png', 'a1.png', 'a2.png']);
+	});
+
+	it('成员未就位但已有显式顺序时直接用显式顺序，首图不会跳', () => {
+		expect(orderDisplayImages(main, [], ['b1.png', 'a1.png'], true)).toEqual(['b1.png', 'a1.png']);
+	});
+
+	it('成员未就位且没有显式顺序时退回主系列自己的顺序', () => {
+		expect(orderDisplayImages(main, [], [], true)).toEqual(main);
+	});
+
+	it('占位返回的是副本，不与记录共用数组', () => {
+		const order = ['b1.png', 'a1.png'];
+		const result = orderDisplayImages(main, [], order, true);
+		expect(result).not.toBe(order);
+	});
+
+	it('没有合并时结果就是主系列顺序', () => {
+		expect(orderDisplayImages(main, [], [])).toEqual(main);
 	});
 });

@@ -148,6 +148,7 @@
 - 拖拽实现在 `components/index/useSeriesDrag.ts`，四阶段 `idle / drag / drop / return`，只做「卡片 → 卡片」的搬运，不接通用拖拽库（其占位与镜像机制会和翻转、飞入、边缘滚动冲突）。
 - 卡片海报是原生 `<img>`，按下后移动会先触发浏览器图片拖拽并吞掉后续 `pointermove`；CSS `-webkit-user-drag: none` 与捕获阶段拦截 `dragstart` 两道都要保留。
 - **详情页的海报与季一样按合并关系拼接**：`displayImages` 把主系列图片放在前、成员图片按 `mergedIds` 顺序追加，再应用主系列的 `mergedImageOrder`，最后交给 `DetailImage`。三个要点：系列图片对外是绝对路径（服务端按各自目录拼好），跨系列直接拼接即可；合并只发生在展示层，不写回 `images` 字段，脱离后成员图片自然消失；合并组的显式顺序由 `orderMergedImages()` 统一收敛，与服务端共用 `shared/series-order.ts`。
+- **首图不能在成员加载过程中重算**：主系列与成员是两次请求，`displayImages` 走的是 `orderDisplayImages()`——`pending` 期间（有成员但未就位）直接用主系列记录的 `mergedImageOrder` 占位，没有显式顺序则用主系列图片。若只按已加载的部分合成，首帧是主系列第一张、成员到达后跳成真正的首图。
 - **合并组的季与图片可以跨系列拖拽排序**：季标题手柄不再因合并而隐藏。`commitSeasonSort()` 按是否合并分流——单系列仍提交「移动到第 N 位」，合并组提交**完整顺序**给 `PUT /data/series/:id/merge/seasons`；写入成功后 `syncGroupSeasons()` / `syncGroupImages()` 把全局顺序拆回主系列与每个成员（`syncSort()` + `setSeasons()` / `syncImages()`），保证脱离后各系列自己的顺序等于合并时看到的子序。
 - 图片排序入口在海报右上角（多图才出现），打开 `DetailImageManage.vue` 面板；面板只做拖拽与保存，写入通过 `commit` 回调交给详情页，合并组走 `PUT /data/series/:id/merge/images`（绝对路径数组），单系列走既有的 `images/set`。
 - 浮层与叠层动画细节、命中检测前提、已知限制见 `docs/modules/web/series-merge.md`。

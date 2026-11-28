@@ -148,3 +148,26 @@ export function orderMergedSeasons<T extends MergeableSeason>(
 export function orderMergedImages(mainImages: string[], memberImages: string[], order: string[] = []) {
 	return applyExplicitOrder([...mainImages, ...memberImages], order, (image) => image);
 }
+
+/**
+ * 详情页的图片顺序，处理「成员还没加载完」的那一小段时间。
+ *
+ * 主系列与成员是两次请求。若只按已加载的部分合成，中间那一帧只有主系列的图片，
+ * 算出来的首图是主系列的第一张；成员到达后顺序被纠正，首图会当着眼睛跳一次。
+ * 因此 `pending` 期间改用主系列记录的显式顺序——它是保存时服务端返回的完整顺序，
+ * 首帧就是正确的一张；没有显式顺序时主系列首图本来就是整组首图，同样不会跳。
+ *
+ * @param pending 有合并成员但成员数据尚未就位
+ */
+export function orderDisplayImages(
+	mainImages: string[],
+	memberImages: string[],
+	order: string[] = [],
+	pending = false,
+) {
+	if (pending) {
+		// 复制一份：调用方拿到的是展示数据，不应与记录本身共用数组
+		return order.length ? order.slice() : mainImages;
+	}
+	return orderMergedImages(mainImages, memberImages, order);
+}

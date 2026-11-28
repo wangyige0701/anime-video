@@ -49,7 +49,7 @@ import VideoBox from '@/components/detail/VideoBox.vue';
 import BangumiSync from '@/components/detail/BangumiSync.vue';
 import DetailImageManage from '@/components/detail/DetailImageManage.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
-import { orderMergedImages, orderMergedSeasons } from '@/utils/seriesMerge';
+import { orderDisplayImages, orderMergedSeasons } from '@/utils/seriesMerge';
 import { openDialog } from '@/utils/dialog';
 import { usePlayerStore } from '@/stores/player';
 import { useSettingsStore } from '@/stores/settings';
@@ -91,6 +91,14 @@ let seasonSnapshot: Season[] = [];
  */
 const memberGroups = shallowRef<MemberGroup[]>([]);
 
+/**
+ * 合并成员是否已就位。
+ *
+ * 主系列与成员是两次请求：中间那一帧只有主系列的图片，直接按已加载数据算顺序，
+ * 首图会先显示主系列的第一张、成员到达后再跳成真正的一张。没有成员时视为已就位。
+ */
+const membersReady = ref(false);
+
 /** 一个被合并系列在详情页上的可见内容 */
 interface MemberGroup {
 	id: string;
@@ -109,12 +117,18 @@ interface MemberGroup {
  * `images` 对外是绝对路径（服务端按各自系列目录拼好），跨系列拼接不需要换基准目录；
  * 路径本身就是唯一键，同一张图被两个目录收录时只保留第一次出现。
  * 这里不动数据，脱离合并后成员图片自然消失。
+ *
+ * **成员数据未就位时不能按已加载的部分算**：`series` 先到、成员是另一次请求，
+ * 中间那一帧只有主系列图片，算出来的首图是主系列自己的第一张；成员到达后再纠正，
+ * 首图会当着眼睛跳一次。因此这段时间直接用主系列记录的显式顺序占位（它本身就是完整
+ * 顺序，保存时由服务端返回），没有显式顺序时主系列首图仍然是整组首图，同样不会跳。
  */
 const displayImages = computed(() =>
-	orderMergedImages(
+	orderDisplayImages(
 		[...(series.value.images ?? [])],
 		memberGroups.value.flatMap((group) => group.images),
 		series.value.mergedImageOrder ?? [],
+		!membersReady.value && (series.value.mergedIds ?? []).length > 0,
 	),
 );
 
@@ -155,6 +169,8 @@ function rebuildSeasons() {
  */
 async function loadMembers(current: Series) {
 	const ids = [...(current.mergedIds ?? [])];
+	// 没有成员时立刻算已完成：否则图片区会一直等在「成员就位」上
+	membersReady.value = ids.length === 0;
 	const groups = await Promise.all(
 		ids.map(async (id) => {
 			try {
@@ -173,6 +189,8 @@ async function loadMembers(current: Series) {
 		}),
 	);
 	memberGroups.value = groups.filter((group): group is MemberGroup => !!group);
+	// 失败也要置为就位：否则图片会一直停在占位顺序上，看不到成员的真实图片
+	membersReady.value = true;
 	rebuildSeasons();
 }
 

@@ -87,6 +87,7 @@ box-shadow:
 
 - 默认顺序：主系列自己的季在前，成员按 `mergedIds` 顺序追加；再应用主系列记录的**显式顺序** `mergedSeasonOrder`，最终顺序由 `orderMergedSeasons()` 给出；
 - 图片同理：`orderMergedImages()` 先拼默认顺序，再应用 `mergedImageOrder`，重复路径去重且保留首次出现；
+- **成员未就位时不能按已加载的部分算**：`orderDisplayImages(pending)` 在成员请求返回前直接用 `mergedImageOrder` 占位。否则首帧只有主系列图片，算出的首图是主系列第一张，成员到达后再纠正会跳一次；
 - 成员季带「来源系列」标签，主系列自己的季不标注；
 - 单个成员加载失败只跳过该成员，不让一条悬空引用拖垮整页。
 

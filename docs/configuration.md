@@ -19,26 +19,26 @@ hls.segmentMinDuration   -> HLS_SEGMENT_MIN_DURATION
 
 ## 个人凭据
 
-AI 接口与 Bangumi 的地址、密钥、代理、超时**不在 `config.yaml`**，也不读 `.env`：它们只属于当前用户，保存在用户数据目录的 `settings.json`（Windows `%LOCALAPPDATA%\Anime Video`，可用 `ANIME_VIDEO_DATA_DIR` 覆盖），由应用内「设置」页维护。仓库与安装包里不含任何凭据。
+AI 接口与 Bangumi 的地址、密钥、代理、超时**不在 `config.yaml`**，也不读 `.env`：它们只属于当前用户，保存在应用数据目录的 `settings.json`，由应用内「设置」页维护。应用数据目录与全局目录白名单同规则：桌面端是系统用户目录（Windows `%LOCALAPPDATA%\Anime Video`），直接运行 server 项目时是服务目录，`ANIME_VIDEO_DATA_DIR` 两种模式都优先。仓库与安装包里不含任何凭据。
 
-旧 `.env` 中的 `AI_*`、`BANGUMI_*`、`BGM_*` 可用 `node scripts/migrate-env.mjs` 一次性迁移（只补空字段，不覆盖设置页已有值；`--dry-run` 只报告字段名）。迁移后 `.env` 不再参与运行，可自行删除。
+旧 `.env` 中的 `AI_*`、`BANGUMI_*`、`BGM_*` 可用 `pnpm --filter server exec tsx ../scripts/migrate-env.ts` 一次性迁移（只补空字段，不覆盖设置页已有值；`--dry-run` 只报告字段名）。迁移后 `.env` 不再参与运行，可自行删除。
 
 ## Application
 
-| 配置项 | 环境变量 | 启动参数 | 默认值 |
-| --- | --- | --- | --- |
-| `application.executableName` | `APPLICATION_EXECUTABLE_NAME` | `--application-executable-name` | `anime-video` |
+| 配置项                       | 环境变量                        | 启动参数                          | 默认值                     |
+| ---------------------------- | ------------------------------- | --------------------------------- | -------------------------- |
+| `application.executableName` | `APPLICATION_EXECUTABLE_NAME`   | `--application-executable-name`   | `anime-video`              |
 | `application.appUserModelId` | `APPLICATION_APP_USER_MODEL_ID` | `--application-app-user-model-id` | `com.wangyige.anime-video` |
 
 `application.executableName` 只用于发布构建脚本生成最终桌面程序文件名，脚本会自动追加 `.exe` 扩展名。
 
 ## Runtime
 
-| 配置项 | 环境变量 | 启动参数 | 默认值 |
-| --- | --- | --- | --- |
-| `runtime.nodeVersion` | `RUNTIME_NODE_VERSION` | `--runtime-node-version` | `20.19.5` |
-| `runtime.nodeMirror` | `RUNTIME_NODE_MIRROR` | `--runtime-node-mirror` | `https://npmmirror.com/mirrors/node/` |
-| `runtime.nodeSha256` | `RUNTIME_NODE_SHA256` | `--runtime-node-sha256` | 空值，从镜像 `SHASUMS256.txt` 读取 |
+| 配置项                | 环境变量               | 启动参数                 | 默认值                                |
+| --------------------- | ---------------------- | ------------------------ | ------------------------------------- |
+| `runtime.nodeVersion` | `RUNTIME_NODE_VERSION` | `--runtime-node-version` | `20.19.5`                             |
+| `runtime.nodeMirror`  | `RUNTIME_NODE_MIRROR`  | `--runtime-node-mirror`  | `https://npmmirror.com/mirrors/node/` |
+| `runtime.nodeSha256`  | `RUNTIME_NODE_SHA256`  | `--runtime-node-sha256`  | 空值，从镜像 `SHASUMS256.txt` 读取    |
 
 运行时安装脚本只支持 Windows 构建，会根据版本和当前架构下载 Node.js ZIP，校验 SHA256 后将 `node.exe` 和许可证复制到 `dist/runtime/`。压缩包缓存在根目录 `.cache/node-runtime/`，不会提交到 Git。可通过 `pnpm run install:runtime` 单独执行。
 
@@ -64,7 +64,7 @@ AI 接口与 Bangumi 的地址、密钥、代理、超时**不在 `config.yaml`*
 | `server.allowedVideoExtensions` | `SERVER_ALLOWED_VIDEO_EXTENSIONS` | `--server-allowed-video-extensions` | `.mp4`、`.mkv`、`.avi`、`.flv`、`.m4v`、`.mov`、`.webm`、`.wmv` |
 | `server.dataFileSaveDelay`      | `SERVER_DATA_FILE_SAVE_DELAY`     | `--server-data-file-save-delay`     | `500`                                                           |
 
-通过桌面 EXE 启动服务时，全局视频目录配置文件保存在用户数据目录中；Windows 默认目录为 `%LOCALAPPDATA%\Anime Video`，可通过 `ANIME_VIDEO_DATA_DIR` 覆盖。直接运行 server 项目时仍保存到 `getServerRoot()` 返回的服务目录。每个视频根目录下的 `.video.json` 仍用于保存该目录的媒体元数据。
+通过桌面 EXE 启动服务时，全局视频目录配置文件保存在应用数据目录中；Windows 默认目录为 `%LOCALAPPDATA%\Anime Video`。直接运行 server 项目时仍保存到 `getServerRoot()` 返回的服务目录，与 `settings.json` 同目录。`ANIME_VIDEO_DATA_DIR` 两种模式都优先。每个视频根目录下的 `.video.json` 仍用于保存该目录的媒体元数据。
 
 ## Web
 

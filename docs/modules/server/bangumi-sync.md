@@ -12,29 +12,29 @@
 
 代码在 `server/src/integrations/`：
 
-| 文件                   | 职责                                                        |
-| ---------------------- | ----------------------------------------------------------- |
-| `http.ts`              | 最小 JSON 客户端：CONNECT 隧道、超时、429/5xx 退避重试      |
-| `bangumi/config.ts`    | 从用户设置解析 Bangumi 请求参数（地址、UA、代理、超时）     |
-| `bangumi/client.ts`    | 搜索、条目详情、剧集分页                                    |
-| `bangumi/filenames.ts` | 文件名集号解析、特别篇标记、自然排序                        |
-| `bangumi/align.ts`     | 官方剧集归一化与「文件 ↔ 官方集」的规则对齐                 |
-| `bangumi/prompts.ts`   | 季映射与集对齐的提示词契约与结果校验                        |
-| `bangumi/tags.ts`      | 标签到系列类型的映射（规则命中 → 剩余交模型）               |
-| `bangumi/sync.ts`      | 三段流程的编排、预览构建、写入                              |
-| `ai/config.ts`         | 从用户设置解析 AI 请求参数（地址、密钥、模型、代理、超时）  |
-| `ai/client.ts`         | OpenAI 兼容的 JSON 客户端（兼容性降级）                     |
+| 文件                   | 职责                                                       |
+| ---------------------- | ---------------------------------------------------------- |
+| `http.ts`              | 最小 JSON 客户端：CONNECT 隧道、超时、429/5xx 退避重试     |
+| `bangumi/config.ts`    | 从用户设置解析 Bangumi 请求参数（地址、UA、代理、超时）    |
+| `bangumi/client.ts`    | 搜索、条目详情、剧集分页                                   |
+| `bangumi/filenames.ts` | 文件名集号解析、特别篇标记、自然排序                       |
+| `bangumi/align.ts`     | 官方剧集归一化与「文件 ↔ 官方集」的规则对齐                |
+| `bangumi/prompts.ts`   | 季映射与集对齐的提示词契约与结果校验                       |
+| `bangumi/tags.ts`      | 标签到系列类型的映射（规则命中 → 剩余交模型）              |
+| `bangumi/sync.ts`      | 三段流程的编排、预览构建、写入                             |
+| `ai/config.ts`         | 从用户设置解析 AI 请求参数（地址、密钥、模型、代理、超时） |
+| `ai/client.ts`         | OpenAI 兼容的 JSON 客户端（兼容性降级）                    |
 
 Bangumi 与 AI 是两个独立模块，互不引用；只共用 `http.ts`，配置各自从 `src/settings/store.ts` 读取。
 
 ## 配置来源
 
-两个模块都只读**用户设置**（`settings.json`，位于用户数据目录，由设置页维护），`config.yaml` 与 `.env` 不再参与：
+两个模块都只读**用户设置**（`settings.json`，位于应用数据目录——与目录白名单同规则：桌面端是系统用户目录，开发态是服务目录，由设置页维护），`config.yaml` 与 `.env` 不再参与：
 
 - 解析是纯函数：`resolveBangumiConfig(settings.bangumi)` / `resolveAiConfig(settings.ai)`，字符串 trim、地址去尾部斜杠、非法超时回退默认值；`getBangumiConfig()` / `getAiConfig()` 只是「读设置再解析」的薄封装。
 - 这里**不自建缓存**：`readSettings()` 已持有进程内快照并在写入后更新，多一层缓存只会制造「设置页改完不生效」的问题。
 - 未配置时客户端直接抛 503 并提示去设置页填写，不发出必然失败的请求（AI 缺地址/密钥/模型任一项，Bangumi 缺地址）。
-- 旧 `.env` 里的 `AI_*` / `BANGUMI_*` / `BGM_*` 可用 `node scripts/migrate-env.mjs` 一次性写入 `settings.json`，脚本只补空字段，不覆盖设置页里已有的值。
+- 旧 `.env` 里的 `AI_*` / `BANGUMI_*` / `BGM_*` 可用 `pnpm --filter server exec tsx ../scripts/migrate-env.ts` 一次性写入 `settings.json`，脚本只补空字段，不覆盖设置页里已有的值。
 - 两个代理互相独立，不做继承：Bangumi 的代理只作用于 Bangumi 请求，AI 的代理只作用于 AI 请求。
 
 ## Bangumi 数据模型

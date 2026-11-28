@@ -42,8 +42,8 @@ const emit = defineEmits<{
 	(e: 'update:modelValue', value: number[]): void;
 }>();
 
-const root = useTemplateRef<HTMLElement>('root');
-const row = useTemplateRef<HTMLElement>('row');
+const root = useTemplateRef('root');
+const row = useTemplateRef('row');
 /** 指针是否停在标签组上 */
 const hovering = ref(false);
 /** 标签是否超过一行，只有超过时才需要悬浮展开 */

@@ -72,7 +72,7 @@ const activeSeasonId = ref<string>('');
 const activeEpisodeId = ref<string>('');
 const lastEpisodeId = ref<string>('');
 
-const listRef = useTemplateRef<ComponentPublicInstance>('listRef');
+const listRef = useTemplateRef('listRef');
 /**
  * 季列表的本地镜像：series.value.seasons 是 customRef，原地调整不会触发更新，
  * 且关系数组不允许原地修改，因此拖拽在镜像上完成，成功后再通过 setSeasons() 回写。

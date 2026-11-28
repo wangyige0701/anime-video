@@ -41,7 +41,7 @@ const status = useVueStatusRef('modifyDescription');
 /** 编辑器是否处于编辑态，由 TextEditor 的 v-model:editing 回传 */
 const editing = ref(false);
 /** 编辑器实例，仅用于从标题旁的按钮触发编辑 */
-const editorRef = useTemplateRef<{ edit: () => Promise<void> }>('editorRef');
+const editorRef = useTemplateRef('editorRef');
 
 function editDescription() {
 	if (editing.value) {

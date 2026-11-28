@@ -454,6 +454,17 @@ const videoRef = useTemplateRef('videoRef');
 
 禁止使用 `ref<类型>()` 或 `ref<类型>('')` 承接模板元素或子组件实例。普通响应式业务数据仍使用 `ref()`、`reactive()` 等 Vue API。
 
+**不要给 `useTemplateRef` 传泛型参数**：类型由 `vue-tsc` 从模板里对应的元素或组件自动推断，手写的泛型只是在覆盖真实类型，容易写错（把组件实例写成 `HTMLElement`、把 `SVGPathElement` 写成 `Element`），也会让后续模板改动不再被类型检查发现。
+
+```ts
+// 正确
+const listRef = useTemplateRef('listRef');
+
+// 禁止
+const listRef = useTemplateRef<ComponentPublicInstance>('listRef');
+const path = useTemplateRef<SVGPathElement>('path');
+```
+
 ### 标签闭合
 
 `<slot>` 必须写显式闭合标签，禁止自闭合；其余标签按组件处理，无子内容时用自闭合：

@@ -144,6 +144,7 @@
 - `IndexList.vue` 必须同时持有**全量** `allSeries` 与列表用的 `querySeries` 结果：成员被排除出列表后，叠层仍需要它的标题与首图。
 - 拖拽实现在 `components/index/useSeriesDrag.ts`，四阶段 `idle / drag / drop / return`，只做「卡片 → 卡片」的搬运，不接通用拖拽库（其占位与镜像机制会和翻转、飞入、边缘滚动冲突）。
 - 卡片海报是原生 `<img>`，按下后移动会先触发浏览器图片拖拽并吞掉后续 `pointermove`；CSS `-webkit-user-drag: none` 与捕获阶段拦截 `dragstart` 两道都要保留。
+- **详情页的海报与季一样按合并关系拼接**：`displayImages` 把主系列图片放在前、成员图片按 `mergedIds` 顺序追加后交给 `DetailImage`。两个要点：系列图片对外是绝对路径（服务端按各自目录拼好），跨系列直接拼接即可；合并只发生在展示层，不写回 `images` 字段，脱离后成员图片自然消失。
 - 浮层与叠层动画细节、命中检测前提、已知限制见 `docs/modules/web/series-merge.md`。
 
 ## 详情页文本编辑

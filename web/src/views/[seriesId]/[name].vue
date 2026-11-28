@@ -1,7 +1,7 @@
 <template>
 	<div class="detail">
 		<div class="top">
-			<DetailImage :images="series.value.images" />
+			<DetailImage :images="displayImages" />
 			<div class="info">
 				<div class="title-row">
 					<TextEditor
@@ -48,6 +48,7 @@ import router from '@/router';
 import VideoBox from '@/components/detail/VideoBox.vue';
 import BangumiSync from '@/components/detail/BangumiSync.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
+import { mergeUnique } from '@/utils/series';
 import { usePlayerStore } from '@/stores/player';
 import { useSettingsStore } from '@/stores/settings';
 import { useDraggable } from 'vue-draggable-plus';
@@ -86,7 +87,30 @@ let seasonSnapshot: Season[] = [];
  *
  * 合并只是展示层聚合：季仍然归属各自的系列，编辑标题、播放路径、集排序都按原系列走。
  */
-const memberGroups = shallowRef<Array<{ id: string; title: string; seasons: Season[] }>>([]);
+const memberGroups = shallowRef<MemberGroup[]>([]);
+
+/** 一个被合并系列在详情页上的可见内容 */
+interface MemberGroup {
+	id: string;
+	title: string;
+	seasons: Season[];
+	/** 成员系列自己的图片，与主系列的一起展示；存的是绝对路径，可以直接拼接 */
+	images: string[];
+}
+
+/**
+ * 详情页展示的图片：主系列的在前，被合并系列的按合并顺序追加。
+ *
+ * `images` 对外是绝对路径（服务端按各自系列目录拼好），跨系列拼接不需要换基准目录；
+ * 去重是因为两个系列目录里可能存在同一张图。这里不动数据，脱离合并后成员图片自然消失。
+ */
+const displayImages = computed(() =>
+	mergeUnique(
+		[...(series.value.images ?? [])],
+		memberGroups.value.flatMap((group) => group.images),
+	),
+);
+
 /** 合并状态下季来自多个系列，跨系列拖动无法用「移动到第 N 位」表达，因此不提供手柄 */
 const seasonSortable = computed(() => memberGroups.value.length === 0);
 /** 成员季的来源系列标题；主系列自己的季不标注，避免每一项都顶一个多余的标签 */
@@ -126,14 +150,19 @@ async function loadMembers(current: Series) {
 		ids.map(async (id) => {
 			try {
 				const member = await useVideoStore().getSeriesDetail(id);
-				return { id, title: member.title, seasons: [...member.seasons] };
+				return {
+					id,
+					title: member.title,
+					seasons: [...member.seasons],
+					images: [...member.images],
+				};
 			} catch (error) {
 				console.warn('[merge] 成员季加载失败', id, error);
 				return null;
 			}
 		}),
 	);
-	memberGroups.value = groups.filter((group): group is { id: string; title: string; seasons: Season[] } => !!group);
+	memberGroups.value = groups.filter((group): group is MemberGroup => !!group);
 	rebuildSeasons();
 }
 

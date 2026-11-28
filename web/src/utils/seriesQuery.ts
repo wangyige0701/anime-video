@@ -5,6 +5,8 @@
  * 既方便单元测试，也避免把查询规则散落到组件里。
  */
 
+import { excludeMergedMembers, type MergeableSeries } from './seriesMerge';
+
 /**
  * 参与筛选与排序的最小字段集合。
  *
@@ -224,6 +226,28 @@ export function paginateSeries<T>(list: T[], page: number, pageSize: number): T[
 	const safeSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : list.length;
 	const start = (safePage - 1) * safeSize;
 	return list.slice(start, start + safeSize);
+}
+
+/**
+ * 重建首页已加载的数据。
+ *
+ * 全量数据有两个来源：首次分页请求，以及回到首页时的缓存快照。两者必须走同一套
+ * 「剔除合并成员 → 过滤排序 → 截取到已加载页数」，否则刷新管线会把不符合条件的系列
+ * 塞回列表，或者在合并之后把成员重新显示出来。
+ *
+ * @returns `items` 为前 `page * pageSize` 条，`total` 为当前条件下的总数
+ */
+export function buildIndexPage<T extends SeriesQueryItem & MergeableSeries>(
+	all: T[],
+	keyword: string,
+	query: Partial<SeriesQuery> | null | undefined,
+	page: number,
+	pageSize: number,
+) {
+	const list = applySeriesQuery(excludeMergedMembers(all), keyword, query);
+	const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+	const safeSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : list.length;
+	return { items: list.slice(0, safePage * safeSize), total: list.length };
 }
 
 /** 按年月分组的结果 */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	applySeriesQuery,
+	buildIndexPage,
 	createDefaultSeriesQuery,
 	EMPTY_MONTH_LABEL,
 	formatMonthLabel,
@@ -221,5 +222,59 @@ describe('groupSeriesByMonth', () => {
 
 	it('空列表返回空分组', () => {
 		expect(groupSeriesByMonth([])).toEqual([]);
+	});
+});
+
+describe('buildIndexPage', () => {
+	/** 首页快照：`mergedIds` 缺失时`excludeMergedMembers` 视为空数组 */
+	function createSeries(id: string, overrides: Partial<SeriesQueryItem> & { mergedIds?: string[] } = {}) {
+		return { ...createItem({ id }), mergedIds: [], ...overrides };
+	}
+
+	it('按已加载页数截取并给出当前条件下的总数', () => {
+		const all = [
+			createSeries('a', { title: 'A', date: [2024, 5] }),
+			createSeries('b', { title: 'B', date: [2024, 4] }),
+			createSeries('c', { title: 'C', date: [2024, 3] }),
+		];
+		const { items, total } = buildIndexPage(all, '', createDefaultSeriesQuery(), 1, 2);
+		expect(items.map((item) => item.id)).toEqual(['a', 'b']);
+		expect(total).toBe(3);
+	});
+
+	it('已加载多页时保留前 N 页而不是只返回当前页', () => {
+		const all = ['a', 'b', 'c', 'd'].map((id) => createSeries(id, { title: id, date: [2024, 5] }));
+		const { items } = buildIndexPage(all, '', createDefaultSeriesQuery(), 2, 2);
+		expect(items.map((item) => item.id)).toEqual(['a', 'b', 'c', 'd']);
+	});
+
+	it('剔除被合并的成员，不会因为成员在缓存里就重新出现', () => {
+		const all = [
+			createSeries('main', { title: 'A', mergedIds: ['member'] }),
+			createSeries('member', { title: 'B' }),
+		];
+		const { items, total } = buildIndexPage(all, '', createDefaultSeriesQuery(), 1, 40);
+		expect(items.map((item) => item.id)).toEqual(['main']);
+		expect(total).toBe(1);
+	});
+
+	it('改动后的日期、类型、状态立即参与排序与过滤', () => {
+		const all = [
+			createSeries('a', { title: 'A', date: [2024, 1], types: [1], status: 1 }),
+			createSeries('b', { title: 'B', date: [2024, 6], types: [2], status: 0 }),
+		];
+		const query = { ...createDefaultSeriesQuery(), types: [2] };
+		const { items } = buildIndexPage(all, '', query, 1, 40);
+		expect(items.map((item) => item.id)).toEqual(['b']);
+
+		all[0].date = [2024, 12];
+		const reordered = buildIndexPage(all, '', { ...createDefaultSeriesQuery(), types: [] }, 1, 40);
+		expect(reordered.items.map((item) => item.id)).toEqual(['a', 'b']);
+	});
+
+	it('空数据与非法页码回退到空结果与第一页', () => {
+		expect(buildIndexPage([], '', createDefaultSeriesQuery(), 3, 10)).toEqual({ items: [], total: 0 });
+		const all = [createSeries('a', { title: 'A' })];
+		expect(buildIndexPage(all, '', createDefaultSeriesQuery(), 0, 0).items).toHaveLength(1);
 	});
 });

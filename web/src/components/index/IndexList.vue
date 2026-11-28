@@ -50,8 +50,8 @@ import { endReachedEmitter } from '@/events/end-reached';
 import { refreshEmitter } from '@/events/refresh';
 import { useIndexFilterStore } from '@/stores/indexFilter';
 import { useVideoStore } from '@/stores/video';
-import { applySeriesQuery, groupSeriesByMonth } from '@/utils/seriesQuery';
-import { buildMergeOwnerIndex, excludeMergedMembers, getGroupMembers } from '@/utils/seriesMerge';
+import { buildIndexPage, groupSeriesByMonth } from '@/utils/seriesQuery';
+import { buildMergeOwnerIndex, getGroupMembers } from '@/utils/seriesMerge';
 import { getSeriesCoverUrl } from '@/utils/series';
 import { useSeriesDrag } from './useSeriesDrag';
 
@@ -83,6 +83,8 @@ const page = ref(1);
 const keyword = ref(props.keyword);
 /** 请求版本号，用于丢弃过期响应（切换过滤条件或搜索词时可能并发） */
 let requestVersion = 0;
+/** 是否已经历过首次激活；keep-alive 下首次挂载也会触发 activated */
+let activatedOnce = false;
 
 /**
  * 渲染片段。
@@ -272,16 +274,38 @@ endReachedEmitter.on('endReached', (event) => {
 refreshEmitter.on('series', (series) => {
 	// 全量数据是叠层与成员面板的唯一来源，先更新它再重算列表
 	allSeries.value = series;
-	// 全量刷新给的是未过滤列表，被合并的系列在这里同样要剔除，
-	// 否则刚合并完的成员会立即被刷新事件重新塞回列表。
-	const list = applySeriesQuery(excludeMergedMembers(series), keyword.value, filter.query);
-	const shown = list.slice(0, page.value * props.pageSize);
-	datas.splice(0, datas.length, ...shown);
+	// 被合并的系列在这里同样要剔除，否则刚合并完的成员会立即被刷新事件重新塞回列表。
+	const { items, total } = buildIndexPage(series, keyword.value, filter.query, page.value, props.pageSize);
+	datas.splice(0, datas.length, ...items);
 	// 刷新后可能出现新的可加载数据，解除「已加载完」标记
-	if (shown.length < list.length) {
+	if (items.length < total) {
 		status.offOver();
 	}
 });
+
+/**
+ * 重新激活（含浏览器历史返回）时用缓存重算列表。
+ *
+ * 详情页改的上线时间、类型、状态都写在同一个缓存的 `Series` 实例上，但列表的顺序、
+ * 过滤结果与分页是加载时算一次的结果；首页被 keep-alive 缓存，重新激活不会重跑
+ * `onMounted`，于是卡片分组与时间轴停在改动前的状态。
+ *
+ * 这里借用刷新管线而不是就地改本地状态：时间轴刻度也订阅同一个事件，
+ * 一份快照同时喂给列表与轴，两者不会出现「列表变了、轴还是旧的」。
+ */
+onActivated(() => {
+	// keep-alive 首次挂载也会触发 activated，那次由 load() 负责，不要重复请求
+	if (!activatedOnce) {
+		activatedOnce = true;
+		return;
+	}
+	void syncFromCache();
+});
+
+/** 从数据层缓存取快照并广播；不发网络请求 */
+async function syncFromCache() {
+	refreshEmitter.emit('series', await SeriesModel.getAllSeries());
+}
 
 /** 重置页码并从第一页重新加载 */
 async function reload() {

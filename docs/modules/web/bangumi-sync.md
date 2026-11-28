@@ -4,13 +4,16 @@
 
 ## 1. 职责边界
 
-| 层                                          | 负责                                              | 不负责             |
-| ------------------------------------------- | ------------------------------------------------- | ------------------ |
-| `server/src/integrations/bangumi/`          | 搜索条目、规则+AI 对齐剧集、生成预览结构          | 勾选状态、提交范围 |
-| `web/src/utils/bangumiSync.ts`              | 默认勾选、预览 → 提交入参、**差异对比**、数量统计 | 请求、DOM          |
-| `web/src/components/detail/BangumiSync.vue` | 面板结构、勾选交互、关闭守卫、样式                | 对齐规则、字段校验 |
+| 层                                                      | 负责                                              | 不负责             |
+| ------------------------------------------------------- | ------------------------------------------------- | ------------------ |
+| `server/src/integrations/bangumi/`                      | 搜索条目、规则+AI 对齐剧集、生成预览结构          | 勾选状态、提交范围 |
+| `web/src/utils/bangumiSync.ts`                          | 默认勾选、预览 → 提交入参、**差异对比**、数量统计 | 请求、DOM          |
+| `web/src/components/detail/BangumiSync.vue`             | 入口按钮、打开对话框、写入后刷新                  | 面板结构、对齐规则 |
+| `web/src/components/detail/bangumi-sync/SyncDialog.vue` | 步骤条、页脚按钮、关闭守卫                        | 差异规则、字段校验 |
+| `…/MatchStep.vue`、`…/PreviewStep.vue`                  | 两步各自的展示与勾选回调                          | 请求、提交结构     |
+| `…/useBangumiSync.ts`                                   | 三段请求、勾选状态、派生状态                      | DOM、样式          |
 
-纯函数都在 `bangumiSync.ts`，因此全部可单测；组件里不写「哪些该勾」的判断。
+面板通过 `utils/dialog` 的 `openDialog()` 打开（见 `docs/modules/web/dialog.md`）：入口 `await` 它拿写入数量，取消时 Promise reject，入口不需要维护任何「是否打开」的状态。对话框内容跑在独立应用里，所以系列数据在打开时由 `buildCurrentSnapshot()` 压成快照传入。
 
 ## 2. 两步流程
 
@@ -40,7 +43,7 @@
 - **`same` 语义而不是 `changed`**。返回 `true` 表示「一致」。UI 里 `:disabled="same"` 不用取反，不容易写反。
 - **预览缺字段一律判为「不同」**。空标题、无日期、空类型不会被当成「已一致」，否则「缺失」会被误认为「已经同步过」。这类项由 `createSelection` 的另一条规则处理：内容为空时默认不勾。两条规则叠加，空字段不会被勾也不会被禁用得很奇怪。
 
-对比用的本地快照由组件从领域对象装配（`currentSnapshot`），只取会被覆盖的字段；季内顺序取当前展示顺序，否则用户改了排序却没同步时会永远判为「一致」。
+对比用的本地快照由 `buildCurrentSnapshot()` 在打开对话框时装配，只取会被覆盖的字段；季内顺序取当前展示顺序，否则用户改了排序却没同步时会永远判为「一致」。快照是普通数据而不是领域对象，对话框卸载后也不会有视图被异步结果写脏。
 
 ## 4. 布局约束
 
@@ -56,9 +59,9 @@
 
 `busy = matching || previewing || applying`，期间：
 
-- 隐藏右上角关闭按钮，屏蔽 Esc（`before-close` 守卫）；
-- 「取消」「上一步」按钮禁用；
-- 点击遮罩关闭本来就是关的（`:close-on-click-modal="false"`）。
+- 内容组件调 `dialog.unclosable()`：同时关掉右上角按钮、Esc 与点击遮罩；结束后 `closable()` 恢复成打开时声明的值；
+- 「取消」「上一步」由 `describeSyncFooter()` 统一置为禁用；
+- 点击遮罩关闭本来就是关的（`closeOnClickModal: false`）。
 
 原因是匹配/预览的响应要写回面板状态，关掉之后再返回等于往已卸载的视图里写数据：用户看不到结果，也不知道到底成功没有，只能重开一次。
 
@@ -73,15 +76,16 @@
 ## 7. 验证方式
 
 ```bash
-pnpm exec vitest run test/web/bangumi-sync.test.ts   # diffPreview / createSelection / buildApplyInput
+pnpm exec vitest run test/web/bangumi-sync.test.ts   # 对比 / 勾选 / 入参 / 快照 / 页脚按钮
 pnpm --filter web type-check
 pnpm --filter web build-only
 ```
 
-面板类改动还要用 CDP 实测（参考 `.cache/sync-preview-check.mjs`、`.cache/sync-close-guard-check.mjs`）：
+面板类改动还要用 CDP 实测（`.cache/sync-confirm-check.mjs` 用固定夹具拦截 `/data/*`，不需要真实后端）：
 
 - 步骤条当前步骤是主色描边 + 内点，不是纯白实心；
 - `.episodes` 的 `scrollWidth === clientWidth`，页面无横向溢出；
 - 描述的 `.long-text` `white-space: pre-wrap` 且 `scrollHeight === clientHeight`（没有被裁）；
-- 请求进行中关闭按钮不存在、Esc 无效；请求结束后 Esc 能关；
-- 断网打开面板 → 匹配失败后面板仍在，提示只有一条中文。
+- 请求进行中右上角关闭按钮数量为 0、Esc 与遮罩都无效；请求结束后 Esc 能关；
+- 断网打开面板 → 匹配失败后面板仍在，提示只有一条中文；
+- 关闭后 `body` 下不再有 `.el-dialog` / `.el-overlay`，连续打开两次不会叠出两个对话框。

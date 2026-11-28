@@ -73,6 +73,47 @@ export interface BangumiPreviewDiff {
 	seasons: Array<{ title: boolean; order: boolean; episodes: Record<string, boolean> }>;
 }
 
+/**
+ * 构造快照所需的最小结构。
+ *
+ * 取结构化字段而不是 `Series` 类：对话框挂在独立的应用里，拿不到详情页的 provide，
+ * 只能把当前值当普通数据传进去；测试也可以直接用普通对象。
+ */
+export interface BangumiSnapshotSource {
+	title: string;
+	description: string;
+	date?: Array<number | undefined> | null;
+	status: number;
+	types: number[];
+	seasons: Array<{
+		id: string;
+		episodes: Array<{ id: string; title: string }>;
+	}>;
+}
+
+/**
+ * 把详情页的系列对象压成对比用的快照。
+ *
+ * 只保留会被同步覆盖的字段：字段越多，快照与真实数据不一致的机会越大，
+ * 而对比只看这几个字段。季内顺序按当前展示顺序记录，重排判断依赖它。
+ */
+export function buildCurrentSnapshot(series: BangumiSnapshotSource): BangumiCurrentSnapshot {
+	return {
+		series: {
+			title: series.title,
+			description: series.description,
+			date: series.date,
+			status: series.status,
+			types: [...series.types],
+		},
+		seasons: series.seasons.map((season) => ({
+			seasonId: season.id,
+			episodeIds: season.episodes.map((episode) => episode.id),
+			episodeTitles: Object.fromEntries(season.episodes.map((episode) => [episode.id, episode.title])),
+		})),
+	};
+}
+
 /** 本次提交将写入的条目数量，用于按钮文案与空提交拦截 */
 export interface BangumiSelectionSummary {
 	/** 系列字段数 */
@@ -292,6 +333,84 @@ export function summarizeSelection(input: BangumiApplyInput): BangumiSelectionSu
 	const episodes = seasons.reduce((total, season) => total + (season.episodes?.length ?? 0), 0);
 	const titles = series + seasonTitles;
 	return { series, seasons: seasons.length, titles, orders, episodes, total: titles + orders + episodes };
+}
+
+/**
+ * 页脚汇总文案。
+ *
+ * 「将写入 14 项」只给总数，用户没法确认勾中的是标题还是重排；这里拆成四类分别计数。
+ * 一类都没勾时给出明确说明，避免按钮禁用却不知道为什么。
+ */
+export function describeSelectionSummary(summary: BangumiSelectionSummary) {
+	// `titles` 含系列字段，季标题要用差值才算得出来
+	const seasonTitles = summary.titles - summary.series;
+	const parts = [
+		summary.series ? `系列字段 ${summary.series}` : '',
+		seasonTitles ? `季标题 ${seasonTitles}` : '',
+		summary.episodes ? `集标题 ${summary.episodes}` : '',
+		summary.orders ? `重排 ${summary.orders} 季` : '',
+	].filter(Boolean);
+	return parts.length ? `将写入 ${summary.total} 项：${parts.join(' · ')}` : '未勾选任何变更';
+}
+
+/** 页脚按钮的标识，宿主与内容组件按它绑定行为 */
+export type BangumiFooterKey = 'cancel' | 'rematch' | 'back' | 'preview' | 'apply';
+
+/** 页脚按钮的展示状态，点击行为由调用方按 `key` 绑定 */
+export interface BangumiFooterButton {
+	key: BangumiFooterKey;
+	content: string;
+	type?: 'primary';
+	loading: boolean;
+	disabled: boolean;
+}
+
+/** 决定页脚按钮的状态 */
+export interface BangumiFooterState {
+	/** 0 = 匹配季与条目，1 = 确认变更 */
+	step: number;
+	matching: boolean;
+	previewing: boolean;
+	applying: boolean;
+	/** 已选出 Bangumi 条目的季数，为 0 时无法生成预览 */
+	mappedCount: number;
+	/** 已勾选的写入项数，为 0 时不能提交 */
+	total: number;
+}
+
+/**
+ * 按当前步骤算出页脚按钮。
+ *
+ * 两步的按钮集合完全不同（第二步没有「重新匹配」，第一步没有「上一步」），
+ * 因此整组返回而不是逐个显隐；任何一步请求进行中都禁用「取消」，
+ * 否则响应会写回一个已经关闭的对话框。
+ */
+export function describeSyncFooter(state: BangumiFooterState): BangumiFooterButton[] {
+	const busy = state.matching || state.previewing || state.applying;
+	if (state.step === 0) {
+		return [
+			{ key: 'cancel', content: '取消', loading: false, disabled: busy },
+			{ key: 'rematch', content: '重新匹配', loading: state.matching, disabled: state.previewing },
+			{
+				key: 'preview',
+				content: '生成预览',
+				type: 'primary',
+				loading: state.previewing,
+				disabled: !state.mappedCount,
+			},
+		];
+	}
+	return [
+		{ key: 'cancel', content: '取消', loading: false, disabled: busy },
+		{ key: 'back', content: '上一步', loading: false, disabled: busy },
+		{
+			key: 'apply',
+			content: `应用 ${state.total} 项`,
+			type: 'primary',
+			loading: state.applying,
+			disabled: !state.total,
+		},
+	];
 }
 
 /**

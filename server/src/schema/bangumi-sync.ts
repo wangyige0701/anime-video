@@ -53,6 +53,8 @@ export const bangumiApplySchema = z.object({
 						z.object({
 							episodeId: z.string().min(1),
 							title: z.string().trim().min(1).max(300),
+							// 缺省表示不改集类型；只有正片与特别篇两种
+							kind: z.enum(['main', 'special']).optional(),
 						}),
 					)
 					.optional(),

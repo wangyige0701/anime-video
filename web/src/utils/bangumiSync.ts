@@ -315,7 +315,14 @@ export function buildApplyInput(preview: BangumiPreviewResult, selection: Bangum
 		}
 		const episodes = season.episodes
 			.filter((episode) => picked.episodes[episode.episodeId] && episode.title.trim())
-			.map((episode) => ({ episodeId: episode.episodeId, title: episode.title.trim() }));
+			.map((episode) => ({
+				episodeId: episode.episodeId,
+				title: episode.title.trim(),
+				// 未匹配到官方剧集的集没有分类可言，只写标题
+				...(episode.kind === 'unmatched'
+					? {}
+					: { kind: episode.kind === 'special' ? ('special' as const) : ('main' as const) }),
+			}));
 		if (episodes.length) {
 			item.episodes = episodes;
 		}

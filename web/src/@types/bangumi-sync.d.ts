@@ -93,7 +93,12 @@ export interface BangumiApplyInput {
 		seasonId: string;
 		title?: string;
 		order?: string[];
-		episodes?: Array<{ episodeId: string; title: string }>;
+		episodes?: Array<{
+			episodeId: string;
+			title: string;
+			/** 缺省表示不改集类型；未匹配到官方剧集的集不带该字段 */
+			kind?: 'main' | 'special';
+		}>;
 	}>;
 }
 

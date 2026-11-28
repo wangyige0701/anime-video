@@ -1,9 +1,10 @@
 import type Koa from 'koa';
 import { Context, Controller, Cors, HttpMethod, Inject, Singleton } from 'koa-use-decorator-router';
+import type { EpisodeKind } from '~shared/episode-kind';
 import { ServerRoot } from '~shared/server-route-config';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
-import { episodeSortSchema, episodeTitleSchema } from '~server/src/schema/episode-fields';
+import { episodeKindSchema, episodeSortSchema, episodeTitleSchema } from '~server/src/schema/episode-fields';
 
 @Singleton()
 @Controller(ServerRoot.DATA)
@@ -43,5 +44,16 @@ export class EpisodeController {
 		ctx.log.info({ event: 'episode.title.updated', episodeId, title }, 'Episode title updated');
 		// 空标题会被数据层还原为默认标题，返回实际标题供前端同步。
 		return ctx.Success(await episode.title);
+	}
+
+	@HttpMethod.Put('/episode/:episodeId/kind')
+	@Validate(() => episodeKindSchema)
+	public async updateEpisodeKind(@Context() ctx: Koa.Context, @Inject('episodeId') episodeId: string) {
+		const { kind } = ctx.request.body as { kind: EpisodeKind };
+		const episode = await Series.getEpisodeById(episodeId);
+		await episode.updateKind(kind);
+		await episode.waitDataSave();
+		ctx.log.info({ event: 'episode.kind.updated', episodeId, kind }, 'Episode kind updated');
+		return ctx.Success(await episode.kind);
 	}
 }

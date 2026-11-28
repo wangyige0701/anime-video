@@ -10,6 +10,7 @@
  * 因此这里不把 Bangumi 的 `sort` 写进任何字段，落库的 `sort` 是 `1..N` 位置号。
  */
 import { Status } from '~shared/http-status';
+import type { EpisodeKind } from '~shared/episode-kind';
 import type { Series } from '~server/data/series';
 import type { Season } from '~server/data/season';
 import type { Episode } from '~server/data/episode';
@@ -124,7 +125,7 @@ export interface ApplyInput {
 		seasonId: string;
 		title?: string;
 		order?: string[];
-		episodes?: Array<{ episodeId: string; title: string }>;
+		episodes?: Array<{ episodeId: string; title: string; kind?: EpisodeKind }>;
 	}>;
 }
 
@@ -702,7 +703,12 @@ export async function applyChangeSet(group: Series[], input: ApplyInput): Promis
 				episodeById.set(await episode.id, episode);
 			}
 			for (const entry of item.episodes) {
-				await episodeById.get(entry.episodeId)!.updateTitle(entry.title);
+				const episode = episodeById.get(entry.episodeId)!;
+				await episode.updateTitle(entry.title);
+				// 集类型与标题一起写：官方把某一集标成特别篇时，只改标题会丢掉这个信息
+				if (entry.kind) {
+					await episode.updateKind(entry.kind);
+				}
 			}
 		}
 		if (item.order?.length) {

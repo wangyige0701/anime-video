@@ -1,6 +1,8 @@
 /**
  * 视频系列
  */
+import type { EpisodeKind } from '../shared/episode-kind';
+
 export interface Series {
 	id: string;
 	/**
@@ -123,4 +125,10 @@ export interface Episode {
 	 * 集标题，默认为集文件名(不包含扩展名)，可手动修改
 	 */
 	title: string;
+	/**
+	 * 集类型：正片或特别篇
+	 *
+	 * 历史数据可能没有该字段，读取时按 `main` 处理；同步 Bangumi 时会按官方剧集类型写入。
+	 */
+	kind: EpisodeKind;
 }

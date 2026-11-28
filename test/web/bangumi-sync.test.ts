@@ -3,9 +3,12 @@ import type { BangumiMatchSeason, BangumiPreviewResult, BangumiPreviewSeason } f
 import type { BangumiCurrentSnapshot } from '../../web/src/utils/bangumiSync';
 import {
 	buildApplyInput,
+	buildCurrentSnapshot,
 	buildSeasonMapping,
 	createSelection,
 	describeAlignment,
+	describeSelectionSummary,
+	describeSyncFooter,
 	diffPreview,
 	orderSeasonsBySuggestion,
 	summarizeSelection,
@@ -321,5 +324,115 @@ describe('diffPreview', () => {
 		const diff = diffPreview(data, snapshot());
 		const summary = summarizeSelection(buildApplyInput(data, createSelection(data, diff)));
 		expect(summary.total).toBe(0);
+	});
+});
+
+describe('buildCurrentSnapshot', () => {
+	it('只取会被同步覆盖的字段，并按当前展示顺序记录季内集', () => {
+		const result = buildCurrentSnapshot({
+			title: '白圣女与黑牧师',
+			description: '简介',
+			date: [2023, 7],
+			status: 2,
+			types: [100, 1],
+			seasons: [
+				{
+					id: 's1',
+					episodes: [
+						{ id: 'e2', title: '第二话' },
+						{ id: 'e1', title: '第一话' },
+					],
+				},
+			],
+		});
+
+		expect(result).toEqual({
+			series: { title: '白圣女与黑牧师', description: '简介', date: [2023, 7], status: 2, types: [100, 1] },
+			seasons: [{ seasonId: 's1', episodeIds: ['e2', 'e1'], episodeTitles: { e2: '第二话', e1: '第一话' } }],
+		});
+	});
+
+	it('类型数组是拷贝：之后改领域对象不会污染已打开的快照', () => {
+		const types = [100];
+		const result = buildCurrentSnapshot({ title: '', description: '', status: 0, types, seasons: [] });
+		types.push(1);
+		expect(result.series.types).toEqual([100]);
+	});
+
+	it('没有任何季时给出空数组，不报错', () => {
+		const result = buildCurrentSnapshot({
+			title: '空',
+			description: '',
+			date: null,
+			status: 0,
+			types: [],
+			seasons: [],
+		});
+		expect(result.seasons).toEqual([]);
+		expect(result.series.date).toBeNull();
+	});
+});
+
+describe('describeSelectionSummary', () => {
+	const empty = { series: 0, seasons: 0, titles: 0, orders: 0, episodes: 0, total: 0 };
+
+	it('没有勾选时明确说明，而不是显示 0 项', () => {
+		expect(describeSelectionSummary(empty)).toBe('未勾选任何变更');
+	});
+
+	it('按系列字段、季标题、集标题、重排四类拆开计数', () => {
+		expect(describeSelectionSummary({ series: 2, seasons: 1, titles: 5, orders: 1, episodes: 5, total: 11 })).toBe(
+			'将写入 11 项：系列字段 2 · 季标题 3 · 集标题 5 · 重排 1 季',
+		);
+	});
+
+	it('只有集标题时不出现空类别', () => {
+		expect(describeSelectionSummary({ ...empty, seasons: 1, episodes: 3, total: 3 })).toBe('将写入 3 项：集标题 3');
+	});
+
+	it('只勾重排时也能看出重排了几季', () => {
+		expect(describeSelectionSummary({ ...empty, seasons: 2, orders: 2, total: 2 })).toBe('将写入 2 项：重排 2 季');
+	});
+});
+
+describe('describeSyncFooter', () => {
+	const base = { step: 0, matching: false, previewing: false, applying: false, mappedCount: 1, total: 8 };
+
+	it('第一步给出取消、重新匹配、生成预览', () => {
+		const buttons = describeSyncFooter(base);
+		expect(buttons.map((button) => button.key)).toEqual(['cancel', 'rematch', 'preview']);
+		expect(buttons[2]!.content).toBe('生成预览');
+		expect(buttons[2]!.type).toBe('primary');
+	});
+
+	it('没有选中任何条目时不能生成预览', () => {
+		const buttons = describeSyncFooter({ ...base, mappedCount: 0 });
+		expect(buttons.find((button) => button.key === 'preview')!.disabled).toBe(true);
+	});
+
+	it('匹配进行中禁用取消并给重新匹配加 loading', () => {
+		const buttons = describeSyncFooter({ ...base, matching: true });
+		expect(buttons[0]!.disabled).toBe(true);
+		expect(buttons[1]!.loading).toBe(true);
+	});
+
+	it('第二步给出取消、上一步、应用，且按钮文案带数量', () => {
+		const buttons = describeSyncFooter({ ...base, step: 1 });
+		expect(buttons.map((button) => button.key)).toEqual(['cancel', 'back', 'apply']);
+		expect(buttons[2]!.content).toBe('应用 8 项');
+		expect(buttons[2]!.disabled).toBe(false);
+	});
+
+	it('没有勾选任何变更时不能应用', () => {
+		const buttons = describeSyncFooter({ ...base, step: 1, total: 0 });
+		expect(buttons[2]!.content).toBe('应用 0 项');
+		expect(buttons[2]!.disabled).toBe(true);
+	});
+
+	it('提交中禁用取消与上一步，避免响应写回已关闭的视图', () => {
+		const buttons = describeSyncFooter({ ...base, step: 1, applying: true });
+		expect(buttons[0]!.disabled).toBe(true);
+		expect(buttons[1]!.disabled).toBe(true);
+		expect(buttons[2]!.loading).toBe(true);
 	});
 });

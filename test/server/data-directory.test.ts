@@ -1,3 +1,4 @@
+import { isUndefined } from '@wang-yige/utils';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getServerRoot } from '~server/cli/manager/paths';
@@ -19,7 +20,7 @@ function snapshotEnv() {
 function restoreEnv(snapshot: Record<string, string | undefined>) {
 	for (const key of ENV_KEYS) {
 		const value = snapshot[key];
-		if (value === undefined) {
+		if (isUndefined(value)) {
 			delete process.env[key];
 		} else {
 			process.env[key] = value;

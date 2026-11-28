@@ -59,7 +59,7 @@ export class LogDestination {
 		this.pendingBytes += bytes;
 		if (!this.busy && !this.scheduled) {
 			this.scheduled = setImmediate(() => {
-				this.scheduled = undefined;
+				this.scheduled = void 0;
 				this.pump();
 			});
 		}

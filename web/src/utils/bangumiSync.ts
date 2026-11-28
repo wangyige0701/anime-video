@@ -1,3 +1,4 @@
+import { isUndefined } from '@wang-yige/utils';
 import type {
 	BangumiApplyInput,
 	BangumiMatchSeason,
@@ -327,7 +328,7 @@ export function buildApplyInput(preview: BangumiPreviewResult, selection: Bangum
 			item.episodes = episodes;
 		}
 		// 三项都没有内容时跳过，避免无意义的写请求
-		if (item.title === undefined && item.order === undefined && item.episodes === undefined) {
+		if (isUndefined(item.title) && isUndefined(item.order) && isUndefined(item.episodes)) {
 			continue;
 		}
 		seasons.push(item);

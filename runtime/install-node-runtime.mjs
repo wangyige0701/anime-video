@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
+import { isUndefined } from '@wang-yige/utils';
 
 const execFile = promisify(execFileCallback);
 const rootDirectory = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -86,7 +87,7 @@ function normalizeMirror(value) {
 }
 
 function normalizeSha256(value) {
-	if (value === undefined || value === null || value === '') {
+	if (isUndefined(value) || value === null || value === '') {
 		return null;
 	}
 	if (typeof value !== 'string' || !/^[a-f0-9]{64}$/i.test(value)) {

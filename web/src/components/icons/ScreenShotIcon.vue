@@ -17,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import { isUndefined } from '@wang-yige/utils';
 import { useVModel } from '@vueuse/core';
 
 const props = withDefaults(
@@ -58,7 +59,7 @@ watch(
 
 function trigger() {
 	clearTimeout(resetTimer);
-	if (animationFrame !== undefined) {
+	if (!isUndefined(animationFrame)) {
 		cancelAnimationFrame(animationFrame);
 	}
 	if (active.value) {

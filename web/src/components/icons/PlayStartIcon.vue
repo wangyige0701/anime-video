@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { isUndefined } from '@wang-yige/utils';
 const active = ref(false);
 const duration = 380;
 const staticArrowTransform = 'translate(6.8 5.5) rotate(0)';
@@ -37,7 +38,7 @@ let animationFrame: number | undefined;
 const loopGuide = useTemplateRef('loopGuide');
 
 function trigger() {
-	if (animationFrame !== undefined) {
+	if (!isUndefined(animationFrame)) {
 		cancelAnimationFrame(animationFrame);
 	}
 	active.value = false;
@@ -58,7 +59,7 @@ function animateArrow(startTime: number) {
 	arrowTransform.value = staticArrowTransform;
 	animationFrame = requestAnimationFrame(() => {
 		active.value = false;
-		animationFrame = undefined;
+		animationFrame = void 0;
 	});
 }
 
@@ -82,7 +83,7 @@ function easeInOutCubic(value: number) {
 }
 
 onBeforeUnmount(() => {
-	if (animationFrame !== undefined) {
+	if (!isUndefined(animationFrame)) {
 		cancelAnimationFrame(animationFrame);
 	}
 });

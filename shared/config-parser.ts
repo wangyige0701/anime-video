@@ -1,4 +1,5 @@
-﻿import type { AppConfig } from './config.d.ts';
+﻿import { isUndefined } from '@wang-yige/utils';
+import type { AppConfig } from './config.d.ts';
 import { readFile } from 'node:fs/promises';
 import YAML from 'yaml';
 
@@ -35,7 +36,7 @@ function applyOverrides(defaultConfig: AppConfig): AppConfig {
 		for (const key of Object.keys(sectionConfig)) {
 			const envKey = `${section}_${toEnvKey(key)}`.toUpperCase();
 			const override = commandLineOverrides.get(envKey) ?? process.env[envKey];
-			if (override !== undefined) {
+			if (!isUndefined(override)) {
 				sectionConfig[key] = parseValue(override, sectionConfig[key]);
 			}
 		}
@@ -65,8 +66,8 @@ function getCommandLineOverrides(config: AppConfig) {
 		}
 		const key = argument.match(/^--?([A-Za-z][A-Za-z0-9_-]*)$/)?.[1];
 		const nextArgument = process.argv[index + 1];
-		const envKey = key ? commandLineKeys.get(normalizeCommandLineKey(key)) : undefined;
-		if (envKey && nextArgument !== undefined && (!nextArgument.startsWith('-') || /^-\d/.test(nextArgument))) {
+		const envKey = key ? commandLineKeys.get(normalizeCommandLineKey(key)) : void 0;
+		if (envKey && !isUndefined(nextArgument) && (!nextArgument.startsWith('-') || /^-\d/.test(nextArgument))) {
 			overrides.set(envKey, process.argv[++index]!);
 		}
 	}

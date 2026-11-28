@@ -126,7 +126,7 @@ export class Data<T extends object> {
 			clearTimeout(this.saveTimeout);
 		}
 		this.saveTimeout = setTimeout(() => {
-			this.saveTimeout = undefined;
+			this.saveTimeout = void 0;
 			void this.doSave();
 		}, Data.delayTime);
 	}

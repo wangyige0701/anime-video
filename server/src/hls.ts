@@ -113,7 +113,7 @@ export class HlsManage {
 
 	public async ts(index: number) {
 		if (index < 0 || index >= this.size) {
-			return undefined as unknown as Buffer;
+			return void 0 as unknown as Buffer;
 		}
 
 		this.currentIndex = index;
@@ -204,7 +204,7 @@ export class HlsManage {
 			clearTimeout(waitTime);
 		}
 		this.imageWaitToClear.delete(index);
-		this.imageCache[index] = undefined;
+		this.imageCache[index] = void 0;
 		this.log('debug', `清除 ${index} 预览图缓存`);
 	}
 
@@ -276,7 +276,7 @@ export class HlsManage {
 			return;
 		}
 		this.log('debug', `清除 ${index} 分片缓存`);
-		this.cache[index] = undefined;
+		this.cache[index] = void 0;
 	}
 
 	/**

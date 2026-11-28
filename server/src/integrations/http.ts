@@ -8,6 +8,7 @@
  * 隧道只用于 https；http 目标直接连，因为明文代理本来就可以用绝对 URL 转发，
  * 而 Bangumi 与 OpenAI 兼容接口都是 https，实际只有隧道这一条路径会被走到。
  */
+import { isUndefined } from '@wang-yige/utils';
 import http from 'node:http';
 import https from 'node:https';
 import { Status } from '~shared/http-status';
@@ -63,7 +64,7 @@ function openTunnel(proxy: string, target: URL) {
 export async function requestJson<T>(url: string, options: JsonRequestOptions = {}): Promise<JsonResponse<T>> {
 	const target = new URL(url);
 	const isHttps = target.protocol === 'https:';
-	const payload = options.body === undefined ? undefined : JSON.stringify(options.body);
+	const payload = isUndefined(options.body) ? void 0 : JSON.stringify(options.body);
 	const headers: Record<string, string | number> = {
 		Host: target.hostname,
 		Accept: 'application/json',
@@ -71,7 +72,7 @@ export async function requestJson<T>(url: string, options: JsonRequestOptions = 
 		...options.headers,
 	};
 	const timeout = options.timeout ?? 15000;
-	const socket = options.proxy && isHttps ? await openTunnel(options.proxy, target) : undefined;
+	const socket = options.proxy && isHttps ? await openTunnel(options.proxy, target) : void 0;
 
 	return await new Promise<JsonResponse<T>>((resolve, reject) => {
 		const transport = isHttps ? https : http;
@@ -95,9 +96,9 @@ export async function requestJson<T>(url: string, options: JsonRequestOptions = 
 				response.on('end', () => {
 					let data: T | undefined;
 					try {
-						data = raw ? (JSON.parse(raw) as T) : undefined;
+						data = raw ? (JSON.parse(raw) as T) : void 0;
 					} catch {
-						data = undefined;
+						data = void 0;
 					}
 					resolve({ status: response.statusCode ?? 0, headers: response.headers, raw, data });
 				});

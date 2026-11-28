@@ -121,7 +121,7 @@ export class Episode extends Common implements IEpisode {
 			'kind',
 			kind,
 			() => updateEpisodeKind(this.id, kind),
-			(result) => (isEpisodeKind(result) ? result : undefined),
+			(result) => (isEpisodeKind(result) ? result : void 0),
 		);
 	}
 	// endregion

@@ -12,6 +12,7 @@
  *
  * 安全约定：只输出字段名与「跳过原因」，任何情况下都不打印配置值。
  */
+import { isUndefined } from '@wang-yige/utils';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -104,8 +105,8 @@ export function readEnvFile(file: string) {
 export function envToSettingsPatch(env: Record<string, string | undefined>) {
 	const patch: SettingsPatch = {};
 	for (const field of FIELDS) {
-		const raw = field.env.map((key) => env[key]).find((value) => value !== undefined && value.trim() !== '');
-		if (raw === undefined) {
+		const raw = field.env.map((key) => env[key]).find((value) => !isUndefined(value) && value.trim() !== '');
+		if (isUndefined(raw)) {
 			continue;
 		}
 		let value: string | number = raw.trim();
@@ -135,7 +136,7 @@ export function mergeIntoExisting(existing: Partial<SettingsFile> | null, patch:
 	for (const [section, values] of Object.entries(patch) as Array<[Section, Record<string, SettingsValue>]>) {
 		for (const [key, value] of Object.entries(values)) {
 			const current = merged[section][key];
-			const isEmpty = current === undefined || current === null || String(current).trim() === '';
+			const isEmpty = isUndefined(current) || current === null || String(current).trim() === '';
 			if (!isEmpty) {
 				skipped.push(`${section}.${key}`);
 				continue;

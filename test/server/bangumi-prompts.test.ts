@@ -156,7 +156,7 @@ describe('集对齐提示词与结果校验', () => {
 
 	it('按 f/k 序号编码，本地集号解析不到时用 -1', () => {
 		const messages = buildAlignMessages('无职转生/第2季', files, official, (fileName) =>
-			fileName === '00-特别篇.mp4' ? 0 : fileName === '01.mp4' ? 1 : undefined,
+			fileName === '00-特别篇.mp4' ? 0 : fileName === '01.mp4' ? 1 : void 0,
 		);
 		const payload = JSON.parse(messages[1]!.content.split('\n')[0]!);
 		expect(payload.localFiles).toEqual([

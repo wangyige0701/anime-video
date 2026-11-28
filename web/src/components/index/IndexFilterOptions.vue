@@ -79,7 +79,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	observer?.disconnect();
-	observer = undefined;
+	observer = void 0;
 });
 
 // 选项集合变化后按钮数量改变，需要重新判断是否超出单行

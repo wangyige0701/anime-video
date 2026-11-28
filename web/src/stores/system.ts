@@ -13,7 +13,7 @@ export const useSystemStore = defineStore('system', () => {
 
 	function stop() {
 		stopSubscription?.();
-		stopSubscription = undefined;
+		stopSubscription = void 0;
 	}
 
 	return {

@@ -237,6 +237,14 @@ pnpm --dir hls run build:q
 - 条件分支即使只有一条语句，也必须使用大括号并换行书写；禁止将 `if`、`else`、循环或类似分支压缩为单行。
 - 修改 `hls/` 以外的代码后必须执行 `pnpm exec oxfmt <相关文件>` 格式化相关文件，并保持现有缩进、引号、分号和换行风格；`hls/` 作为独立子项目，不使用 oxfmt。
 
+### undefined 判断与赋值（强制）
+
+- 判断 `undefined` 一律使用 `@wang-yige/utils` 的 `isUndefined()`，禁止 `=== undefined`、`!== undefined` 以及其他等价写法。
+- `isUndefined` 是类型守卫（`value is undefined`），`!isUndefined(x)` 后类型仍会正常收窄，不需要额外的类型断言。
+- 给变量、对象属性或返回值赋 `undefined` 时必须写 `void 0`，包括三元表达式的分支与 `return` 语句。
+- 类型注解里的 `| undefined`、可选属性 `foo?:` 不受影响，不要改写。
+- 提交前执行 `node scripts/check-undefined.mjs`，确认没有残留的等号判断与 `= undefined`。
+
 ## Git 提交说明规范
 
 - 所有 Git 提交说明必须使用中文，不得使用英文标题、英文前缀或英文描述。

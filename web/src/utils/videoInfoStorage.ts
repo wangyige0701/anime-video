@@ -93,8 +93,8 @@ export class VideoInfoStorage {
 			target.resolves!.forEach((resolve) => resolve());
 			target.resolves!.length = 0;
 			if (promise === target.promise) {
-				target.promise = undefined;
-				target.timeout = undefined;
+				target.promise = void 0;
+				target.timeout = void 0;
 				this.queue.delete(key);
 			}
 		}, 100);

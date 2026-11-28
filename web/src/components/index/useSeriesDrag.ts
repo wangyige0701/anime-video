@@ -270,7 +270,7 @@ export function useSeriesDrag(options: UseSeriesDragOptions) {
 	function reset() {
 		if (resetTimer) {
 			clearTimeout(resetTimer);
-			resetTimer = undefined;
+			resetTimer = void 0;
 		}
 		if (state.phase === 'idle') {
 			return;
@@ -347,7 +347,7 @@ export function useSeriesDrag(options: UseSeriesDragOptions) {
 	onScopeDispose(() => {
 		if (resetTimer) {
 			clearTimeout(resetTimer);
-			resetTimer = undefined;
+			resetTimer = void 0;
 		}
 		if (state.phase !== 'idle') {
 			document.body.style.userSelect = '';

@@ -9,6 +9,7 @@
  * 数据流的核心决定：**顺序由本地文件名决定，官方数据只提供标题与对应关系**。
  * 因此这里不把 Bangumi 的 `sort` 写进任何字段，落库的 `sort` 是 `1..N` 位置号。
  */
+import { isUndefined } from '@wang-yige/utils';
 import { Status } from '~shared/http-status';
 import type { EpisodeKind } from '~shared/episode-kind';
 import type { Series } from '~server/data/series';
@@ -221,7 +222,7 @@ export function deriveStatus(episodes: BangumiEpisode[], today = new Date()): { 
 /** 本地文件名摘要，供季映射使用；不传完整列表，控制输入体积 */
 export function summarizeSeason(season: LocalSeasonInput, alias: string): LocalSeasonSummary {
 	const files = orderLocalFiles(season.episodes.map((episode) => episode.fileName));
-	const unnumbered = files.filter((fileName) => parseEpisodeNumber(fileName) === undefined);
+	const unnumbered = files.filter((fileName) => isUndefined(parseEpisodeNumber(fileName)));
 	return {
 		alias,
 		relativePath: season.path,
@@ -251,8 +252,8 @@ export function buildSeasonPreview(
 	const ruled = alignByRules(ordered, official);
 	// 模型可能整季都判无对应，这种结果没有信息量，退回规则结果
 	const aiApplied = Boolean(aiAlign && [...aiAlign.values()].some(Boolean));
-	const mergedMap = aiApplied ? aiMerged : undefined;
-	const titlesMap = aiApplied ? aiTitles : undefined;
+	const mergedMap = aiApplied ? aiMerged : void 0;
+	const titlesMap = aiApplied ? aiTitles : void 0;
 
 	let assignments = ruled.assignments;
 	let alignment: PreviewSeason['alignment'] = 'rule';
@@ -658,7 +659,7 @@ export async function applyChangeSet(group: Series[], input: ApplyInput): Promis
 		}
 	}
 
-	if (input.series?.status !== undefined && !isWritableSeriesStatus(input.series.status)) {
+	if (!isUndefined(input.series?.status) && !isWritableSeriesStatus(input.series.status)) {
 		throw new ApiError(Status.Failed, '系列状态无效');
 	}
 	if (input.series?.types) {
@@ -669,11 +670,11 @@ export async function applyChangeSet(group: Series[], input: ApplyInput): Promis
 	}
 
 	const applied = input.series ?? {};
-	if (applied.title !== undefined) {
+	if (!isUndefined(applied.title)) {
 		await main.updateTitle(applied.title);
 		result.series.push('title');
 	}
-	if (applied.description !== undefined) {
+	if (!isUndefined(applied.description)) {
 		await main.updateDescription(applied.description);
 		result.series.push('description');
 	}
@@ -681,7 +682,7 @@ export async function applyChangeSet(group: Series[], input: ApplyInput): Promis
 		await main.updateDate(applied.date.year, applied.date.month);
 		result.series.push('date');
 	}
-	if (applied.status !== undefined) {
+	if (!isUndefined(applied.status)) {
 		await main.updateStatus(applied.status);
 		result.series.push('status');
 	}

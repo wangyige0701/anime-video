@@ -1,3 +1,4 @@
+import { isUndefined } from '@wang-yige/utils';
 import { useDebounceFn } from '@vueuse/core';
 import { onScopeDispose, ref, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { PreviewImage } from './useHlsImagePreview';
@@ -33,7 +34,7 @@ export function useTimelinePreview(options: TimelinePreviewOptions) {
 		}
 		latestHoverTime = time;
 		if (!isRequestRunning && isTimeInPreviewRange(time)) {
-			queuedPreviewTime = undefined;
+			queuedPreviewTime = void 0;
 			requestDebounced.cancel();
 			previewLoading.value = false;
 			return;
@@ -44,8 +45,8 @@ export function useTimelinePreview(options: TimelinePreviewOptions) {
 
 	function handleHoverEnd() {
 		requestDebounced.cancel();
-		queuedPreviewTime = undefined;
-		latestHoverTime = undefined;
+		queuedPreviewTime = void 0;
+		latestHoverTime = void 0;
 		previewLoading.value = false;
 	}
 
@@ -60,10 +61,10 @@ export function useTimelinePreview(options: TimelinePreviewOptions) {
 		}
 		isRequestRunning = true;
 		try {
-			while (queuedPreviewTime !== undefined) {
+			while (!isUndefined(queuedPreviewTime)) {
 				const time = queuedPreviewTime;
 				const requestSourceVersion = sourceVersion;
-				queuedPreviewTime = undefined;
+				queuedPreviewTime = void 0;
 				try {
 					const getPreviewImage = options.getPreviewImage();
 					if (!getPreviewImage) {
@@ -78,21 +79,21 @@ export function useTimelinePreview(options: TimelinePreviewOptions) {
 						endTime: preview.previewEndTime,
 					};
 					previewSrc.value = preview.src;
-					if (latestHoverTime !== undefined && isTimeInPreviewRange(latestHoverTime)) {
-						queuedPreviewTime = undefined;
+					if (!isUndefined(latestHoverTime) && isTimeInPreviewRange(latestHoverTime)) {
+						queuedPreviewTime = void 0;
 						previewLoading.value = false;
 					}
 				} catch {
-					if (requestSourceVersion === sourceVersion && queuedPreviewTime === undefined) {
-						previewRange = undefined;
-						previewSrc.value = undefined;
+					if (requestSourceVersion === sourceVersion && isUndefined(queuedPreviewTime)) {
+						previewRange = void 0;
+						previewSrc.value = void 0;
 						previewLoading.value = false;
 					}
 				}
 			}
 		} finally {
 			isRequestRunning = false;
-			if (queuedPreviewTime !== undefined) {
+			if (!isUndefined(queuedPreviewTime)) {
 				void flushRequest();
 			}
 		}
@@ -105,10 +106,10 @@ export function useTimelinePreview(options: TimelinePreviewOptions) {
 	function reset() {
 		sourceVersion++;
 		requestDebounced.cancel();
-		queuedPreviewTime = undefined;
-		latestHoverTime = undefined;
-		previewRange = undefined;
-		previewSrc.value = undefined;
+		queuedPreviewTime = void 0;
+		latestHoverTime = void 0;
+		previewRange = void 0;
+		previewSrc.value = void 0;
 		previewLoading.value = false;
 	}
 

@@ -91,8 +91,8 @@ export function useHlsImagePreview(options: HlsImagePreviewOptions) {
 		});
 
 		previewQueue = request.then(
-			() => undefined,
-			() => undefined,
+			() => void 0,
+			() => void 0,
 		);
 		return request;
 	}

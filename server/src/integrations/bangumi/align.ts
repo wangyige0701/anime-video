@@ -9,6 +9,7 @@
  * 规则能给出唯一归属时不调用模型；只有集号重复、文件名无编号且剩余候选不唯一、
  * 或本地集号在官方找不到时才需要模型介入——而这些情况模型也只能猜，最终仍需人工确认。
  */
+import { isUndefined } from '@wang-yige/utils';
 import type { BangumiEpisode } from './types';
 import { hasSpecialMarker, naturalCompare, parseEpisodeNumber } from './filenames';
 
@@ -98,10 +99,10 @@ export function collectOfficialEpisodes(parts: OfficialPart[]): OfficialEpisode[
 export function orderLocalFiles(files: string[]): string[] {
 	const parsed = files.map((fileName) => ({ fileName, number: parseEpisodeNumber(fileName) }));
 	const numbered = parsed
-		.filter((item): item is { fileName: string; number: number } => item.number !== undefined)
+		.filter((item): item is { fileName: string; number: number } => !isUndefined(item.number))
 		.sort((a, b) => a.number - b.number || naturalCompare(a.fileName, b.fileName));
 	const rest = parsed
-		.filter((item) => item.number === undefined)
+		.filter((item) => isUndefined(item.number))
 		.sort((a, b) => naturalCompare(a.fileName, b.fileName));
 	return [...numbered, ...rest].map((item) => item.fileName);
 }
@@ -124,7 +125,7 @@ export function alignByRules(files: string[], official: OfficialEpisode[]): Rule
 		}
 	}
 
-	const numbers = files.map((fileName) => parseEpisodeNumber(fileName)).filter((n): n is number => n !== undefined);
+	const numbers = files.map((fileName) => parseEpisodeNumber(fileName)).filter((n): n is number => !isUndefined(n));
 	const duplicated = [...new Set(numbers.filter((number, index) => numbers.indexOf(number) !== index))];
 	if (duplicated.length) {
 		return { resolved: false, reason: `本地集号重复：${duplicated.join('、')}`, assignments, missing, notes };
@@ -133,7 +134,7 @@ export function alignByRules(files: string[], official: OfficialEpisode[]): Rule
 	const leftover: string[] = [];
 	for (const fileName of files) {
 		const number = parseEpisodeNumber(fileName);
-		const episode = number === undefined ? undefined : mainBySort.get(number);
+		const episode = isUndefined(number) ? void 0 : mainBySort.get(number);
 		if (episode) {
 			assignments.set(fileName, episode);
 			continue;
@@ -145,7 +146,7 @@ export function alignByRules(files: string[], official: OfficialEpisode[]): Rule
 	const remainingSpecial = official.filter((episode) => episode.kind === 'special');
 	for (const fileName of leftover) {
 		const number = parseEpisodeNumber(fileName);
-		const matched = number === undefined ? undefined : remainingSpecial.find((episode) => episode.sort === number);
+		const matched = isUndefined(number) ? void 0 : remainingSpecial.find((episode) => episode.sort === number);
 		if (matched) {
 			assignments.set(fileName, matched);
 			remainingSpecial.splice(remainingSpecial.indexOf(matched), 1);

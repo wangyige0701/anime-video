@@ -69,7 +69,7 @@ watch(
 			video.value.pause();
 		}
 		if (!path) {
-			pendingCurrentTime = undefined;
+			pendingCurrentTime = void 0;
 			activeHlsSourceVersion = 0;
 			activeHlsSourceUrl = '';
 			hls?.stopLoad();
@@ -204,13 +204,13 @@ async function shot() {
 }
 
 function applyPendingCurrentTime() {
-	if (pendingCurrentTime === undefined || !video.value) {
+	if (isUndefined(pendingCurrentTime) || !video.value) {
 		return;
 	}
 	const duration = video.value.duration;
 	const maxTime = Number.isFinite(duration) ? duration : pendingCurrentTime;
 	video.value.currentTime = Math.min(pendingCurrentTime, maxTime);
-	pendingCurrentTime = undefined;
+	pendingCurrentTime = void 0;
 }
 
 function normalizeCurrentTime(time: number) {

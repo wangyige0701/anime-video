@@ -50,6 +50,8 @@
 </template>
 
 <script setup lang="ts">
+import { isUndefined } from '@wang-yige/utils';
+
 const props = withDefaults(
 	defineProps<{
 		rate: number;
@@ -67,23 +69,23 @@ let animationTimeout: ReturnType<typeof setTimeout> | undefined;
 const rateLabel = computed(() => `${Number.isInteger(props.rate) ? props.rate : props.rate.toFixed(1)}x`);
 
 function trigger() {
-	if (animationFrame !== undefined) {
+	if (!isUndefined(animationFrame)) {
 		cancelAnimationFrame(animationFrame);
 	}
 	clearTimeout(animationTimeout);
 	active.value = false;
 	animationFrame = requestAnimationFrame(() => {
 		active.value = true;
-		animationFrame = undefined;
+		animationFrame = void 0;
 		animationTimeout = setTimeout(() => {
 			active.value = false;
-			animationTimeout = undefined;
+			animationTimeout = void 0;
 		}, duration);
 	});
 }
 
 onBeforeUnmount(() => {
-	if (animationFrame !== undefined) {
+	if (!isUndefined(animationFrame)) {
 		cancelAnimationFrame(animationFrame);
 	}
 	clearTimeout(animationTimeout);

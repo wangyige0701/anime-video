@@ -141,7 +141,8 @@ export interface ApplyResult {
 export async function readLocalSeasons(group: Series[]): Promise<LocalSeasonInput[]> {
 	const result: LocalSeasonInput[] = [];
 	for (const [index, series] of group.entries()) {
-		const prefix = index === 0 ? '' : series.title;
+		// 数据层的字段 getter 都是 Promise，漏 await 会拼出 `[object Promise]`
+		const prefix = index === 0 ? '' : await series.title;
 		for (const season of await series.seasons) {
 			const episodes = await season.episodes;
 			const seasonName = season.getSeasonName();

@@ -33,7 +33,8 @@ function fakeSeason(id: string, name: string, episodeIds: string[]) {
 
 function fakeSeries(title: string, seasons: ReturnType<typeof fakeSeason>[]) {
 	return {
-		title,
+		// 真实 Series 的字段 getter 都是 Promise，假对象保持同样形状才能抓到漏 await
+		title: Promise.resolve(title),
 		seasons,
 		updateTitle: vi.fn(async () => {}),
 		updateDescription: vi.fn(async () => {}),

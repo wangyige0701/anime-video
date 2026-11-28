@@ -18,6 +18,8 @@ export interface MergeableSeries {
 	images: string[];
 	/** 主系列持有的成员 id；缺省视为空数组，兼容尚未升级的调用方 */
 	mergedIds?: string[];
+	/** 合并组图片的显式顺序（绝对路径）；缺省视为空数组，即默认顺序 */
+	mergedImageOrder?: string[];
 }
 
 /** 叠层最多显示的层数；超出部分只在角标里体现数字，不限制实际合并数量 */
@@ -70,17 +72,28 @@ export function getGroupMembers<T extends MergeableSeries>(main: T, byId: Map<st
 }
 
 /**
- * 计算卡片背后的叠层：每层显示一个成员系列的首图。
+ * 列表页卡片的封面与叠层首图。
  *
- * @returns `images` 为最多 `limit` 张首图（由近到远），`overflow` 为未显示的成员数量
+ * 必须和详情页用同一套顺序：卡片封面是**整个合并组**在最终顺序里的第一张，
+ * 它可能属于任何一个成员；叠层每一层是该系列在最终顺序里的首图。若只取各自的
+ * `images[0]`，用户把成员图片拖到最前面后，详情页换了首图而列表页不动。
+ *
+ * 没有合并（`members` 为空）时结果等价于「取自己的第一张」，因此调用方不必分支。
+ *
+ * @returns `cover` 为整组首图，`covers` 为成员 id → 该系列在最终顺序里的首图（无图为空串）
  */
-export function getMergeStack(members: MergeableSeries[], limit = MERGE_STACK_LIMIT) {
-	const safeLimit = Math.max(0, Math.floor(limit));
-	const shown = members.slice(0, safeLimit);
-	return {
-		images: shown.map((member) => member.images[0] ?? ''),
-		overflow: Math.max(0, members.length - shown.length),
-	};
+export function getMergeCovers(main: MergeableSeries, members: MergeableSeries[]) {
+	const ordered = orderMergedImages(
+		main.images,
+		members.flatMap((member) => member.images),
+		main.mergedImageOrder ?? [],
+	);
+	const covers: Record<string, string> = {};
+	for (const member of members) {
+		const own = new Set(member.images);
+		covers[member.id] = ordered.find((image) => own.has(image)) ?? '';
+	}
+	return { cover: ordered[0] ?? '', covers };
 }
 
 /**

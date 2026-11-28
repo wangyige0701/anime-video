@@ -4,7 +4,7 @@ import {
 	excludeMergedMembers,
 	getGroupMembers,
 	getMergeRejection,
-	getMergeStack,
+	getMergeCovers,
 	orderMergedImages,
 	orderMergedSeasons,
 	type MergeableSeries,
@@ -67,24 +67,41 @@ describe('getGroupMembers', () => {
 	});
 });
 
-describe('getMergeStack', () => {
-	it('最多返回三层首图，其余计入溢出数量', () => {
-		const members = [series('b', [], ['b.png']), series('c', [], ['c.png']), series('d', [], ['d.png'])];
-		const stack = getMergeStack([...members, series('e', [], ['e.png'])]);
-		expect(stack.images).toEqual(['b.png', 'c.png', 'd.png']);
-		expect(stack.overflow).toBe(1);
+describe('getMergeCovers', () => {
+	/** 卡片封面与叠层必须跟着合并组的最终顺序走，而不是各系列自己的 `images[0]` */
+	const main = { id: 'a', title: 'A', images: ['a1.png', 'a2.png'], mergedIds: ['b', 'c'] };
+	const members = [
+		{ id: 'b', title: 'B', images: ['b1.png', 'b2.png'] },
+		{ id: 'c', title: 'C', images: ['c1.png'] },
+	];
+
+	it('没有显式顺序时封面取主系列首图，成员各取自己的首图', () => {
+		const result = getMergeCovers(main, members);
+		expect(result.cover).toBe('a1.png');
+		expect(result.covers).toEqual({ b: 'b1.png', c: 'c1.png' });
 	});
 
-	it('没有首图的成员用空串占位', () => {
-		const stack = getMergeStack([series('b')]);
-		expect(stack.images).toEqual(['']);
-		expect(stack.overflow).toBe(0);
+	it('成员图片排到最前时，封面与该成员的叠层首图一起换掉', () => {
+		const result = getMergeCovers({ ...main, mergedImageOrder: ['b2.png', 'a1.png'] }, members);
+		expect(result.cover).toBe('b2.png');
+		expect(result.covers).toEqual({ b: 'b2.png', c: 'c1.png' });
 	});
 
-	it('允许调用方覆盖层数上限', () => {
-		const stack = getMergeStack([series('b', [], ['b.png']), series('c', [], ['c.png'])], 1);
-		expect(stack.images).toEqual(['b.png']);
-		expect(stack.overflow).toBe(1);
+	it('显式顺序里的失效路径被跳过，未覆盖的图按默认顺序续在末尾', () => {
+		const result = getMergeCovers({ ...main, mergedImageOrder: ['gone.png', 'c1.png'] }, members);
+		expect(result.cover).toBe('c1.png');
+		expect(result.covers).toEqual({ b: 'b1.png', c: 'c1.png' });
+	});
+
+	it('成员没有图片时该层为空串，封面仍取有图的系列', () => {
+		const result = getMergeCovers(main, [{ id: 'd', title: 'D', images: [] }]);
+		expect(result.covers.d).toBe('');
+		expect(result.cover).toBe('a1.png');
+	});
+
+	it('没有合并时退化为自己的首图，完全没有图片时为空串', () => {
+		expect(getMergeCovers(main, [])).toEqual({ cover: 'a1.png', covers: {} });
+		expect(getMergeCovers({ id: 'x', title: 'X', images: [] }, [])).toEqual({ cover: '', covers: {} });
 	});
 });
 

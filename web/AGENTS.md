@@ -142,7 +142,8 @@
 合并把同一作品散落的多个系列聚合成一个入口：拖动一张卡片压到另一张上松手，后者成为**主系列**，前者从列表消失并作为叠层首图留在主系列卡片背后；主系列的详情页会把自己的季与被合并系列的季拼接展示。**不搬迁文件、不搬迁季**，`mergedIds` 只影响展示。
 
 - 合并关系只有一个数据源：主系列的 `mergedIds`（有序数组），成员不保存反向引用。数组顺序既是叠层顺序也是详情页季分组顺序，属于语义数据。
-- 可测规则集中在 `utils/seriesMerge.ts`（纯函数）：`buildMergeOwnerIndex()`、`excludeMergedMembers()`、`getGroupMembers()`、`getMergeStack()`、`getMergeRejection()`；用例在 `test/web/series-merge.test.ts`。
+- 可测规则集中在 `utils/seriesMerge.ts`（纯函数）：`buildMergeOwnerIndex()`、`excludeMergedMembers()`、`getGroupMembers()`、`getMergeCovers()`、`getMergeRejection()`；用例在 `test/web/series-merge.test.ts`。
+- **卡片封面与叠层都按合并组的最终图片顺序取**：`getMergeCovers()` 先拼「主系列 + 成员」再应用 `mergedImageOrder`，`cover` 是整组第一张（可能属于成员），`covers` 是每个成员在该顺序里的首图。不能退回 `series.images[0]`：用户把成员图片拖到最前后，详情页换了首图而列表页不动。拖拽浮层的海报用同一个值（`coverOf()`）。
 - `IndexList.vue` 必须同时持有**全量** `allSeries` 与列表用的 `querySeries` 结果：成员被排除出列表后，叠层仍需要它的标题与首图。
 - 拖拽实现在 `components/index/useSeriesDrag.ts`，四阶段 `idle / drag / drop / return`，只做「卡片 → 卡片」的搬运，不接通用拖拽库（其占位与镜像机制会和翻转、飞入、边缘滚动冲突）。
 - 卡片海报是原生 `<img>`，按下后移动会先触发浏览器图片拖拽并吞掉后续 `pointermove`；CSS `-webkit-user-drag: none` 与捕获阶段拦截 `dragstart` 两道都要保留。

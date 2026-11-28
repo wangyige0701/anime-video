@@ -51,7 +51,7 @@ import { refreshEmitter } from '@/events/refresh';
 import { useIndexFilterStore } from '@/stores/indexFilter';
 import { useVideoStore } from '@/stores/video';
 import { buildIndexPage, groupSeriesByMonth } from '@/utils/seriesQuery';
-import { buildMergeOwnerIndex, getGroupMembers } from '@/utils/seriesMerge';
+import { buildMergeOwnerIndex, getGroupMembers, getMergeCovers } from '@/utils/seriesMerge';
 import { getSeriesCoverUrl } from '@/utils/series';
 import { useSeriesDrag } from './useSeriesDrag';
 
@@ -180,6 +180,17 @@ function membersOf(series: Series) {
 }
 
 /**
+ * 卡片实际显示的封面图。
+ *
+ * 合并组取整组最终顺序的第一张（可能属于成员系列），拖拽浮层必须用同一张，
+ * 否则浮层与卡片会显示两张不同的海报。
+ */
+function coverOf(series: Series) {
+	const { cover } = getMergeCovers(series, membersOf(series));
+	return cover ? getSeriesCoverUrl({ images: [cover] }) : '';
+}
+
+/**
  * 卡片上按下指针：只有落在卡片主体时才准备拖拽。
  *
  * 角标与成员面板标记了 `data-no-drag`，按下时直接放行，避免点「脱离」被当成拖拽起点。
@@ -198,7 +209,7 @@ function onPointerDown(event: PointerEvent) {
 	if (!series) {
 		return;
 	}
-	beginDrag(event, card, { id, title: series.title, imageUrl: getSeriesCoverUrl(series) });
+	beginDrag(event, card, { id, title: series.title, imageUrl: coverOf(series) });
 }
 
 /**

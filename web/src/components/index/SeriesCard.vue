@@ -80,7 +80,7 @@
 <script setup lang="ts">
 import type { Series } from '@/data/series';
 import { Files } from '@element-plus/icons-vue';
-import { getMergeStack } from '@/utils/seriesMerge';
+import { getMergeCovers, MERGE_STACK_LIMIT } from '@/utils/seriesMerge';
 import { getSeriesCoverUrl } from '@/utils/series';
 import { WebRoute } from '~shared/web-route-config';
 
@@ -123,7 +123,16 @@ const emit = defineEmits<{
 	(e: 'detach', memberId: string): void;
 }>();
 
-const cover = computed(() => getSeriesCoverUrl(props.series));
+/**
+ * 卡片封面与叠层首图。
+ *
+ * 都按合并组的**最终图片顺序**取，而不是各自的 `images[0]`：用户在详情页把成员图片
+ * 拖到最前面时，首图可能来自成员系列，卡片必须跟着换。
+ */
+const mergeCovers = computed(() => getMergeCovers(props.series, props.members));
+
+/** 封面取整组顺序的第一张；没有合并时等价于自己的第一张 */
+const cover = computed(() => coverUrl(mergeCovers.value.cover));
 
 /**
  * 成员面板是否打开。
@@ -134,13 +143,17 @@ const cover = computed(() => getSeriesCoverUrl(props.series));
  */
 const panelVisible = ref(false);
 
-/** 叠层把图片路径转成可直接渲染的地址，没有首图的成员保留空串占位 */
-const stackImages = computed(() => {
-	return getMergeStack(props.members).images.map((image) => (image ? getSeriesCoverUrl({ images: [image] }) : ''));
-});
+/** 叠层每层是该系列在最终顺序里的首图，最多三层；无图的成员保留空串占位 */
+const stackImages = computed(() =>
+	props.members.slice(0, MERGE_STACK_LIMIT).map((member) => coverUrl(mergeCovers.value.covers[member.id])),
+);
+
+function coverUrl(image: string | undefined) {
+	return image ? getSeriesCoverUrl({ images: [image] }) : '';
+}
 
 function coverOf(member: Series) {
-	return getSeriesCoverUrl(member);
+	return coverUrl(mergeCovers.value.covers[member.id]);
 }
 
 /**

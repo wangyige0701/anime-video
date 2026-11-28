@@ -4,15 +4,16 @@ import '@/assets/main.scss';
 import '@/assets/elements.scss';
 
 import { createApp } from 'vue';
-import { createPinia } from 'pinia';
 
 import App from './App.vue';
 import router from './router';
+import { pinia } from './stores/pinia';
 import { usePlayerStore } from './stores/player';
 
 const app = createApp(App);
 
-app.use(createPinia());
+// Pinia 实例单独导出：`openDialog()` 为对话框新建独立应用时要复用同一份状态
+app.use(pinia);
 app.use(router);
 
 app.mount('#app');

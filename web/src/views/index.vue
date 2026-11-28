@@ -10,6 +10,17 @@
 </template>
 
 <script setup lang="ts">
+import { WebRoute } from '~shared/web-route-config';
+
+/**
+ * 组件名必须与 `App.vue` 里 `<keep-alive :include="[WebRoute.INDEX]">` 一致。
+ *
+ * `<script setup>` 不做声明时用的是文件名推断出的 `index`，与 `Index` 只差大小写，
+ * `include` 是严格比较，于是首页根本没被缓存：从详情页后退时列表重建、分页回到第一页，
+ * 已加载的页数与滚动位置一起丢掉。
+ */
+defineOptions({ name: WebRoute.INDEX });
+
 definePage({
 	name: 'Index',
 	meta: {

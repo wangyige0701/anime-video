@@ -71,10 +71,14 @@ export interface PreviewEpisode {
 	/** 官方播出序号，仅用于核对 */
 	officialSort: number | null;
 	kind: 'main' | 'special' | 'unmatched';
-	/** 写入的标题；未匹配时为文件名去扩展名 */
+	/** 写入的标题；未匹配时为文件名去扩展名；合并集为 AI 合并后的标题 */
 	title: string;
-	/** 官方标题，未匹配时为空 */
+	/** 官方标题，未匹配时为空；合并集为各集标题的拼接 */
 	officialTitle: string;
+	/** 合并集覆盖的集数，0 表示普通文件 */
+	coveredCount: number;
+	/** 合并集覆盖的各集标题，按播出顺序；普通文件为空数组 */
+	coveredTitles: string[];
 }
 
 export interface PreviewSeason {
@@ -229,43 +233,49 @@ export function summarizeSeason(season: LocalSeasonInput, alias: string): LocalS
 /**
  * 生成单季预览。
  *
- * 先跑规则；规则无法解决且有 AI 结果时用 AI 的结论，但**顺序仍然取自本地文件名**。
+ * 顺序始终取自本地文件名。规则能给出唯一归属且文件数与官方集数一致时用规则结果；
+ * 否则用 AI 的对应关系——合并集只可能来自 AI，由模型判断哪几个文件装了几集。
  * 未匹配的文件保留在列表末尾并带原文件名标题，不会被静默丢弃。
  */
 export function buildSeasonPreview(
 	season: LocalSeasonInput,
 	official: OfficialEpisode[],
 	aiAlign?: Map<string, OfficialEpisode | null>,
+	aiMerged?: Map<string, OfficialEpisode[]>,
+	aiTitles?: Map<string, string>,
 ): PreviewSeason {
 	const byFileName = new Map(season.episodes.map((episode) => [episode.fileName, episode.id]));
 	const files = season.episodes.map((episode) => episode.fileName);
 	const ordered = orderLocalFiles(files);
 	const ruled = alignByRules(ordered, official);
+	// 模型可能整季都判无对应，这种结果没有信息量，退回规则结果
+	const aiApplied = Boolean(aiAlign && [...aiAlign.values()].some(Boolean));
+	const mergedMap = aiApplied ? aiMerged : undefined;
+	const titlesMap = aiApplied ? aiTitles : undefined;
 
 	let assignments = ruled.assignments;
 	let alignment: PreviewSeason['alignment'] = 'rule';
 	const notes = [...ruled.notes];
 	const warnings: string[] = [];
 
-	if (!ruled.resolved) {
-		if (aiAlign && aiAlign.size) {
-			assignments = new Map();
-			for (const [fileName, episode] of aiAlign) {
-				if (episode) {
-					assignments.set(fileName, episode);
-				}
+	if (aiApplied) {
+		assignments = new Map();
+		for (const [fileName, episode] of aiAlign!) {
+			if (episode) {
+				assignments.set(fileName, episode);
 			}
-			alignment = 'ai';
-			notes.push(`规则无法对齐：${ruled.reason}`);
-		} else {
-			notes.push(`规则无法对齐：${ruled.reason}；请手动确认`);
-			alignment = 'partial';
 		}
+		alignment = 'ai';
+		notes.push(ruled.resolved ? '本地文件数与官方集数不一致，对应关系由 AI 确认' : `规则无法对齐：${ruled.reason}`);
+	} else if (!ruled.resolved) {
+		notes.push(`规则无法对齐：${ruled.reason}；请手动确认`);
+		alignment = 'partial';
 	}
 
 	const episodes: PreviewEpisode[] = ordered.map((fileName, index) => {
 		const episode = assignments.get(fileName);
 		const episodeId = byFileName.get(fileName);
+		const coveredTitles = (mergedMap?.get(fileName) ?? []).map((item) => item.title);
 		if (!episodeId) {
 			// 数据层的集列表与文件列表不一致属于内部错误，宁可中止也不写出错位的排序
 			throw new ApiError(Status.InternalServerError, `文件 ${fileName} 没有对应的集记录，请先刷新系列`);
@@ -279,16 +289,23 @@ export function buildSeasonPreview(
 				kind: 'unmatched',
 				title: fileName.replace(/\.[^.]+$/, ''),
 				officialTitle: '',
+				coveredCount: 0,
+				coveredTitles: [],
 			};
 		}
+		const merged = coveredTitles.length > 1;
+		const fallback = episode.title || fileName.replace(/\.[^.]+$/, '');
 		return {
 			episodeId,
 			fileName,
 			position: index + 1,
 			officialSort: episode.sort,
 			kind: episode.kind,
-			title: episode.title || fileName.replace(/\.[^.]+$/, ''),
-			officialTitle: episode.title,
+			// 合并标题由模型给出；没给时用首集标题，留给人工在预览里确认
+			title: merged ? (titlesMap?.get(fileName) ?? fallback) : fallback,
+			officialTitle: merged ? coveredTitles.join(' / ') : episode.title,
+			coveredCount: merged ? coveredTitles.length : 0,
+			coveredTitles: merged ? coveredTitles : [],
 		};
 	});
 
@@ -488,24 +505,31 @@ export async function runPreview(mapping: SeasonMappingInput[], seasons: LocalSe
 		const orderedIds = orderSubjects(item.subjectIds, details);
 		const official = collectOfficialEpisodes(buildOfficial(orderedIds, episodes));
 		let aiAlign: Map<string, OfficialEpisode | null> | undefined;
+		let aiMerged: Map<string, OfficialEpisode[]> | undefined;
+		let aiTitles: Map<string, string> | undefined;
 
 		// 规则优先：能形成唯一归属就不调模型
 		const ruled = alignByRules(
 			season.episodes.map((episode) => episode.fileName),
 			official,
 		);
-		if (!ruled.resolved) {
+		// 合并集会减少文件数，所以只有「文件数少于官方集数」时才需要模型判断哪几个文件装了几集；
+		// 其余情况规则已给出唯一归属，不额外花一次请求
+		const mainCount = official.filter((episode) => episode.kind === 'main').length;
+		if (!ruled.resolved || season.episodes.length < mainCount) {
 			const files = orderLocalFiles(season.episodes.map((episode) => episode.fileName));
 			const { content } = await chatJson(buildAlignMessages(season.path, files, official, parseEpisodeNumber));
 			const parsed = parseAlignResult(extractJsonObject(content), files, official);
 			aiAlign = parsed.map;
+			aiMerged = parsed.merged;
+			aiTitles = parsed.titles;
 			warnings.push(...parsed.warnings.map((warning) => `${season.path}：${warning}`));
 			if (parsed.reason) {
 				warnings.push(`${season.path}：AI 备注 ${parsed.reason}`);
 			}
 		}
 
-		const preview = buildSeasonPreview(season, official, aiAlign);
+		const preview = buildSeasonPreview(season, official, aiAlign, aiMerged, aiTitles);
 		preview.title = normalizeSeasonTitle(
 			orderedIds.map((id) => details.get(id)?.name_cn || details.get(id)?.name || ''),
 		);

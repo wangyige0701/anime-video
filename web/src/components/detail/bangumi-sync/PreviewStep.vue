@@ -113,6 +113,13 @@
 					<div class="ep-body">
 						<div class="ep-line">
 							<span class="ep-title" :title="episode.title">{{ episode.title }}</span>
+							<span
+								v-if="episode.coveredCount > 1"
+								class="chip chip--merge"
+								:title="episode.coveredTitles.join('\n')"
+							>
+								合并 {{ episode.coveredCount }} 集
+							</span>
 							<span v-if="episode.kind !== 'main'" class="chip chip--muted">
 								{{ episode.kind === 'special' ? '特别篇' : '未匹配' }}
 							</span>
@@ -281,6 +288,17 @@ function onEpisodeChange(index: number, episodeId: string, value: CheckboxValueT
 
 .chip--muted {
 	color: map.get(token.$theme, 'l-6');
+	background-color: map.get(token.$theme, 'd-3');
+}
+
+/**
+ * 合并集标签。
+ *
+ * 只提示「这个文件是几集压成一集」，覆盖了哪几集放在 title 里；
+ * 标题本身已经是 AI 合并后的结果，不再重复展开。
+ */
+.chip--merge {
+	color: map.get(token.$theme, 'primary');
 	background-color: map.get(token.$theme, 'd-3');
 }
 

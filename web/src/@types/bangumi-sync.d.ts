@@ -45,6 +45,10 @@ export interface BangumiPreviewEpisode {
 	kind: 'main' | 'special' | 'unmatched';
 	title: string;
 	officialTitle: string;
+	/** 合并集覆盖的集数，0 表示普通文件 */
+	coveredCount: number;
+	/** 合并集覆盖的各集标题，按播出顺序；普通文件为空数组 */
+	coveredTitles: string[];
 }
 
 export interface BangumiPreviewSeason {

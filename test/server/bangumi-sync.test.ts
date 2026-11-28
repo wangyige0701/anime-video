@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	buildKeywords,
 	buildSeasonPreview,
 	deriveStatus,
 	normalizeCandidates,
@@ -218,5 +219,20 @@ describe('排序数组校验', () => {
 			ok: false,
 			message: expect.stringContaining('不属于'),
 		});
+	});
+});
+
+describe('buildKeywords', () => {
+	it('标题与目录名都参与，去重后保序', () => {
+		expect(buildKeywords('碧蓝航线', '碧蓝航线', [])).toEqual(['碧蓝航线']);
+		expect(buildKeywords('目录名', '标题', [])).toEqual(['标题', '目录名']);
+	});
+
+	it('带上被合并系列的名字：只看主系列会漏掉续作的条目', () => {
+		expect(buildKeywords('微速前进', '微速前进', ['微速前行！'])).toEqual(['微速前进', '微速前行！']);
+	});
+
+	it('空值与重复项不会产生多余关键词', () => {
+		expect(buildKeywords('', '  ', ['', '标题'])).toEqual(['标题']);
 	});
 });

@@ -58,6 +58,8 @@ function emptySelection(): BangumiSelection {
  */
 export function useBangumiSync(props: BangumiSyncInput) {
 	const status = useVueStatusRef('matching', 'previewing', 'applying');
+	/** 是否已手动开始：打开面板只是说明，检索要用户再确认一次 */
+	const started = ref(false);
 	/** 0 = 匹配季与条目，1 = 确认变更 */
 	const step = ref(0);
 	const match = ref<BangumiMatchResult | null>(null);
@@ -77,6 +79,7 @@ export function useBangumiSync(props: BangumiSyncInput) {
 	const summaryText = computed(() => describeSelectionSummary(summary.value));
 	const footer = computed(() =>
 		describeSyncFooter({
+			started: started.value,
 			step: step.value,
 			matching: status.matching,
 			previewing: status.previewing,
@@ -172,6 +175,20 @@ export function useBangumiSync(props: BangumiSyncInput) {
 				.filter(Boolean)
 				.join(' / ') || '未设置'
 		);
+	}
+
+	/**
+	 * 用户确认后开始检索。
+	 *
+	 * 打开对话框不自动调接口：`match` 会请求 Bangumi、还可能调用模型，
+	 * 让用户先看清「要检索哪些季」再决定，比点开就发请求更可控。
+	 */
+	async function start() {
+		if (started.value) {
+			return;
+		}
+		started.value = true;
+		await loadMatch();
 	}
 
 	async function loadMatch() {
@@ -287,6 +304,7 @@ export function useBangumiSync(props: BangumiSyncInput) {
 
 	return {
 		status,
+		started,
 		step,
 		busy,
 		seasons,
@@ -301,6 +319,7 @@ export function useBangumiSync(props: BangumiSyncInput) {
 		summaryText,
 		mappedCount,
 		footer,
+		start,
 		loadMatch,
 		setSubjectIds,
 		toMatchStep,

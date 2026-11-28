@@ -172,7 +172,9 @@
 
 `components/detail/BangumiSync.vue` 只是详情页标题行右侧的入口（打开对话框 + 处理结果），对话框内容拆在 `components/detail/bangumi-sync/`：`SyncDialog.vue`（步骤条、两步面板与页脚）、`MatchStep.vue`、`PreviewStep.vue`，流程与派生状态在 `useBangumiSync.ts`。对接服务端 `POST /data/series/:id/bangumi/{match,preview,apply}` 三段接口，接口与推断规则见 `docs/modules/server/bangumi-sync.md`，面板自身的流程、差异规则与布局约束见 `docs/modules/web/bangumi-sync.md`，变更记录见 `docs/changes/web/2026-11-27-bangumi-sync-ui.md`。
 
+- **打开对话框不检索**：面板先显示说明（这次会检索哪些季、含哪些合并系列），点「开始同步」才发 `match`。`match` 会请求 Bangumi 并可能调用模型，点开就发不可接受；`describeSyncFooter()` 的 `started: false` 分支只给「取消 / 开始同步」。
 - 对话框分两步：第一步确认「本地季 → Bangumi 条目」的对应（AI 已给出建议，可改可清空），第二步逐项确认要写入的系列字段、季标题、集标题与整体重排。`apply` 只在第二步点确认后调用一次。
+- **同步范围是合并组**：服务端按 `mergedIds` 把成员的季一起纳入 `match` / `preview`，`apply` 按 `seasonId` 跨系列写回；前端快照用 `buildCurrentSnapshot(series, 成员季)` 装配，漏掉成员季会让它们永远判成「有变化」。成员季的 `path` 由服务端加上「系列名 / 季目录名」前缀，界面上才分得清两个同名的「正片」。
 - **前端不做任何推断**：不解析文件名、不猜集号、不重排。预览里的顺序由服务端给出，前端只按预览顺序把集 id 拼成 `order`。
 - 可测逻辑集中在 `utils/bangumiSync.ts`（纯函数）：`orderSeasonsBySuggestion()` 稳定排序、`buildSeasonMapping()` 去重并生成 preview 入参、`diffPreview()` 逐项对比、`createSelection()` 默认勾选、`buildApplyInput()` 生成 apply 入参、`summarizeSelection()` 统计写入数量、`buildCurrentSnapshot()` 生成对比快照、`describeSelectionSummary()` 页脚汇总文案、`describeSyncFooter()` 两步各自的按钮状态。组件只把状态接到这些函数上，用例在 `test/web/bangumi-sync.test.ts`。
 - 默认勾选只包含「一定能写且确实有变化」的内容：空标题、空描述、无日期、无状态、无类型的字段都不勾；`diffPreview()` 判定与当前完全一致的项同样不勾并禁用勾选框，同时显示「与当前一致」。**预览缺字段不算「一致」**，否则「没解析出来」会被当成「已经同步过」。

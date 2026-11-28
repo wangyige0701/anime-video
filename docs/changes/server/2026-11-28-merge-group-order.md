@@ -43,7 +43,8 @@
 2. 校验入参：任一 id 不属于该组或重复出现 → 整次 `ApiError` 拒绝，不落半截数据；
 3. `applyExplicitOrder()`（`shared/series-order.ts`）合成最终顺序，写入 `mergedSeasonOrder`；
 4. **每个系列按自己在全局顺序中的子序重编号 `1..n` 并原地重排季数组**。这一步是「脱离合并不影响单系列顺序」的唯一保证：合并期间看到的子序就是脱离后该系列自己的顺序，刷新后也一样；
-5. 队列化：与单系列排序共用 `seasonSortQueue`，两种写入口串行，避免互相覆盖 `sort`。
+5. 队列化：与单系列排序共用 `seasonSortQueue`，两种写入口串行，避免互相覆盖 `sort`；
+6. 落盘：合并组成员可能属于不同的根目录（各自的 `DATA_FILE`），因此等待全部成员的 `waitDataSave()` 后才返回。
 
 `Series.updateMergedImageOrder()` 结构相同，差别是键为绝对路径（比较前 `path.resolve()` 归一），不属于合并组或已被删除的路径直接跳过——界面传来的是可能早于外部删文件的旧快照，为此整次失败不值得。
 

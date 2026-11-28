@@ -748,6 +748,8 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 				own.map((image, index) => ({ path: path.basename(image), sort: index + 1 })),
 			);
 		}
+		// 成员可能在别的根目录下，各自的 DATA_FILE 必须全部落盘后才算成功
+		await Promise.all(group.map((series) => series.waitDataSave()));
 		return order;
 	}
 
@@ -814,6 +816,9 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 			const seasons = await series.seasons;
 			seasons.splice(0, seasons.length, ...own);
 		}
+		// 各系列可能属于不同的根目录（各自的 DATA_FILE），必须等全部落盘再返回，
+		// 否则接口已返回成功、成员的顺序却还停在内存里。
+		await Promise.all(group.map((series) => series.waitDataSave()));
 		return order;
 	}
 

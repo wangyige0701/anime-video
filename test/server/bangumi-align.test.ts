@@ -117,9 +117,17 @@ describe('文件名集号解析', () => {
 		expect(parseEpisodeNumber('特别篇.mp4')).toBeUndefined();
 	});
 
-	it('特别篇标记只在解析不出集号时才作为兜底依据', () => {
+	it('四位数集号（长篇连载）', () => {
+		expect(parseEpisodeNumber('[Lilith-Raws] One Piece - 1085 [Baha][WEB-DL][1080p][AVC AAC].mp4')).toBe(1085);
+		expect(parseEpisodeNumber('[Group] Anime Title [1085][1080p].mkv')).toBe(1085);
+		// 分辨率不能被当成四位数集号
+		expect(parseEpisodeNumber('[Group] Anime Title [1080p][CHS].mkv')).toBeUndefined();
+	});
+
+	it('特别篇标记识别', () => {
 		expect(hasSpecialMarker('SP1.mp4')).toBe(true);
 		expect(hasSpecialMarker('00-特别篇.mp4')).toBe(true);
+		expect(hasSpecialMarker('[Group] Anime Title - OVA [1080p].mp4')).toBe(true);
 		expect(hasSpecialMarker('01.mp4')).toBe(false);
 	});
 });
@@ -177,25 +185,26 @@ describe('官方剧集归一化', () => {
 	});
 });
 
-describe('规则对齐', () => {
-	it('01..23 对正片，24.mp4 对附加特别篇', () => {
-		const files = [...Array.from({ length: 23 }, (_, index) => `${pad(index + 1)}.mp4`), '24.mp4'];
-		const result = alignByRules(files, seasonOne());
-		expect(result.resolved).toBe(true);
-		expect(result.assignments.get('01.mp4')!.sort).toBe(1);
-		expect(result.assignments.get('24.mp4')!.kind).toBe('special');
-		expect(result.assignments.get('24.mp4')!.title).toBe('艾莉丝的哥布林讨伐');
-	});
-
-	it('00-特别篇 归属第 0 话正片', () => {
-		const files = ['00-特别篇.mp4', ...Array.from({ length: 24 }, (_, index) => `${pad(index + 1)}.mp4`)];
+describe('规则对齐（只在可确证时下结论）', () => {
+	it('正片集号齐全时直接确证，第 0 话也算正片', () => {
+		const files = Array.from({ length: 25 }, (_, index) => `${pad(index)}.mp4`);
 		const result = alignByRules(files, seasonTwo());
 		expect(result.resolved).toBe(true);
-		const zero = result.assignments.get('00-特别篇.mp4')!;
-		expect(zero.kind).toBe('main');
-		expect(zero.sort).toBe(0);
-		expect(zero.title).toBe('守护术师菲兹');
-		expect(result.assignments.get('24.mp4')!.sort).toBe(24);
+		expect(result.assignments.get('00.mp4')!.sort).toBe(0);
+		expect(result.assignments.get('00.mp4')!.kind).toBe('main');
+		expect(result.assignments.get('00.mp4')!.title).toBe('守护术师菲兹');
+		expect(result.missing).toHaveLength(0);
+	});
+
+	it('发布组原名按解析出的集号确证，缺集不影响映射', () => {
+		const files = [
+			'[Lilith-Raws] Tensei shitara Slime Datta Ken - 01 [Baha][WEB-DL][1080p][AVC AAC][CHT][MP4].mp4',
+			'[Lilith-Raws] Tensei shitara Slime Datta Ken - 02 [Baha][WEB-DL][1080p][AVC AAC][CHT][MP4].mp4',
+		];
+		const result = alignByRules(files, seasonOne());
+		expect(result.resolved).toBe(true);
+		expect(result.assignments.get(files[0]!)!.sort).toBe(1);
+		expect(result.missing).toHaveLength(21);
 	});
 
 	it('本地缺集时保留后续文件的真实集号，不按位置顺延', () => {
@@ -208,31 +217,49 @@ describe('规则对齐', () => {
 		expect(missingSorts).toHaveLength(20);
 	});
 
-	it('本地集号在官方不存在时规则无法解决', () => {
-		const result = alignByRules(['01.mp4', '25.mp4'], seasonOne());
+	it('文件名带特别篇标记时不下结论，即使集号能对上官方特别篇', () => {
+		const files = [...Array.from({ length: 23 }, (_, index) => `${pad(index + 1)}.mp4`), 'SP-哥布林讨伐.mp4'];
+		const result = alignByRules(files, seasonOne());
 		expect(result.resolved).toBe(false);
-		expect(result.reason).toContain('25.mp4');
+		expect(result.reason).toContain('特别篇标记');
+		expect(result.reason).toContain('SP-哥布林讨伐.mp4');
 	});
 
-	it('集号重复时规则无法解决', () => {
+	it('00-特别篇 不再直接断言为第 0 话', () => {
+		const files = ['00-特别篇.mp4', ...Array.from({ length: 24 }, (_, index) => `${pad(index + 1)}.mp4`)];
+		const result = alignByRules(files, seasonTwo());
+		expect(result.resolved).toBe(false);
+		expect(result.reason).toContain('00-特别篇.mp4');
+	});
+
+	it('集号在官方正片里不存在时不下结论（可能是特别篇或合并集）', () => {
+		const result = alignByRules(['01.mp4', '24.mp4'], seasonOne());
+		expect(result.resolved).toBe(false);
+		expect(result.reason).toContain('24.mp4(24)');
+	});
+
+	it('有文件解析不出集号时整季交给模型', () => {
+		const result = alignByRules(
+			['01.mp4', '[Moozzi2] Kimi no Na wa [Movie][BDRip 1920x1080 x265].mkv'],
+			seasonOne(),
+		);
+		expect(result.resolved).toBe(false);
+		expect(result.reason).toContain('无法从文件名解析集号');
+	});
+
+	it('集号重复时不下结论', () => {
 		const result = alignByRules(['01.mp4', '01 - 副本.mp4'], seasonOne());
 		expect(result.resolved).toBe(false);
 		expect(result.reason).toContain('重复');
 	});
 
-	it('无集号但带特别篇标记且只剩一个 SP 时归属该 SP', () => {
-		const files = [...Array.from({ length: 23 }, (_, index) => `${pad(index + 1)}.mp4`), 'SP-哥布林讨伐.mp4'];
-		const result = alignByRules(files, seasonOne());
-		expect(result.resolved).toBe(true);
-		expect(result.assignments.get('SP-哥布林讨伐.mp4')!.kind).toBe('special');
-	});
-
-	it('本地缺 SP 时只提示，不影响正片对齐', () => {
+	it('官方特别篇不参与规则匹配，只提示数量', () => {
 		const files = Array.from({ length: 23 }, (_, index) => `${pad(index + 1)}.mp4`);
 		const result = alignByRules(files, seasonOne());
 		expect(result.resolved).toBe(true);
 		expect(result.assignments.size).toBe(23);
-		expect(result.notes.some((note) => note.includes('艾莉丝的哥布林讨伐'))).toBe(true);
+		expect(result.assignments.has('24.mp4')).toBe(false);
+		expect(result.notes.some((note) => note.includes('1 个特别篇'))).toBe(true);
 	});
 });
 

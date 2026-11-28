@@ -2,7 +2,7 @@
  * Bangumi 服务配置。
  *
  * 来源只有用户设置（`src/settings/store.ts`）。早期版本支持 `BANGUMI_*` / `BGM_*` 环境变量与
- * 仓库根 `.env`，现在统一由设置页维护；旧值可用 `scripts/migrate-env.mjs` 一次性迁移。
+ * 仓库根 `.env`，现在统一由设置页维护；旧值可用 `scripts/migrate-env.ts` 一次性迁移。
  * 不要在运行时再加环境变量回退，否则「设置页填了却没生效」会变成难以解释的现象。
  */
 import { DEFAULT_SETTINGS, readSettings } from '~server/src/settings/store';

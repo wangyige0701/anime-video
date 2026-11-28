@@ -3,7 +3,8 @@
  *
  * 为什么单独一份文件而不是写进 `config.yaml`：`config.yaml` 随程序分发，仓库开源、
  * 安装目录通常只读、升级时会被覆盖，任何个人凭据放进去都等于公开。用户设置只描述
- * 「这个人用什么服务」，因此落在用户数据目录，仓库里零凭据。
+ * 「这个人用什么服务」，因此与目录白名单一样落在应用数据目录：桌面端是系统用户目录，
+ * 直接运行 server 项目时是服务目录，开发态不会覆盖已安装应用的凭据。
  *
  * 与媒体数据的边界：`.video.json` 是「库」的元数据（目录变化会重建），这里是「人」的偏好，
  * 两者生命周期不同，不混存。
@@ -11,7 +12,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Data } from '~server/data/data';
-import { getUserDataDirectory } from '~server/src/utils/user-data-dir';
+import { getDataDirectory } from '~server/src/utils/user-data-dir';
 
 export interface AiSettings {
 	baseUrl: string;
@@ -67,11 +68,11 @@ export const DEFAULT_SETTINGS: AppSettings = {
 const SETTINGS_FILE_NAME = 'settings.json';
 
 export function getSettingsFile() {
-	return path.join(getUserDataDirectory(), SETTINGS_FILE_NAME);
+	return path.join(getDataDirectory(), SETTINGS_FILE_NAME);
 }
 
 async function getStore() {
-	await fs.mkdir(getUserDataDirectory(), { recursive: true });
+	await fs.mkdir(getDataDirectory(), { recursive: true });
 	return Data.instance<AppSettings>(getSettingsFile(), structuredClone(DEFAULT_SETTINGS));
 }
 

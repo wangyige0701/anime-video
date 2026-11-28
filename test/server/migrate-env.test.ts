@@ -2,23 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
-// 迁移脚本是纯 .mjs，不参与 TS 编译；测试里按结构声明它的导出
-const script = (await import('../../scripts/migrate-env.mjs')) as {
-	parseEnvText: (text: string) => Record<string, string>;
-	envToSettingsPatch: (env: Record<string, string>) => Record<string, Record<string, string | number>>;
-	mergeIntoExisting: (
-		existing: unknown,
-		patch: Record<string, Record<string, string | number>>,
-	) => { merged: Record<string, any>; applied: string[]; skipped: string[] };
-	migrate: (options: { envFile: string; dataDir: string; dryRun?: boolean }) => {
-		applied: string[];
-		skipped: string[];
-		found: boolean;
-	};
-};
-
-const { parseEnvText, envToSettingsPatch, mergeIntoExisting, migrate } = script;
+import { envToSettingsPatch, mergeIntoExisting, migrate, parseEnvText } from '../../scripts/migrate-env';
 
 describe('解析 .env 文本', () => {
 	it('支持 export、注释与成对引号', () => {

@@ -3,22 +3,13 @@ import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { Data } from './data';
 import { RestElements } from '@wang-yige/utils';
-import { getServerRoot } from '~server/cli/manager/paths';
-import { getUserDataDirectory } from '~server/src/utils/user-data-dir';
+import { getDataDirectory } from '~server/src/utils/user-data-dir';
 
 const SERVER = __APP_CONFIG__.server;
 
-function getDataDirectory() {
-	if (process.env.ANIME_VIDEO_DESKTOP === '1') {
-		return getUserDataDirectory();
-	}
-	return getServerRoot();
-}
-
-async function ensureDesktopDataDirectory() {
-	if (process.env.ANIME_VIDEO_DESKTOP === '1') {
-		await fs.mkdir(getDataDirectory(), { recursive: true });
-	}
+/** 目录白名单与用户设置共用同一个应用数据目录，见 `src/utils/user-data-dir.ts` */
+async function ensureDataDirectory() {
+	await fs.mkdir(getDataDirectory(), { recursive: true });
 }
 
 type PickType<
@@ -68,7 +59,7 @@ export abstract class Common {
 	 * 获取所有视频系列根目录配置数据
 	 */
 	public static async getDirectories() {
-		await ensureDesktopDataDirectory();
+		await ensureDataDirectory();
 		return await Data.instance<string[]>(this.__path, []).read();
 	}
 

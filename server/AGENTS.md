@@ -87,7 +87,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `src/hls.ts`：原生 HLS 实例、分片预加载、TS/图片缓存和生命周期管理。
 - `src/error/`：`ApiError`、`NotFoundError` 等 HTTP 错误类型。
 - `src/integrations/`：外部服务整合层。`http.ts` 是共用的 HTTP 基础设施，`bangumi/` 与 `ai/` 是两个互不引用的独立模块，配置都从 `src/settings/store.ts` 读取。
-- `src/utils/`：文件系统和通用判断工具。
+- `src/utils/`：文件系统和通用判断工具；`user-data-dir.ts` 是应用数据目录（`settings.json` 与目录白名单）的唯一解析入口。
 - `test/`：Vitest 测试和媒体目录 fixture。
 - `*.d.ts`：Koa context 扩展和原生 HLS 类型声明。
 
@@ -103,7 +103,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 
 `DATA_FILE` 由 `server.videoConfigPrefix + server.dataFile` 生成，默认文件名为 `.video.json`。对应环境变量为 `SERVER_VIDEO_CONFIG_PREFIX` 和 `SERVER_DATA_FILE`。同名文件有两种不同用途：
 
-- 通过桌面 EXE 启动并携带内部标记 `ANIME_VIDEO_DESKTOP=1` 时，全局目录白名单保存到用户数据目录中的 `DATA_FILE`；Windows 默认目录为 `%LOCALAPPDATA%\Anime Video`，可通过 `ANIME_VIDEO_DATA_DIR` 覆盖。直接运行 server 项目时使用 `getServerRoot()` 返回的服务目录。
+- 通过桌面 EXE 启动并携带内部标记 `ANIME_VIDEO_DESKTOP=1` 时，全局目录白名单保存到应用数据目录中的 `DATA_FILE`；Windows 默认目录为 `%LOCALAPPDATA%\Anime Video`。直接运行 server 项目时使用 `getServerRoot()` 返回的服务目录。两条分支与用户设置（`settings.json`）共用 `src/utils/user-data-dir.ts` 的 `getDataDirectory()`，`ANIME_VIDEO_DATA_DIR` 在两种模式下都优先。
 - 每个允许根目录下的 `DATA_FILE` 保存该根目录直接包含的所有 series 配置，内部继续嵌套 seasons 和 episodes 元数据。
 
 目录结构约定如下：
@@ -234,7 +234,7 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 - **三段接口**：`POST /data/series/:seriesId/bangumi/{match,preview,apply}`，前两段只读、最后一段才写库。`BangumiController` 只做「取实体 → 调编排 → 记日志」，参数模式在 `src/schema/bangumi-sync.ts`，归属校验在编排层。
 - **模块边界**：`bangumi/` 与 `ai/` 互不引用，只共用 `http.ts`。新增外部服务时按同样方式拆目录，不要把第三个服务塞进现有模块。
-- **配置来源**：只读用户设置（`src/settings/store.ts`），`config.yaml` 与 `.env` 都不参与。`resolveBangumiConfig()` / `resolveAiConfig()` 是纯函数，客户端每次从 `readSettings()` 快照解析，不自建缓存；未配置时抛 503 并提示去设置页，不要发出必然失败的请求。旧 `.env` 用 `scripts/migrate-env.mjs` 一次性迁移。
+- **配置来源**：只读用户设置（`src/settings/store.ts`），`config.yaml` 与 `.env` 都不参与。`resolveBangumiConfig()` / `resolveAiConfig()` 是纯函数，客户端每次从 `readSettings()` 快照解析，不自建缓存；未配置时抛 503 并提示去设置页，不要发出必然失败的请求。旧 `.env` 用 `scripts/migrate-env.ts` 一次性迁移（经 tsx 运行，复用同一套目录规则）。
 - **顺序只由本地文件名决定**：Bangumi 的 `ep` 完全不用（跨条目重复、SP 恒为 0），`sort` 只用于核对，落库的排序是 1..N 的位置号，统一走 `Season.rewriteEpisodeOrder(ids)`。不要用字符串排序，混排目录会整季错位。
 - **规则优先**：`alignByRules()` 能形成唯一映射就不调模型，模型只负责「文件 → 官方集」的对应关系与季映射，返回结果必须再做一次双射校验。模型不参与决定播放顺序。
 - **错误映射**：上游非 2xx 抛 502；拿到响应之前的失败（超时、代理不可用）由 `http.ts` 转成 504/502 并把主机名写进消息——不能让未知异常回落成无消息的 500。状态码一律通过 `Status` 枚举引用。
@@ -244,7 +244,7 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 
 `src/settings/` 保存只属于当前用户的第三方服务配置（AI 接口、Bangumi 地址与代理），与随包分发的 `config.yaml` 分开：前者是「这个人用什么服务」，后者是「这台机器怎么跑」。
 
-- **存储位置**：用户数据目录下的 `settings.json`（Windows `%LOCALAPPDATA%\Anime Video`，可用 `ANIME_VIDEO_DATA_DIR` 覆盖）。路径由 `src/utils/user-data-dir.ts` 统一解析，与目录白名单共用一套规则，不要另写一份。
+- **存储位置**：应用数据目录下的 `settings.json`，与全局目录白名单（`<prefix>.video.json`）同一个目录、同一套规则，由 `src/utils/user-data-dir.ts` 的 `getDataDirectory()` 统一解析，不要另写一份。桌面端（`ANIME_VIDEO_DESKTOP=1`）是系统用户目录（Windows `%LOCALAPPDATA%\Anime Video`）；直接运行 server 项目时是服务目录，因此开发态不会覆盖已安装应用的凭据。`ANIME_VIDEO_DATA_DIR` 两种模式都优先，用于测试、多套配置隔离与迁移脚本。
 - **接口**：`GET/PUT /data/settings`、`POST /data/settings/{ai,bangumi}/probe`，参数模式在 `src/schema/settings.ts`。GET 只返回脱敏视图，密钥仅回显尾部四位，明文不出服务端，也不进日志。
 - **密钥三态**：字段缺省表示不修改，空字符串表示清空，有值表示替换。不要套用「空值恢复默认」的字段约定，否则清空输入框会误删凭据。
 - **生效方式**：`readSettings()` 持有进程内快照，`updateSettings()` 写盘后自行更新，读取方不需要清缓存；手工编辑 `settings.json` 不会热加载，需重启服务。

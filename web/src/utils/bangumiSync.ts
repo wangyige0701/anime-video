@@ -96,8 +96,15 @@ export interface BangumiSnapshotSource {
  *
  * 只保留会被同步覆盖的字段：字段越多，快照与真实数据不一致的机会越大，
  * 而对比只看这几个字段。季内顺序按当前展示顺序记录，重排判断依赖它。
+ *
+ * `extraSeasons` 传被合并系列的季：详情页把它们与主系列拼在一起展示，
+ * 同步也覆盖同一范围，快照漏掉它们会让成员的季永远判成「有变化」。
  */
-export function buildCurrentSnapshot(series: BangumiSnapshotSource): BangumiCurrentSnapshot {
+export function buildCurrentSnapshot(
+	series: BangumiSnapshotSource,
+	extraSeasons: BangumiSnapshotSource['seasons'] = [],
+): BangumiCurrentSnapshot {
+	const seasons = [...series.seasons, ...extraSeasons];
 	return {
 		series: {
 			title: series.title,
@@ -106,7 +113,7 @@ export function buildCurrentSnapshot(series: BangumiSnapshotSource): BangumiCurr
 			status: series.status,
 			types: [...series.types],
 		},
-		seasons: series.seasons.map((season) => ({
+		seasons: seasons.map((season) => ({
 			seasonId: season.id,
 			episodeIds: season.episodes.map((episode) => episode.id),
 			episodeTitles: Object.fromEntries(season.episodes.map((episode) => [episode.id, episode.title])),
@@ -354,7 +361,7 @@ export function describeSelectionSummary(summary: BangumiSelectionSummary) {
 }
 
 /** 页脚按钮的标识，宿主与内容组件按它绑定行为 */
-export type BangumiFooterKey = 'cancel' | 'rematch' | 'back' | 'preview' | 'apply';
+export type BangumiFooterKey = 'cancel' | 'start' | 'rematch' | 'back' | 'preview' | 'apply';
 
 /** 页脚按钮的展示状态，点击行为由调用方按 `key` 绑定 */
 export interface BangumiFooterButton {
@@ -367,6 +374,8 @@ export interface BangumiFooterButton {
 
 /** 决定页脚按钮的状态 */
 export interface BangumiFooterState {
+	/** 是否已经手动开始同步；为 `false` 时停在说明页，还不会检索 Bangumi */
+	started: boolean;
 	/** 0 = 匹配季与条目，1 = 确认变更 */
 	step: number;
 	matching: boolean;
@@ -384,8 +393,17 @@ export interface BangumiFooterState {
  * 两步的按钮集合完全不同（第二步没有「重新匹配」，第一步没有「上一步」），
  * 因此整组返回而不是逐个显隐；任何一步请求进行中都禁用「取消」，
  * 否则响应会写回一个已经关闭的对话框。
+ *
+ * **未开始时只给「取消 / 开始同步」**：检索要调 Bangumi、还可能调模型，
+ * 不能因为点开面板就自动发生，必须由用户明确确认一次。
  */
 export function describeSyncFooter(state: BangumiFooterState): BangumiFooterButton[] {
+	if (!state.started) {
+		return [
+			{ key: 'cancel', content: '取消', loading: false, disabled: false },
+			{ key: 'start', content: '开始同步', type: 'primary', loading: state.matching, disabled: state.matching },
+		];
+	}
 	const busy = state.matching || state.previewing || state.applying;
 	if (state.step === 0) {
 		return [

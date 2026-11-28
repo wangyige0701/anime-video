@@ -38,17 +38,52 @@ const series = inject<ComputedRef<Series>>(DETAIL_SERIES_DATA)!;
 /** 对话框打开期间禁用入口：否则双击会叠出第二个对话框 */
 const status = useVueStatusRef('opening');
 
+/**
+ * 读取被合并系列的季与标题。
+ *
+ * 详情页把成员的季与主系列拼在一起展示，同步也覆盖同一范围，
+ * 所以快照里必须带上它们，否则成员的季会被永远判成「有变化」。
+ * 单个成员读取失败就跳过：悬空引用由数据层规范化清理，不该拦住整次同步。
+ */
+async function loadMembers(series: Series) {
+	const ids = series.mergedIds ?? [];
+	const members = await Promise.all(
+		ids.map(async (id) => {
+			try {
+				return await useVideoStore().getSeriesDetail(id);
+			} catch {
+				return null;
+			}
+		}),
+	);
+	const list = members.filter((member): member is Series => !!member);
+	return {
+		titles: list.map((member) => member.title),
+		seasons: list.flatMap((member) =>
+			[...member.seasons].map((season) => ({
+				id: season.id,
+				episodes: [...season.episodes].map((episode) => ({ id: episode.id, title: episode.title })),
+			})),
+		),
+	};
+}
+
 async function open() {
 	if (status.opening) {
 		return;
 	}
 	status.onOpening();
 	try {
+		const members = await loadMembers(series.value);
 		const total = await openDialog<number>({
 			component: SyncDialog,
 			title: '同步 Bangumi',
 			dialogProps: { class: 'bangumi-dialog', width: '860px', top: '7vh', closeOnClickModal: false },
-			componentProps: { seriesId: props.seriesId, snapshot: buildCurrentSnapshot(series.value) },
+			componentProps: {
+				seriesId: props.seriesId,
+				snapshot: buildCurrentSnapshot(series.value, members.seasons),
+				mergedTitles: members.titles,
+			},
 		});
 		ElMessage.success(`已写入 Bangumi 数据 ${total} 项`);
 		// 写入成功后重新扫描并装配该系列，页面上的标题与顺序才会与实际数据一致

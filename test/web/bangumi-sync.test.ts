@@ -359,6 +359,22 @@ describe('buildCurrentSnapshot', () => {
 		expect(result.series.types).toEqual([100]);
 	});
 
+	it('被合并系列的季接在主系列之后，否则成员的季永远判为有变化', () => {
+		const result = buildCurrentSnapshot(
+			{
+				title: '主系列',
+				description: '',
+				status: 0,
+				types: [],
+				seasons: [{ id: 'main-1', episodes: [{ id: 'm1', title: '第一话' }] }],
+			},
+			[{ id: 'member-1', episodes: [{ id: 'x1', title: '第一话' }] }],
+		);
+
+		expect(result.seasons.map((season) => season.seasonId)).toEqual(['main-1', 'member-1']);
+		expect(result.seasons[1]!.episodeTitles).toEqual({ x1: '第一话' });
+	});
+
 	it('没有任何季时给出空数组，不报错', () => {
 		const result = buildCurrentSnapshot({
 			title: '空',
@@ -396,7 +412,29 @@ describe('describeSelectionSummary', () => {
 });
 
 describe('describeSyncFooter', () => {
-	const base = { step: 0, matching: false, previewing: false, applying: false, mappedCount: 1, total: 8 };
+	const base = {
+		started: true,
+		step: 0,
+		matching: false,
+		previewing: false,
+		applying: false,
+		mappedCount: 1,
+		total: 8,
+	};
+
+	it('未开始时只给取消与开始同步，不会自动检索', () => {
+		const buttons = describeSyncFooter({ ...base, started: false });
+		expect(buttons.map((button) => button.key)).toEqual(['cancel', 'start']);
+		expect(buttons[1]!.content).toBe('开始同步');
+		expect(buttons[1]!.type).toBe('primary');
+		// 还没开始就谈不上「忙碌」，取消必须可用
+		expect(buttons[0]!.disabled).toBe(false);
+	});
+
+	it('开始检索后按钮换成匹配步骤的那组', () => {
+		expect(describeSyncFooter({ ...base, started: false, matching: true })[1]!.loading).toBe(true);
+		expect(describeSyncFooter(base).map((button) => button.key)).toEqual(['cancel', 'rematch', 'preview']);
+	});
 
 	it('第一步给出取消、重新匹配、生成预览', () => {
 		const buttons = describeSyncFooter(base);

@@ -4,7 +4,7 @@ import { ServerRoot } from '~shared/server-route-config';
 import { Series } from '~server/data/series';
 import { Validate } from '~server/decorators/validate';
 import { bangumiApplySchema, bangumiPreviewSchema } from '~server/src/schema/bangumi-sync';
-import { applyChangeSet, runMatch, runPreview } from '~server/src/integrations/bangumi/sync';
+import { applyChangeSet, readLocalSeasons, runMatch, runPreview } from '~server/src/integrations/bangumi/sync';
 import type { ApplyInput, LocalSeasonInput, SeasonMappingInput } from '~server/src/integrations/bangumi/sync';
 
 /**
@@ -16,6 +16,9 @@ import type { ApplyInput, LocalSeasonInput, SeasonMappingInput } from '~server/s
  * - `preview`：按确认后的映射生成 changeSet，人工可勾选；
  * - `apply`：校验后写入。
  *
+ * **同步范围与详情页一致：主系列 + 被合并的成员系列。** 季可能来自其中任何一个，
+ * 只处理主系列会让成员的季永远拿不到 Bangumi 的标题与排序。
+ *
  * 系列标题、描述、日期、状态直接读接口；季/集顺序、集标题与类型标签才需要整合。
  */
 @Singleton()
@@ -24,17 +27,20 @@ import type { ApplyInput, LocalSeasonInput, SeasonMappingInput } from '~server/s
 export class BangumiController {
 	@HttpMethod.Post('/series/:seriesId/bangumi/match')
 	public async match(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
-		const series = await Series.getSeriesById(seriesId);
-		const [seriesName, seriesTitle, seasons] = await Promise.all([
+		const group = await this.mergeGroup(await Series.getSeriesById(seriesId));
+		const series = group[0]!;
+		const [seriesName, seriesTitle, seasons, memberTitles] = await Promise.all([
 			series.getSeriesName(),
 			series.title,
-			this.localSeasons(series),
+			readLocalSeasons(group),
+			Promise.all(group.slice(1).map((member) => member.title)),
 		]);
-		const result = await runMatch(seriesName, seriesTitle, seasons);
+		const result = await runMatch(seriesName, seriesTitle, seasons, memberTitles);
 		ctx.log.info(
 			{
 				event: 'series.bangumi.matched',
 				seriesId,
+				members: memberTitles.length,
 				seasons: seasons.length,
 				candidates: result.candidates.length,
 			},
@@ -47,8 +53,8 @@ export class BangumiController {
 	@Validate(() => bangumiPreviewSchema)
 	public async preview(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const { seasons: mapping } = ctx.request.body as unknown as { seasons: SeasonMappingInput[] };
-		const series = await Series.getSeriesById(seriesId);
-		const seasons = await this.localSeasons(series);
+		const group = await this.mergeGroup(await Series.getSeriesById(seriesId));
+		const seasons = await readLocalSeasons(group);
 		const result = await runPreview(mapping, seasons);
 		ctx.log.info(
 			{ event: 'series.bangumi.previewed', seriesId, seasons: result.seasons.length },
@@ -61,8 +67,8 @@ export class BangumiController {
 	@Validate(() => bangumiApplySchema)
 	public async apply(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
 		const input = ctx.request.body as ApplyInput;
-		const series = await Series.getSeriesById(seriesId);
-		const applied = await applyChangeSet(series, input);
+		const group = await this.mergeGroup(await Series.getSeriesById(seriesId));
+		const applied = await applyChangeSet(group, input);
 		ctx.log.info(
 			{
 				event: 'series.bangumi.applied',
@@ -77,24 +83,25 @@ export class BangumiController {
 	}
 
 	/**
-	 * 读取本地季与集。
+	 * 主系列与被合并的成员系列，主系列在首位。
 	 *
-	 * 只提供 id 与文件名：顺序、分类都在整合层按文件名推导，
-	 * 数据层不参与任何「哪一集是第几集」的判断。
+	 * 悬空 id（成员已被删除）直接跳过：数据层的规范化会在下次扫描清理，
+	 * 这里不该让一条失效引用把整个同步流程拦下来。
 	 */
-	private async localSeasons(series: Series): Promise<LocalSeasonInput[]> {
-		const result: LocalSeasonInput[] = [];
-		for (const season of await series.seasons) {
-			const episodes = await season.episodes;
-			result.push({
-				seasonId: await season.id,
-				path: season.getSeasonName(),
-				title: await season.title,
-				episodes: await Promise.all(
-					episodes.map(async (episode) => ({ id: await episode.id, fileName: episode.getEpisodeName() })),
-				),
-			});
+	private async mergeGroup(series: Series): Promise<Series[]> {
+		const ids = await series.mergedIds;
+		if (!ids.length) {
+			return [series];
 		}
-		return result;
+		const members = await Promise.all(
+			ids.map(async (id) => {
+				try {
+					return await Series.getSeriesById(id);
+				} catch {
+					return null;
+				}
+			}),
+		);
+		return [series, ...members.filter((item): item is Series => !!item)];
 	}
 }

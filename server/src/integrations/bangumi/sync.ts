@@ -129,6 +129,35 @@ export interface ApplyResult {
 	seasons: Array<{ seasonId: string; title: boolean; order: number; episodes: number }>;
 }
 
+/**
+ * 读取合并组（主系列 + 被合并系列）的季与集。
+ *
+ * 只提供 id 与文件名：顺序、分类都在整合层按文件名推导，
+ * 数据层不参与任何「哪一集是第几集」的判断。
+ *
+ * 成员系列的季在 `path` 前带上系列名：主系列与成员可能有同名季目录（都叫「正片」），
+ * 不带来源时界面上分不出是哪一个，模型也无法据此对齐。
+ */
+export async function readLocalSeasons(group: Series[]): Promise<LocalSeasonInput[]> {
+	const result: LocalSeasonInput[] = [];
+	for (const [index, series] of group.entries()) {
+		const prefix = index === 0 ? '' : series.title;
+		for (const season of await series.seasons) {
+			const episodes = await season.episodes;
+			const seasonName = season.getSeasonName();
+			result.push({
+				seasonId: await season.id,
+				path: prefix ? `${prefix} / ${seasonName}` : seasonName,
+				title: await season.title,
+				episodes: await Promise.all(
+					episodes.map(async (episode) => ({ id: await episode.id, fileName: episode.getEpisodeName() })),
+				),
+			});
+		}
+	}
+	return result;
+}
+
 /** Bangumi 的 summary 里带 BBCode 风格的引用块，去掉后才是可读描述 */
 export function stripSummary(summary?: string) {
 	if (!summary) {
@@ -337,8 +366,14 @@ export async function loadSubjects(subjectIds: number[]) {
 }
 
 /** 关键词去重：中文名、原名、系列标题都试一次 */
-export function buildKeywords(seriesName: string, seriesTitle: string) {
-	return [...new Set([seriesTitle, seriesName].map((value) => value.trim()).filter(Boolean))];
+/**
+ * 搜索关键词：主系列的标题与目录名，外加被合并系列的名字。
+ *
+ * 合并进来的往往就是续作或同一作品的不同写法（「微速前进」/「微速前行！」），
+ * 只拿主系列名去搜会把另一部作品漏掉。
+ */
+export function buildKeywords(seriesName: string, seriesTitle: string, extraTitles: string[] = []) {
+	return [...new Set([seriesTitle, seriesName, ...extraTitles].map((value) => value.trim()).filter(Boolean))];
 }
 
 export async function searchCandidates(keywords: string[]) {
@@ -354,8 +389,9 @@ export async function runMatch(
 	seriesName: string,
 	seriesTitle: string,
 	seasons: LocalSeasonInput[],
+	extraTitles: string[] = [],
 ): Promise<MatchResult> {
-	const candidates = await searchCandidates(buildKeywords(seriesName, seriesTitle));
+	const candidates = await searchCandidates(buildKeywords(seriesName, seriesTitle, extraTitles));
 	if (!candidates.length) {
 		throw new ApiError(Status.BadGateway, `Bangumi 搜索无结果：${seriesTitle}`);
 	}
@@ -554,19 +590,24 @@ export function validateOrder(order: string[], allowedIds: string[]): { ok: true
 /**
  * 应用 changeSet。
  *
- * 校验在写之前完成：季与集必须属于该系列，`order` 必须是该季全部集的一个排列。
+ * 入参是「主系列 + 被合并的成员系列」：季可能来自其中任何一个，
+ * 因此按 `seasonId` 跨系列查找，写回各自的季；系列字段（标题、简介等）只写主系列。
+ *
+ * 校验在写之前完成：季与集必须属于这个合并组，`order` 必须是该季全部集的一个排列。
  * 任一校验失败整次中止，不产生半套数据。
  */
-export async function applyChangeSet(series: Series, input: ApplyInput): Promise<ApplyResult> {
-	const seasons = await series.seasons;
+export async function applyChangeSet(group: Series[], input: ApplyInput): Promise<ApplyResult> {
+	const main = group[0]!;
 	const seasonById = new Map<string, Season>();
-	for (const season of seasons) {
-		seasonById.set(await season.id, season);
+	for (const series of group) {
+		for (const season of await series.seasons) {
+			seasonById.set(await season.id, season);
+		}
 	}
 
 	const result: ApplyResult = { series: [], seasons: [] };
 
-	// 先做结构性校验，避免写到一半才发现 id 不属于该系列
+	// 先做结构性校验，避免写到一半才发现 id 不属于这个合并组
 	for (const item of input.seasons ?? []) {
 		const season = seasonById.get(item.seasonId);
 		if (!season) {
@@ -603,23 +644,23 @@ export async function applyChangeSet(series: Series, input: ApplyInput): Promise
 
 	const applied = input.series ?? {};
 	if (applied.title !== undefined) {
-		await series.updateTitle(applied.title);
+		await main.updateTitle(applied.title);
 		result.series.push('title');
 	}
 	if (applied.description !== undefined) {
-		await series.updateDescription(applied.description);
+		await main.updateDescription(applied.description);
 		result.series.push('description');
 	}
 	if (applied.date) {
-		await series.updateDate(applied.date.year, applied.date.month);
+		await main.updateDate(applied.date.year, applied.date.month);
 		result.series.push('date');
 	}
 	if (applied.status !== undefined) {
-		await series.updateStatus(applied.status);
+		await main.updateStatus(applied.status);
 		result.series.push('status');
 	}
 	if (applied.types) {
-		await series.updateTypes(applied.types);
+		await main.updateTypes(applied.types);
 		result.series.push('types');
 	}
 
@@ -650,6 +691,7 @@ export async function applyChangeSet(series: Series, input: ApplyInput): Promise
 		});
 	}
 
-	await series.waitDataSave();
+	// 季可能来自成员系列，保存要等整组落盘
+	await Promise.all(group.map((item) => item.waitDataSave()));
 	return result;
 }

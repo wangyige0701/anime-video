@@ -12,7 +12,7 @@ import { isNumber } from '@wang-yige/utils';
 export function toMonthDate(value: [number?, number?]): Date | undefined {
 	const [year, month] = value;
 	if (!isNumber(year) || !isNumber(month) || year <= 0 || month < 1 || month > 12) {
-		return undefined;
+		return void 0;
 	}
 	return new Date(year, month - 1, 1);
 }

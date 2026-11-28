@@ -5,6 +5,7 @@
  * 真实数据里六成以上的标签能精确命中，全部走模型既慢又容易把「StudioBind」这类
  * 制作公司名硬塞成类型。
  */
+import { isUndefined } from '@wang-yige/utils';
 import type { ChatMessage } from '../ai/client';
 
 export interface SeriesTypeOption {
@@ -30,7 +31,7 @@ export function matchTagsByRules(tags: string[], types: SeriesTypeOption[]): Tag
 	const unmatched: string[] = [];
 	for (const tag of tags) {
 		const id = byName.get(normalize(tag));
-		if (id === undefined) {
+		if (isUndefined(id)) {
 			unmatched.push(tag);
 			continue;
 		}

@@ -8,6 +8,7 @@
  * 1. **季映射**：本地季目录 → Bangumi 条目（split cour 一个季可能对应多个条目）；
  * 2. **集对齐**：本地文件 → 官方剧集，仅用于取标题，不参与排序。
  */
+import { isUndefined } from '@wang-yige/utils';
 import type { ChatMessage } from '../ai/client';
 import type { OfficialEpisode } from './align';
 
@@ -162,8 +163,8 @@ export function parseMatchResult(content: unknown, seasons: LocalSeasonSummary[]
 		if (ids.length > 3) {
 			warnings.push(`${season.relativePath}：给出 ${ids.length} 个条目，超过 3 个上限，已截断`);
 		}
-		const order = typeof item?.order === 'number' && Number.isInteger(item.order) ? item.order : undefined;
-		if (order !== undefined) {
+		const order = typeof item?.order === 'number' && Number.isInteger(item.order) ? item.order : void 0;
+		if (!isUndefined(order)) {
 			if (usedOrders.has(order)) {
 				warnings.push(`order ${order} 重复：${usedOrders.get(order)} 与 ${season.relativePath}`);
 			} else {
@@ -180,7 +181,7 @@ export function parseMatchResult(content: unknown, seasons: LocalSeasonSummary[]
 	const orders = result.map((item) => item.order);
 	const expected = seasons.map((_, index) => index + 1);
 	const orderValid =
-		orders.every((order) => order !== undefined) &&
+		orders.every((order) => !isUndefined(order)) &&
 		[...orders].sort((a, b) => a! - b!).every((order, index) => order === expected[index]);
 	if (!orderValid) {
 		warnings.push('季顺序不是 1..N 的完整排列，已按目录顺序排列，请手动确认');
@@ -252,7 +253,7 @@ export function parseAlignResult(content: unknown, files: string[], official: Of
 		const fileId = `f${index + 1}`;
 		const fileName = files[index]!;
 		const keys = byFileId.get(fileId);
-		if (keys === undefined) {
+		if (isUndefined(keys)) {
 			warnings.push(`${fileName} 未出现在 map 中，视为无对应`);
 			map.set(fileName, null);
 			continue;

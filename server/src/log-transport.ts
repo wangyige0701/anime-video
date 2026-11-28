@@ -1,3 +1,4 @@
+import { isUndefined } from '@wang-yige/utils';
 import { createWriteStream, type WriteStream } from 'node:fs';
 import { mkdir, readdir, rm, stat } from 'node:fs/promises';
 import { once } from 'node:events';
@@ -86,7 +87,7 @@ class LogTransport extends Writable {
 			),
 			httpBusinessPrefixes: options.httpBusinessPrefixes,
 		};
-		this.consoleEnabled = options.consoleFormat !== undefined;
+		this.consoleEnabled = !isUndefined(options.consoleFormat);
 		if (this.consoleEnabled) {
 			process.stdout.on('error', this.onConsoleError);
 		}
@@ -244,7 +245,7 @@ class LogTransport extends Writable {
 	private stopCleanup() {
 		this.stopping = true;
 		clearTimeout(this.cleanupTimer);
-		this.cleanupTimer = undefined;
+		this.cleanupTimer = void 0;
 	}
 
 	private async cleanupOldLogs() {
@@ -337,7 +338,7 @@ class LogFileWriter {
 			await this.appendData(data, Buffer.byteLength(data));
 			if (this.pendingBytes && !this.timer && !this.closing) {
 				this.timer = setTimeout(() => {
-					this.timer = undefined;
+					this.timer = void 0;
 					void this.enqueue(() => this.flush());
 				}, this.options.flushIntervalMs);
 			}
@@ -375,7 +376,7 @@ class LogFileWriter {
 
 	private clearTimer() {
 		clearTimeout(this.timer);
-		this.timer = undefined;
+		this.timer = void 0;
 	}
 
 	private async ensureStream() {
@@ -421,7 +422,7 @@ class LogFileWriter {
 
 	private async closeStream() {
 		const stream = this.stream;
-		this.stream = undefined;
+		this.stream = void 0;
 		if (stream && !stream.closed) {
 			// 错误已由常驻监听记录；这里仍等 close，确保文件描述符实际释放。
 			const closed = new Promise<void>((resolve) => stream.once('close', resolve));
@@ -441,7 +442,7 @@ class LogFileWriter {
 		} finally {
 			await this.closeStream();
 			this.releaseDirectory?.();
-			this.releaseDirectory = undefined;
+			this.releaseDirectory = void 0;
 			this.index = 0;
 			this.fileBytes = 0;
 		}
@@ -474,7 +475,7 @@ class LogFileWriter {
 				.finally(async () => {
 					await this.closeStream();
 					this.releaseDirectory?.();
-					this.releaseDirectory = undefined;
+					this.releaseDirectory = void 0;
 					this.pending = '';
 					this.pendingBytes = 0;
 					if (this.failure) {

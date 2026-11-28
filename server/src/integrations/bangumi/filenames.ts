@@ -54,7 +54,7 @@ export function parseEpisodeNumber(fileName: string): number | undefined {
 	if (bare && !isNumberNoise(bare[1]!, bare[1]!)) {
 		return Number(bare[1]);
 	}
-	return undefined;
+	return void 0;
 }
 
 /**

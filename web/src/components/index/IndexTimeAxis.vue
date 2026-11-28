@@ -38,7 +38,7 @@
 							:key="item.key"
 							class="month"
 							:class="{ empty: item.count === 0, selected: isMonthSelected(item.key, activeRange) }"
-							:title="dragging ? undefined : `${item.key}：${item.count} 部`"
+							:title="dragging ? void 0 : `${item.key}：${item.count} 部`"
 						>
 							<span class="bar" :style="{ height: `${barHeight(item.count)}px` }"></span>
 							<span class="label">{{ item.month }}</span>
@@ -260,7 +260,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
 	observer?.disconnect();
-	observer = undefined;
+	observer = void 0;
 });
 
 // 全量数据刷新后轴会被重建，窗口按新数据与当前选中范围重新初始化

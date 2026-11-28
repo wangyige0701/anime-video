@@ -71,6 +71,7 @@
 </template>
 
 <script setup lang="ts">
+import { isUndefined } from '@wang-yige/utils';
 import type { Episode } from '@/data/episode';
 import type { Season } from '@/data/season';
 import { Rank } from '@element-plus/icons-vue';
@@ -200,7 +201,7 @@ function stopEditClick(event: MouseEvent) {
  * 因此只提交被拖动的那一集，不能逐条提交。
  */
 async function commitSort(oldIndex?: number, newIndex?: number) {
-	if (status.sorting || oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) {
+	if (status.sorting || isUndefined(oldIndex) || isUndefined(newIndex) || oldIndex === newIndex) {
 		return;
 	}
 	const moved = episodes.value[newIndex];

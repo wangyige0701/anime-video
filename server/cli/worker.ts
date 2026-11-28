@@ -1,7 +1,7 @@
 export {};
 
 const workerIndex = process.argv.indexOf('--internal-worker');
-const service = workerIndex >= 0 ? process.argv[workerIndex + 1] : undefined;
+const service = workerIndex >= 0 ? process.argv[workerIndex + 1] : void 0;
 
 if (service !== 'server' && service !== 'web') {
 	throw new Error('invalid internal worker service');

@@ -1,3 +1,4 @@
+import { isUndefined } from '@wang-yige/utils';
 import type { Fn } from '@wang-yige/utils';
 import { customRef, ref } from 'vue';
 
@@ -42,7 +43,7 @@ export async function patchField<T extends object, K extends keyof T>(
 		const result = await status.run(key as string, commit);
 		const settled = settle?.(result);
 		// 请求期间又发生了新的编辑时，不能再用旧响应覆盖当前值。
-		if (settled !== undefined && target.value === optimistic) {
+		if (!isUndefined(settled) && target.value === optimistic) {
 			target.value = settled as T[K];
 		}
 		return true;
@@ -61,7 +62,7 @@ export async function patchField<T extends object, K extends keyof T>(
  * 直接用返回值覆盖本地乐观更新的空串，避免界面停在空白标题上。
  */
 export function serverTitle(result: unknown) {
-	return typeof result === 'string' && result ? result : undefined;
+	return typeof result === 'string' && result ? result : void 0;
 }
 
 export class Common {

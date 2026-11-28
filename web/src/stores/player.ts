@@ -13,7 +13,7 @@ import {
 } from '@/config/constants';
 import { VideoInfoStorage } from '@/utils/videoInfoStorage';
 import { isHlsSupported } from '@/utils/hls-support';
-import { isNumber } from '@wang-yige/utils';
+import { isNumber, isUndefined } from '@wang-yige/utils';
 
 export const usePlayerStore = defineStore('player', () => {
 	// 这里刻意不在顶层引入 `hls.js`：本 store 会被应用入口引用，
@@ -91,7 +91,7 @@ export const usePlayerStore = defineStore('player', () => {
 				currentTime.value = record;
 			} else {
 				currentTime.value = 0;
-				if (record !== undefined) {
+				if (!isUndefined(record)) {
 					void storage.deleteEpisode(VideoInfoStorage.CURRENT_TIME_FIELD);
 				}
 			}

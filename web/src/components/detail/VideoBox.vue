@@ -86,13 +86,13 @@ function waitForTransition() {
 function onAfterEnter() {
 	emit('show');
 	resolveTransition?.();
-	resolveTransition = undefined;
+	resolveTransition = void 0;
 }
 
 function onAfterLeave() {
 	emit('hide');
 	resolveTransition?.();
-	resolveTransition = undefined;
+	resolveTransition = void 0;
 	status.offMounted();
 }
 

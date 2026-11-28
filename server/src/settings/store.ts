@@ -9,6 +9,7 @@
  * 与媒体数据的边界：`.video.json` 是「库」的元数据（目录变化会重建），这里是「人」的偏好，
  * 两者生命周期不同，不混存。
  */
+import { isUndefined } from '@wang-yige/utils';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Data } from '~server/data/data';
@@ -163,7 +164,7 @@ function applyPatch<T extends object>(target: T, patch: Partial<T> | undefined) 
 		return;
 	}
 	for (const [key, value] of Object.entries(patch)) {
-		if (value === undefined) {
+		if (isUndefined(value)) {
 			continue;
 		}
 		(target as Record<string, unknown>)[key] = value;

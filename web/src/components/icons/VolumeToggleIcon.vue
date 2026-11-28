@@ -52,6 +52,7 @@
 </template>
 
 <script setup lang="ts">
+import { isUndefined } from '@wang-yige/utils';
 import { useVModel } from '@vueuse/core';
 
 const maskId = useId();
@@ -138,23 +139,23 @@ function setVolume(value: number) {
  * 并在动画结束后清理状态与定时器。
  */
 function triggerArtworkAnimation() {
-	if (artworkAnimationFrame !== undefined) {
+	if (!isUndefined(artworkAnimationFrame)) {
 		cancelAnimationFrame(artworkAnimationFrame);
 	}
 	clearTimeout(artworkAnimationTimeout);
 	isToggling.value = false;
 	artworkAnimationFrame = requestAnimationFrame(() => {
 		isToggling.value = true;
-		artworkAnimationFrame = undefined;
+		artworkAnimationFrame = void 0;
 		artworkAnimationTimeout = setTimeout(() => {
 			isToggling.value = false;
-			artworkAnimationTimeout = undefined;
+			artworkAnimationTimeout = void 0;
 		}, artworkAnimationDuration);
 	});
 }
 
 onBeforeUnmount(() => {
-	if (artworkAnimationFrame !== undefined) {
+	if (!isUndefined(artworkAnimationFrame)) {
 		cancelAnimationFrame(artworkAnimationFrame);
 	}
 	clearTimeout(artworkAnimationTimeout);

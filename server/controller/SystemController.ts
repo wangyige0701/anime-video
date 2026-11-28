@@ -132,7 +132,7 @@ class SystemInfoCollector {
 			// 没有客户端监听时停止定时器，避免后台持续采集。
 			if (this.subscribers.size === 0 && this.timer) {
 				clearTimeout(this.timer);
-				this.timer = undefined;
+				this.timer = void 0;
 			}
 		};
 	}
@@ -154,7 +154,7 @@ class SystemInfoCollector {
 			this.collecting = false;
 			if (this.subscribers.size > 0) {
 				this.timer = setTimeout(() => {
-					this.timer = undefined;
+					this.timer = void 0;
 					void this.collectAndBroadcast();
 				}, UPDATE_INTERVAL_MS);
 			}

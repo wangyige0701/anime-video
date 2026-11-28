@@ -103,7 +103,7 @@ describe('AI 客户端', () => {
 			status: 401,
 			headers: {},
 			raw: 'unauthorized',
-			data: undefined,
+			data: void 0,
 		});
 		await expect(chatJson([{ role: 'user', content: 'hi' }])).rejects.toThrow(/HTTP 401/);
 		try {

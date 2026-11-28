@@ -1,3 +1,4 @@
+import { isUndefined } from '@wang-yige/utils';
 import type Koa from 'koa';
 import { Context, Controller, Cors, HttpMethod, Singleton } from 'koa-use-decorator-router';
 import { ServerRoot } from '~shared/server-route-config';
@@ -50,7 +51,7 @@ export class SettingsController {
 function changedFields(patch: SettingsPatch) {
 	return Object.entries(patch).flatMap(([section, values]) =>
 		Object.entries(values ?? {})
-			.filter(([, value]) => value !== undefined)
+			.filter(([, value]) => !isUndefined(value))
 			.map(([key]) => `${section}.${key}`),
 	);
 }

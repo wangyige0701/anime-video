@@ -177,7 +177,7 @@ function toggleFullscreen() {
 function handleMaskClick() {
 	clearTimeout(playToggleTimeout);
 	playToggleTimeout = setTimeout(() => {
-		playToggleTimeout = undefined;
+		playToggleTimeout = void 0;
 		playerStore.togglePlay();
 		playerStore.triggerControllerActive();
 	}, 200);
@@ -185,7 +185,7 @@ function handleMaskClick() {
 
 function handleMaskDoubleClick() {
 	clearTimeout(playToggleTimeout);
-	playToggleTimeout = undefined;
+	playToggleTimeout = void 0;
 	toggleFullscreen();
 }
 

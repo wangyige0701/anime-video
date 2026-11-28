@@ -39,6 +39,7 @@
 </template>
 
 <script setup lang="ts">
+import { isUndefined } from '@wang-yige/utils';
 import type { Episode } from '@/data/episode';
 import type { Season } from '@/data/season';
 import { Series } from '@/data/series';
@@ -196,7 +197,7 @@ async function commitSeasonSort(oldIndex?: number, newIndex?: number) {
 	if (!seasonSortable.value) {
 		return;
 	}
-	if (status.sorting || oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) {
+	if (status.sorting || isUndefined(oldIndex) || isUndefined(newIndex) || oldIndex === newIndex) {
 		return;
 	}
 	const moved = seasons.value[newIndex];

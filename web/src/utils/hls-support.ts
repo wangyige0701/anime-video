@@ -23,6 +23,8 @@ type MediaSourceLike = {
 	isTypeSupported?: (type: string) => boolean;
 };
 
+import { isUndefined } from '@wang-yige/utils';
+
 /** 视频编码候选，任一项可用即认为支持 MSE 播放 */
 const VIDEO_CODECS = ['avc1.42E01E,mp4a.40.2', 'av01.0.01M.08', 'vp09.00.50.08'];
 
@@ -36,7 +38,8 @@ const AUDIO_CODECS = ['mp4a.40.2', 'fLaC'];
  * 优先使用标准 `MediaSource`，Safari 上回退到 `ManagedMediaSource`。
  */
 function getMediaSource(): MediaSourceLike | null {
-	if (typeof self === 'undefined') {
+	// `globalThis.self` 在非浏览器环境取值为 undefined，不会像裸 `self` 那样抛 ReferenceError
+	if (isUndefined(globalThis.self)) {
 		return null;
 	}
 	const scope = self as unknown as {
@@ -52,7 +55,8 @@ function getMediaSource(): MediaSourceLike | null {
  * 老版本浏览器不会在全局暴露 `SourceBuffer`，此时返回 `null` 视为跳过原型校验。
  */
 function getSourceBuffer(): { prototype?: Record<string, unknown> } | null {
-	if (typeof self === 'undefined') {
+	// 同上：用 globalThis 取值，避免在无 `self` 的环境直接抛错
+	if (isUndefined(globalThis.self)) {
 		return null;
 	}
 	const scope = self as unknown as {

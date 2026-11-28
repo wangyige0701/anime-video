@@ -50,6 +50,7 @@ import BangumiSync from '@/components/detail/BangumiSync.vue';
 import DetailImageManage from '@/components/detail/DetailImageManage.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { orderDisplayImages, orderMergedSeasons } from '@/utils/seriesMerge';
+import { refreshEmitter } from '@/events/refresh';
 import { openDialog } from '@/utils/dialog';
 import { usePlayerStore } from '@/stores/player';
 import { useSettingsStore } from '@/stores/settings';
@@ -326,17 +327,26 @@ async function openImageManage() {
 /**
  * 写入图片顺序：合并组记录跨系列顺序，单系列直接覆盖自己的图片顺序。
  *
+ * 成功后广播一次全量快照：首页卡片的封面与叠层是列表加载时算的一次结果，
+ * 只改缓存里的系列对象不足以保证首页拿到新图（首页被 keep-alive 缓存，且开发态
+ * 模块热替换会让两边的实例各自持有自己的缓存）。合并、脱离走的是同一条广播管线。
+ *
  * @returns 请求是否成功；失败时数据层已回滚，面板会保留在打开状态
  */
 async function commitImageOrder(images: string[]) {
+	let success: boolean;
 	if (memberGroups.value.length) {
-		const success = await series.value.updateMergedImageOrder(images);
+		success = await series.value.updateMergedImageOrder(images);
 		if (success) {
 			syncGroupImages();
 		}
-		return success;
+	} else {
+		success = await series.value.updateImages(images);
 	}
-	return await series.value.updateImages(images);
+	if (success) {
+		refreshEmitter.emit('series', await Series.getAllSeries());
+	}
+	return success;
 }
 
 /** 把合并组的图片顺序拆回各系列，规则与 `syncGroupSeasons()` 一致 */

@@ -71,6 +71,8 @@
 
 全量刷新 `Series.refresh()` 的流程为：取消 initialized 标记，清空 Series/Season/Episode 三类实例 cache，请求服务端重新扫描全部系列，用返回的 series ID 过滤 bind cache，重新构造 series 列表并恢复 initialized。成功结果由 `GlobalActions.vue` 通过 `refreshEmitter` 通知首页，首页按当前已加载页数替换展示数组。
 
+**改动卡片外观的写入也要广播**：合并、脱离、图片顺序都走 `refreshEmitter.emit('series', await Series.getAllSeries())`。首页列表是「加载时算一次」的快照，`datas` 是 `shallowReactive` 且卡片按 `id` 复用组件，只改缓存里的系列对象不足以保证封面与叠层重绘；开发态模块热替换还会让首页与详情页各自持有自己的实例缓存。广播带来的是同源快照，两条链路都能收敛。
+
 单系列刷新 `Series.refreshSeries(seriesId)` 只处理目标树：如果目标已缓存，先遍历当前 seasons/episodes 删除对应子实体 cache，再删除 series cache；随后请求服务端刷新该 ID，并重新调用 `getSeriesDetail()` 完整装配。它不会清除关系 bind cache，新的 `setSeasons()` / `setEpisodes()` 会更新已有关系 ref。
 
 刷新 API 的错误会向调用方传播，由 `GlobalActions.vue` 统一结束 loading 并显示失败消息。不要在 data 层新增另一套页面提示或悄悄保留一半刷新后的 cache；修改刷新顺序时必须同时考虑三类实例 cache、父子 bind cache 和 initialized 状态。

@@ -155,6 +155,17 @@
 - 四个入口都遵循同一写入流程：本地 trim → 调用领域对象 `updateTitle()` / `updateDescription()`（乐观更新 + 失败回滚）→ 由数据层的请求状态驱动加载态。组件内不直接调用 API。
 - 空值语义见根 `AGENTS.md`「可编辑文本字段的空值语义」：**标题为空恢复默认标题、描述为空清空描述，组件不得拦截空值提交**，也不要自行计算默认标题。
 
+## 全局对话框
+
+弹窗统一走 `utils/dialog` 的 `openDialog()`，返回 Promise：内容组件 `confirm(data)` 时 resolve，取消、右上角、Esc、路由切换时 reject（`DialogCanceled`）。实现细节与清理点见 [docs/modules/web/dialog.md](../docs/modules/web/dialog.md)。
+
+- **内容永远是组件**：`openDialog({ component, componentProps, dialogProps, title })`。页面里不再出现「打开状态」布尔值和关窗后的 `reset()`，状态随应用销毁一起释放。
+- 内容组件通过 `dialog` 属性拿控制器：`confirm` / `cancel` / `setButtons` / `closable` / `unclosable`。页脚按钮按当前状态**整组替换**（`setButtons`），不要逐个显隐——两步流程的按钮集合完全不同，逐个开关最容易漏掉残留。
+- 对话框挂在一个**独立的应用**里：拿不到主应用的 `provide`、没有路由，需要的数据在打开时作为属性传进去；Pinia 用 `stores/pinia.ts` 的共享实例，其余 `el-*` 组件与 `v-loading` 由编译期解析，不受影响。
+- 关闭动效结束后 `unmount()` 并移除容器。**卸载前必须调 `releaseDevtoolsApp()`**：Devtools 会为每个应用在 `window.__VUE_DEVTOOLS_KIT_PLUGIN_BUFFER__` 压一条记录，卸载不会自动清，每条都抓着应用与组件树，反复开合会让浏览器内存持续上涨。
+- `router.afterEach` 统一 `closeAllDialogs()`：对话框不在路由树里，切页不收会盖住新页面。调用方必须 `catch` 掉取消，把「用户取消」与「真的失败」分开。
+- 只保留当前用得到的控制面。需要 `getRef`、运行时改 `el-dialog` 属性时再按需扩展，不要先建一套通用 API。
+
 ## 详情页 Bangumi 同步
 
 `components/detail/BangumiSync.vue` 是详情页标题行右侧的同步入口，对接服务端 `POST /data/series/:id/bangumi/{match,preview,apply}` 三段接口。接口与推断规则见 `docs/modules/server/bangumi-sync.md`，面板自身的流程、差异规则与布局约束见 `docs/modules/web/bangumi-sync.md`，变更记录见 `docs/changes/web/2026-11-27-bangumi-sync-ui.md`。

@@ -99,6 +99,7 @@
 - 乐观更新统一由 `data/common.ts` 的 `patchField(values, status, key, next, commit, settle?)` 完成；字段状态由 `createStatus()` 按键创建，`titleRef` 等 getter 返回布尔值并在读取时建立响应式依赖，组件用法保持不变。
 - 标题的 `settle` 固定传 `serverTitle`：标题允许清空，服务端会还原为默认标题（系列目录名、季目录名、文件名去扩展名）并返回实际标题，本地乐观写入的空串必须用返回值覆盖，不能停留在空白标题上。
 - `removeDate()` 在服务端删除成功后才清空本地日期；`removeStatus()` 先把本地状态设为 0，失败时回滚。
+- 上线时间用 `el-date-picker-panel`（`type="month"`），它的 `modelValue` 只认 `Date`：`DetailDate.vue` 必须经 `utils/date.ts` 的 `toMonthDate()` 把 `[年, 月]` 转成 `Date`。直接传元组会被 dayjs 解析成 Invalid Date，选中的月份不会高亮，面板打开时也不会定位到记录的年月。
 
 图片和类型的 `add/remove/set` 三个方法语义与服务端接口一致，本地乐观值按同一语义计算后再发请求：`add` 在现有值上追加（`utils/series.ts` 的 `mergeUnique()` 去重并保留顺序）、`remove` 从现有值中剔除入参项、`set` 直接覆盖。调用方只传本次增删的项，不要自己先拼出目标数组。类型与图片的追加在服务端也是幂等的，重复提交已存在的项不会写出重复记录。
 

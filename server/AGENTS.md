@@ -216,6 +216,17 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 - 对外接口是 `POST /series/:seriesId/merge`（body `{ memberId }`）与 `DELETE /series/:seriesId/merge/:memberId`，返回 `SeriesMergeResult { main, member? }`，DTO 里 `mergedIds` 排在 `types` 与 `status` 之间；参数模式在 `src/schema/series-merge.ts`。
 - 合并是**纯展示层聚合**：不搬迁文件、不搬迁季，成员系列的季仍归属自己，标题编辑/集排序/播放路径都走原系列。
 
+### 合并组的跨系列排序（mergedSeasonOrder / mergedImageOrder）
+
+单个系列的 `sort` 只在系列内部有意义，表达不了「成员 B 的季排在成员 A 的季前面」。因此合并组的最终顺序单独记录在主系列上，与 `mergedIds` 同属主系列、脱离后自动失效：
+
+- `mergedSeasonOrder`：季 id 数组；`mergedImageOrder`：图片**绝对路径**数组（不同目录可能同名，只有路径能唯一定位）。
+- 数组只记录用户定义过的顺序，未覆盖的季/图片按默认顺序（主系列在前、成员按 `mergedIds`）追加在末尾，新增季与新合并的成员都不需要迁移；历史配置缺字段时补空数组，不写盘。
+- 端点：`PUT /series/:seriesId/merge/seasons`（body `{ seasonIds }`）与 `PUT /series/:seriesId/merge/images`（body `{ images }`），都返回落库后的完整顺序。参数模式在 `src/schema/series-merge.ts`，数组元素非空，**空数组合法**（清空显式顺序）。
+- 写入顺序由 `Series.rewriteMergedSeasonOrder()` / `updateMergedImageOrder()` 完成，必须两点：季 id 不属于当前合并组或重复时整次 `ApiError` 拒绝（图片路径则跳过，因为可能是外部删文件后的旧快照）；写完后把**每个系列**自己的季 `sort` 重编为该顺序中的子序并原地重排数组——这是「脱离合并不影响单系列顺序」的唯一保证。季排序与单系列排序共用 `seasonSortQueue`，不能绕过队列。
+- 合成规则只有一份实现：`shared/series-order.ts` 的 `applyExplicitOrder()`（显式优先、未覆盖追加、不修改入参）。前端渲染必须调用同一函数，否则刷新后顺序会变。
+- `mergeSeries()` 清空被并入系列自己的顺序记录；`detachSeries()` 从主系列剔除属于该成员的季 id 与图片路径，避免成员重新合并时带着旧位置复活。
+
 ### 数据接口边界
 
 - `DirectoryController` 负责允许根目录读取和设置。

@@ -11,7 +11,7 @@ import {
 	seriesStatusSchema,
 	seriesTitleSchema,
 } from '~server/src/schema/series-fields';
-import { seriesMergeSchema } from '~server/src/schema/series-merge';
+import { seriesMergeSchema, mergedImageOrderSchema, mergedSeasonOrderSchema } from '~server/src/schema/series-merge';
 import { seriesTypes } from '~shared/series-types';
 import { ApiError } from '~server/src/error';
 
@@ -87,6 +87,47 @@ export class SeriesController {
 		ctx.log.info({ event: 'series.detached', seriesId, memberId }, 'Series detached');
 		const result: SeriesMergeResult = { main: await main.getValueOmitSeasons() };
 		return ctx.Success(result);
+	}
+
+	/**
+	 * 覆盖合并组内季的最终顺序。
+	 *
+	 * 合并组里的季来自多个系列，单个系列的「移动到第 N 位」表达不了跨系列位置，
+	 * 因此由前端提交完整的可见顺序；数据层校验 id 都属于该合并组后，把顺序记录在
+	 * 主系列上，并把各系列自己的 `sort` 重编为该顺序里的子序。
+	 */
+	@HttpMethod.Put('/series/:seriesId/merge/seasons')
+	@Validate(() => mergedSeasonOrderSchema)
+	public async updateMergedSeasonOrder(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const { seasonIds } = ctx.request.body as { seasonIds: string[] };
+		const series = await Series.getSeriesById(seriesId);
+		const order = await series.rewriteMergedSeasonOrder(seasonIds);
+		await series.waitDataSave();
+		ctx.log.info(
+			{ event: 'series.merge.seasons.reordered', seriesId, count: order.length },
+			'Merged seasons reordered',
+		);
+		return ctx.Success(order);
+	}
+
+	/**
+	 * 覆盖合并组内图片的最终顺序。
+	 *
+	 * 元素是图片绝对路径（与 `images` 同一形式）：同一张图在不同系列目录下可能同名，
+	 * 只有路径能唯一定位。不属于合并组的路径由数据层跳过。
+	 */
+	@HttpMethod.Put('/series/:seriesId/merge/images')
+	@Validate(() => mergedImageOrderSchema)
+	public async updateMergedImageOrder(@Context() ctx: Koa.Context, @Inject('seriesId') seriesId: string) {
+		const { images } = ctx.request.body as { images: string[] };
+		const series = await Series.getSeriesById(seriesId);
+		const order = await series.updateMergedImageOrder(images);
+		await series.waitDataSave();
+		ctx.log.info(
+			{ event: 'series.merge.images.reordered', seriesId, count: order.length },
+			'Merged images reordered',
+		);
+		return ctx.Success(order);
 	}
 
 	@HttpMethod.Put('/series/:seriesId/title')

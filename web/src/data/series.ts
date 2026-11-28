@@ -16,6 +16,8 @@ import {
 	removeSeriesDate,
 	mergeSeries,
 	detachSeries,
+	updateMergedSeasonOrder,
+	updateMergedImageOrder,
 } from '@/api/series';
 import { getSeasons } from '@/api/season';
 import { applySeriesQuery, paginateSeries, type SeriesQuery } from '@/utils/seriesQuery';
@@ -194,10 +196,21 @@ export class Series extends Common implements SeriesValue {
 		date: ref<[number?, number?]>([]),
 		types: ref<number[]>([]),
 		mergedIds: ref<string[]>([]),
+		mergedSeasonOrder: ref<string[]>([]),
+		mergedImageOrder: ref<string[]>([]),
 		status: ref(0),
 	};
 
-	private requestStatus = this.createStatus('title', 'images', 'description', 'date', 'types', 'status');
+	private requestStatus = this.createStatus(
+		'title',
+		'images',
+		'description',
+		'date',
+		'types',
+		'mergedSeasonOrder',
+		'mergedImageOrder',
+		'status',
+	);
 
 	private _seasons!: Ref<Season[]>;
 	private seasonsTrack!: Fn<[]>;
@@ -216,8 +229,14 @@ export class Series extends Common implements SeriesValue {
 		for (const key of Object.keys(this.values) as Array<keyof SeriesValue>) {
 			(this.values[key] as Ref<unknown>).value = series[key];
 		}
-		// 服务端始终返回数组；旧版本接口没有该字段，这里兜底避免叠层相关计算读到 undefined。
+		// 服务端始终返回数组；旧版本接口没有这些字段，这里兜底避免叠层与合并排序相关计算读到 undefined。
 		this.values.mergedIds.value = Array.isArray(series.mergedIds) ? series.mergedIds.slice() : [];
+		this.values.mergedSeasonOrder.value = Array.isArray(series.mergedSeasonOrder)
+			? series.mergedSeasonOrder.slice()
+			: [];
+		this.values.mergedImageOrder.value = Array.isArray(series.mergedImageOrder)
+			? series.mergedImageOrder.slice()
+			: [];
 
 		if (!Series.hasBindCache(series.id)) {
 			const { ref, track, update } = Series.createRef<Season>();
@@ -275,6 +294,16 @@ export class Series extends Common implements SeriesValue {
 	/** 已并入当前系列的成员 id 数组，顺序即叠层顺序与详情页季分组顺序 */
 	public get mergedIds() {
 		return this.values.mergedIds.value;
+	}
+
+	/** 合并组内季的最终顺序（季 id）；未覆盖的季按默认顺序追加在末尾 */
+	public get mergedSeasonOrder() {
+		return this.values.mergedSeasonOrder.value;
+	}
+
+	/** 合并组内图片的最终顺序（绝对路径）；未覆盖的图片按默认顺序追加在末尾 */
+	public get mergedImageOrder() {
+		return this.values.mergedImageOrder.value;
 	}
 
 	public get status() {
@@ -428,11 +457,23 @@ export class Series extends Common implements SeriesValue {
 
 	/**
 	 * 覆盖图片顺序，入参为绝对路径，接口只接受系列目录内的文件名
+	 *
+	 * @returns 请求是否成功；失败时已回滚本地顺序，调用方可据此恢复界面
 	 */
 	public async updateImages(images: string[]) {
-		await patchField(this.values, this.requestStatus, 'images', images, () =>
+		return await patchField(this.values, this.requestStatus, 'images', images, () =>
 			updateSeriesImages('set', this.id, this.toImageNames(images)),
 		);
+	}
+
+	/**
+	 * 仅同步本地图片顺序，不发起请求。
+	 *
+	 * 合并组内调整顺序后，服务端已经把各系列自己的图片 `sort` 重写成子序，
+	 * 客户端据此对齐本地值；与 `Season.syncSort()` 同一性质。
+	 */
+	public syncImages(images: string[]) {
+		this.values.images.value = images;
 	}
 
 	private toImageNames(images: string[]) {
@@ -466,6 +507,42 @@ export class Series extends Common implements SeriesValue {
 		if (member && result.member) {
 			member.values.mergedIds.value = result.member.mergedIds.slice();
 		}
+	}
+
+	/**
+	 * 覆盖合并组内季的最终顺序。
+	 *
+	 * 合并组里的季来自多个系列，「移动到第 N 位」表达不了跨系列位置，
+	 * 因此提交完整的可见顺序；服务端会把各系列自己的 `sort` 重编为子序，
+	 * 并用返回值（漏传的季会追加在末尾）纠正本地值。
+	 *
+	 * @returns 请求是否成功；失败时已回滚本地顺序
+	 */
+	public async updateMergedSeasonOrder(seasonIds: string[]) {
+		return await patchField(
+			this.values,
+			this.requestStatus,
+			'mergedSeasonOrder',
+			seasonIds,
+			() => updateMergedSeasonOrder(this.id, seasonIds),
+			(result) => (Array.isArray(result) ? result : void 0),
+		);
+	}
+
+	/**
+	 * 覆盖合并组内图片的最终顺序，入参为绝对路径（与 `images` 一致）。
+	 *
+	 * @returns 请求是否成功；失败时已回滚本地顺序
+	 */
+	public async updateMergedImageOrder(images: string[]) {
+		return await patchField(
+			this.values,
+			this.requestStatus,
+			'mergedImageOrder',
+			images,
+			() => updateMergedImageOrder(this.id, images),
+			(result) => (Array.isArray(result) ? result : void 0),
+		);
 	}
 
 	/**

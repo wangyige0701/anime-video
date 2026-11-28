@@ -5,6 +5,8 @@ import {
 	getGroupMembers,
 	getMergeRejection,
 	getMergeStack,
+	orderMergedImages,
+	orderMergedSeasons,
 	type MergeableSeries,
 } from '../../web/src/utils/seriesMerge';
 
@@ -108,5 +110,54 @@ describe('getMergeRejection', () => {
 
 	it('拒绝拖动一个已被合并的系列', () => {
 		expect(getMergeRejection('member', 'free', owners)).toBe('该系列已被合并，请先脱离');
+	});
+});
+
+describe('orderMergedSeasons', () => {
+	const mainSeasons = [{ id: 'm1' }, { id: 'm2' }];
+	const memberSeasons = [{ id: 'x1' }, { id: 'y1' }];
+
+	it('没有显式顺序时按「主系列在前、成员按合并顺序」', () => {
+		expect(orderMergedSeasons(mainSeasons, memberSeasons).map((item) => item.id)).toEqual(['m1', 'm2', 'x1', 'y1']);
+	});
+
+	it('显式顺序覆盖默认顺序，可跨系列交错', () => {
+		expect(orderMergedSeasons(mainSeasons, memberSeasons, ['x1', 'm2', 'y1', 'm1']).map((item) => item.id)).toEqual(
+			['x1', 'm2', 'y1', 'm1'],
+		);
+	});
+
+	it('显式顺序里失效的季 id 被跳过，未覆盖的季追加在末尾', () => {
+		expect(orderMergedSeasons(mainSeasons, memberSeasons, ['gone', 'y1']).map((item) => item.id)).toEqual([
+			'y1',
+			'm1',
+			'm2',
+			'x1',
+		]);
+	});
+
+	it('没有季时返回空数组', () => {
+		expect(orderMergedSeasons([], [], ['m1'])).toEqual([]);
+	});
+});
+
+describe('orderMergedImages', () => {
+	const main = ['E:/a/1.jpg', 'E:/a/2.jpg'];
+	const member = ['E:/b/2.jpg'];
+
+	it('默认主系列在前、成员追加', () => {
+		expect(orderMergedImages(main, member)).toEqual(['E:/a/1.jpg', 'E:/a/2.jpg', 'E:/b/2.jpg']);
+	});
+
+	it('可跨系列交错，并按路径去重', () => {
+		expect(orderMergedImages(main, ['E:/a/1.jpg', 'E:/b/2.jpg'], ['E:/b/2.jpg', 'E:/a/1.jpg'])).toEqual([
+			'E:/b/2.jpg',
+			'E:/a/1.jpg',
+			'E:/a/2.jpg',
+		]);
+	});
+
+	it('空输入返回空数组', () => {
+		expect(orderMergedImages([], [], ['E:/a/1.jpg'])).toEqual([]);
 	});
 });

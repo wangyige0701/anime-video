@@ -7,6 +7,7 @@ import { ApiError } from '~server/src/error';
 import { NotFoundError } from '~server/src/error/notFound';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { normalizeMergeGroups } from '~server/src/utils/merge-groups';
+import { applyExplicitOrder } from '~shared/series-order';
 import { Data } from './data';
 import { Season } from './season';
 import { Episode } from './episode';
@@ -49,6 +50,8 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		'date',
 		'types',
 		'mergedIds',
+		'mergedSeasonOrder',
+		'mergedImageOrder',
 		'status',
 	] as const;
 
@@ -298,6 +301,10 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		const sourceMembers = await source.mergedIds;
 		await target.addMergedIds([sourceId, ...sourceMembers]);
 		await source.updateMergedIds([]);
+		// 源系列不再是主系列，它记录的组内顺序随成员一起失效：
+		// 被展平转移的季与图片会按默认顺序追加到目标组的末尾。
+		await source.write('mergedSeasonOrder', []);
+		await source.write('mergedImageOrder', []);
 		await Promise.all([source.waitDataSave(), target.waitDataSave()]);
 		return { main: target, member: source };
 	}
@@ -314,6 +321,7 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 			throw new ApiError(Status.Failed, '该系列不在此合并组中', '该系列不在此合并组中');
 		}
 		await main.updateMergedIds(members.filter((id) => id !== memberId));
+		await main.pruneMergeOrder(await this.getSeriesById(memberId));
 		await main.waitDataSave();
 		return main;
 	}
@@ -493,6 +501,16 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		return this.field('mergedIds');
 	}
 
+	/** 合并组内季的最终顺序，元素为季 id；未覆盖的季按默认顺序追加 */
+	public get mergedSeasonOrder() {
+		return this.field('mergedSeasonOrder');
+	}
+
+	/** 合并组内图片的最终顺序，元素为图片绝对路径；未覆盖的图片按默认顺序追加 */
+	public get mergedImageOrder() {
+		return this.field('mergedImageOrder');
+	}
+
 	public get status() {
 		return this.field('status');
 	}
@@ -668,6 +686,163 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 	}
 
 	/**
+	 * 按前端提交的完整顺序重写合并组的季顺序。
+	 *
+	 * 合并组内的季跨多个系列，单个系列的「移动到第 N 位」无法表达跨系列位置，
+	 * 因此这里接收**最终顺序**（季 id 数组），而不是位置号：
+	 *
+	 * 1. 顺序记录到主系列的 `mergedSeasonOrder`，详情页按它渲染；
+	 * 2. 每个系列自己的季仍按该系列在全局顺序中的子序重编号 `1..n`，
+	 *    这样脱离合并后单系列的顺序与合并期间看到的一致；
+	 * 3. 没有出现在入参里的季按默认顺序追加在末尾，调用方漏传不会丢季。
+	 *
+	 * 传入不属于当前合并组的季 id（含悬空 id）与重复 id 会整次拒绝，不落半截数据。
+	 *
+	 * @returns 落库后的完整顺序
+	 */
+	public async rewriteMergedSeasonOrder(seasonIds: string[]) {
+		// 与单系列排序共用同一条队列：两种写入口必须串行，否则会互相覆盖 sort
+		const task = this.seasonSortQueue.then(() => this.doRewriteMergedSeasonOrder(seasonIds));
+		// 队列只关心「上一个任务结束」，不传递返回值，也不让失败中断后续任务
+		this.seasonSortQueue = task.then(
+			() => {},
+			() => {},
+		);
+		return await task;
+	}
+
+	/**
+	 * 按前端提交的完整顺序重写合并组的图片顺序。
+	 *
+	 * 与季顺序同理，但图片的键是**绝对路径**（与 `images` 同一形式）：同一张图在不同
+	 * 系列目录下可能同名，路径才能唯一定位。不属于合并组或已从磁盘删除的路径直接跳过，
+	 * 因为界面传来的可能是外部删除文件之前的旧快照。
+	 *
+	 * @returns 落库后的完整顺序
+	 */
+	public async updateMergedImageOrder(images: string[]) {
+		const group = await this.getMergeGroup();
+		const pool: Array<{ series: Series; path: string }> = [];
+		for (const series of group) {
+			for (const image of await series.images) {
+				pool.push({ series, path: image });
+			}
+		}
+		if (!pool.length) {
+			await this.write('mergedImageOrder', []);
+			return [];
+		}
+		// 统一解析成绝对路径再比较：客户端可能回传不同分隔符或大小写形式的同一路径
+		const ordered = applyExplicitOrder(
+			pool,
+			images.map((image) => path.resolve(image)),
+			(item) => path.resolve(item.path),
+		);
+		const order = ordered.map((item) => item.path);
+		// 只有真正的合并组才需要显式顺序；脱离到只剩自己时清空，避免残留指向成员的路径
+		await this.write('mergedImageOrder', group.length > 1 ? order : []);
+		for (const series of group) {
+			const own = ordered.filter((item) => item.series === series).map((item) => item.path);
+			await series.write(
+				'images',
+				own.map((image, index) => ({ path: path.basename(image), sort: index + 1 })),
+			);
+		}
+		return order;
+	}
+
+	/**
+	 * 取当前系列的合并组：主系列自身在首位，随后按 `mergedIds` 顺序。
+	 *
+	 * 悬空成员直接跳过——它由扫描时的 `normalizeMergeGroups()` 清理，
+	 * 不该让一次排序请求因为一条失效引用整体失败。
+	 */
+	private async getMergeGroup() {
+		const group: Series[] = [this];
+		for (const id of await this.mergedIds) {
+			if (id === this.hashId || group.some((item) => item.hashId === id)) {
+				continue;
+			}
+			try {
+				group.push(await Series.getSeriesById(id));
+			} catch {
+				// 成员目录已被删除，等下一次扫描清理配置
+			}
+		}
+		return group;
+	}
+
+	private async doRewriteMergedSeasonOrder(seasonIds: string[]) {
+		const group = await this.getMergeGroup();
+		const entries: Array<{ series: Series; season: Season; id: string; sort: number }> = [];
+		for (const series of group) {
+			for (const season of await series.seasons) {
+				entries.push({ series, season, id: await season.id, sort: await season.sort });
+			}
+		}
+		if (!entries.length) {
+			await this.write('mergedSeasonOrder', []);
+			return [];
+		}
+		const known = new Set(entries.map((item) => item.id));
+		const seen = new Set<string>();
+		for (const id of seasonIds) {
+			if (!known.has(id)) {
+				const message = `季 ${id} 不属于当前合并组，无法参与排序`;
+				throw new ApiError(Status.Failed, message, message);
+			}
+			if (seen.has(id)) {
+				const message = `季 ${id} 在排序数组中重复出现`;
+				throw new ApiError(Status.Failed, message, message);
+			}
+			seen.add(id);
+		}
+
+		// 默认顺序：按当前 sort 排；同 sort 时保持收集顺序（主系列在前、成员按 mergedIds）
+		entries.sort((a, b) => a.sort - b.sort);
+		const ordered = applyExplicitOrder(entries, seasonIds, (item) => item.id);
+		const order = ordered.map((item) => item.id);
+		await this.write('mergedSeasonOrder', group.length > 1 ? order : []);
+
+		// 各系列按自己在全局顺序中的子序重编号，并原地重排缓存数组，
+		// 保证接口返回的顺序与落库结果一致（只改 sort 不重排会让 GET 返回旧顺序）。
+		for (const series of group) {
+			const own = ordered.filter((item) => item.series === series).map((item) => item.season);
+			for (let index = 0; index < own.length; index++) {
+				await own[index]!.rewriteSort(index + 1);
+			}
+			const seasons = await series.seasons;
+			seasons.splice(0, seasons.length, ...own);
+		}
+		return order;
+	}
+
+	/**
+	 * 脱离合并时清理主系列上属于该成员的顺序记录。
+	 *
+	 * 不清也不会渲染错误（合成顺序时会跳过未知项），但成员以后被重新合并回来时
+	 * 会带着旧位置复活，与用户当时的预期不符。
+	 */
+	private async pruneMergeOrder(member: Series) {
+		const seasonIds = new Set(await Promise.all((await member.seasons).map((season) => season.id)));
+		const imagePaths = new Set((await member.images).map((image) => path.resolve(image)));
+		const currentSeasons = await this.mergedSeasonOrder;
+		if (currentSeasons.some((id) => seasonIds.has(id))) {
+			await this.write(
+				'mergedSeasonOrder',
+				currentSeasons.filter((id) => !seasonIds.has(id)),
+			);
+		}
+		const currentImages = await this.mergedImageOrder;
+		if (currentImages.some((image) => imagePaths.has(path.resolve(image)))) {
+			await this.write(
+				'mergedImageOrder',
+				currentImages.filter((image) => !imagePaths.has(path.resolve(image))),
+			);
+		}
+	}
+
+	/**
 	 * 读取配置中的原始图片记录（未拼接路径、未排序）。
 	 *
 	 * 仅内部增删逻辑使用，对外统一暴露 `images` 完整路径数组。
@@ -807,6 +982,8 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 				date: [],
 				types: [],
 				mergedIds: [],
+				mergedSeasonOrder: [],
+				mergedImageOrder: [],
 				status: 0,
 				description: '',
 				seasons: [],
@@ -831,6 +1008,10 @@ export class Series extends Entity<SeriesStore, SeriesValue> implements ServerTo
 		config.types = config.types || [];
 		// 旧数据没有该字段；规范化在扫描末尾统一处理悬空 id 与重复项。
 		config.mergedIds = Array.isArray(config.mergedIds) ? config.mergedIds : [];
+		// 合并组顺序同样允许缺省：缺失时按默认顺序（主系列在前、成员按 mergedIds）展示，
+		// 不需要为历史数据补写一遍配置。
+		config.mergedSeasonOrder = Array.isArray(config.mergedSeasonOrder) ? config.mergedSeasonOrder : [];
+		config.mergedImageOrder = Array.isArray(config.mergedImageOrder) ? config.mergedImageOrder : [];
 		config.status = config.status || 0;
 		config.description = config.description || '';
 		config.seasons = config.seasons || [];

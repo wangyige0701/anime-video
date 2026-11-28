@@ -25,11 +25,11 @@
 
 ### 数据模型与职责
 
-| 类        | 核心字段                                                                          | 子级关系              | 可编辑字段                         |
-| --------- | --------------------------------------------------------------------------------- | --------------------- | ---------------------------------- |
-| `Series`  | `id`、`path`、`name`、`title`、`images`、`description`、`date`、`types`、`status` | `seasons: Season[]`   | 标题、图片、描述、日期、类型、状态 |
-| `Season`  | `id`、`sort`、`path`、`title`                                                     | `episodes: Episode[]` | 标题、排序                         |
-| `Episode` | `id`、`sort`、`path`、`extension`、`title`                                        | 无                    | 标题、排序                         |
+| 类        | 核心字段                                                                                                                                | 子级关系              | 可编辑字段                                   |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------- |
+| `Series`  | `id`、`path`、`name`、`title`、`images`、`description`、`date`、`types`、`status`、`mergedIds`、`mergedSeasonOrder`、`mergedImageOrder` | `seasons: Season[]`   | 标题、图片、描述、日期、类型、状态、合并关系 |
+| `Season`  | `id`、`sort`、`path`、`title`                                                                                                           | `episodes: Episode[]` | 标题、排序                                   |
+| `Episode` | `id`、`sort`、`path`、`extension`、`title`                                                                                              | 无                    | 标题、排序                                   |
 
 三类对象的可编辑字段统一保存在 `values` 映射中（`{ [K in keyof DTO]: Ref<DTO[K]> }`，每个字段一个 `ref()`），对外通过 getter 暴露，因此组件读取 `series.title`、`season.episodes` 等普通属性时仍会建立响应式依赖。字段名只在 `values` 定义和构造时的 DTO 赋值中各出现一次。`id`、路径、目录名和扩展名当前没有前端更新方法，应视为服务端扫描结果和实体身份，不要在组件中直接改写。
 
@@ -105,7 +105,9 @@
 
 图片方法的入参是绝对路径（与 `series.images` 一致），发请求前会经 `getSeriesImageName(directory, image)` 转成系列目录内的文件名：服务端图片接口只接受文件名，直接传绝对路径会因二次拼接而查不到文件并被静默过滤。返回值仍以绝对路径写回 `images`，调用方无需自行转换。`updateSort()` 只更新实体的 sort 字段，不会自动重排已挂载的 seasons/episodes 数组。
 
-季与集的拖拽排序遵循同一套约定：以 `updateSort()` 的布尔返回值判断服务端是否成功，成功后对同容器其余项调用 `syncSort()` 对齐本地 `sort`，再通过 `series.setSeasons()` / `season.setEpisodes()` 回写关系数组；列表必须先复制为本地镜像，不能把 `series.seasons` / `season.episodes` 直接交给拖拽库。`useDraggable` 必须显式传 `clone: (item) => item`：库默认用 JSON 深拷贝被拖拽项，而领域对象内部持有 `Ref`（循环引用）会在 `onStart` 抛错并让失败快照失效。实现细节见 `docs/modules/web/detail-episode-sort.md` 与 `docs/modules/web/detail-season-sort.md`。
+季与集的拖拽排序遵循同一套约定：以 `updateSort()` 的布尔返回值判断服务端是否成功，成功后对同容器其余项调用 `syncSort()` 对齐本地 `sort`，再通过 `series.setSeasons()` / `season.setEpisodes()` 回写关系数组；列表必须先复制为本地镜像，不能把 `series.seasons` / `season.episodes` 直接交给拖拽库。
+
+合并组的顺序不能走 `updateSort()`：`updateMergedSeasonOrder()` / `updateMergedImageOrder()` 接收**完整顺序**（季 id、图片绝对路径），服务端会把各系列自己的 `sort` 重编为子序并用返回值纠正本地值；它们同样走 `patchField()` 的乐观更新与失败回滚。仅用于本地对齐的方法只有 `syncSort()`、`syncImages()`，两者都不发请求。`useDraggable` 必须显式传 `clone: (item) => item`：库默认用 JSON 深拷贝被拖拽项，而领域对象内部持有 `Ref`（循环引用）会在 `onStart` 抛错并让失败快照失效。实现细节见 `docs/modules/web/detail-episode-sort.md` 与 `docs/modules/web/detail-season-sort.md`。
 
 读取 API 当前配置失败重试 2 次、间隔 500ms；刷新和字段写入 API 使用 `AxiosRequest.Single.PREV` 单请求策略。变更重试或并发策略时应在 API 层统一处理，领域对象继续负责响应式状态、乐观更新和回滚。
 
@@ -144,7 +146,9 @@
 - `IndexList.vue` 必须同时持有**全量** `allSeries` 与列表用的 `querySeries` 结果：成员被排除出列表后，叠层仍需要它的标题与首图。
 - 拖拽实现在 `components/index/useSeriesDrag.ts`，四阶段 `idle / drag / drop / return`，只做「卡片 → 卡片」的搬运，不接通用拖拽库（其占位与镜像机制会和翻转、飞入、边缘滚动冲突）。
 - 卡片海报是原生 `<img>`，按下后移动会先触发浏览器图片拖拽并吞掉后续 `pointermove`；CSS `-webkit-user-drag: none` 与捕获阶段拦截 `dragstart` 两道都要保留。
-- **详情页的海报与季一样按合并关系拼接**：`displayImages` 把主系列图片放在前、成员图片按 `mergedIds` 顺序追加后交给 `DetailImage`。两个要点：系列图片对外是绝对路径（服务端按各自目录拼好），跨系列直接拼接即可；合并只发生在展示层，不写回 `images` 字段，脱离后成员图片自然消失。
+- **详情页的海报与季一样按合并关系拼接**：`displayImages` 把主系列图片放在前、成员图片按 `mergedIds` 顺序追加，再应用主系列的 `mergedImageOrder`，最后交给 `DetailImage`。三个要点：系列图片对外是绝对路径（服务端按各自目录拼好），跨系列直接拼接即可；合并只发生在展示层，不写回 `images` 字段，脱离后成员图片自然消失；合并组的显式顺序由 `orderMergedImages()` 统一收敛，与服务端共用 `shared/series-order.ts`。
+- **合并组的季与图片可以跨系列拖拽排序**：季标题手柄不再因合并而隐藏。`commitSeasonSort()` 按是否合并分流——单系列仍提交「移动到第 N 位」，合并组提交**完整顺序**给 `PUT /data/series/:id/merge/seasons`；写入成功后 `syncGroupSeasons()` / `syncGroupImages()` 把全局顺序拆回主系列与每个成员（`syncSort()` + `setSeasons()` / `syncImages()`），保证脱离后各系列自己的顺序等于合并时看到的子序。
+- 图片排序入口在海报右上角（多图才出现），打开 `DetailImageManage.vue` 面板；面板只做拖拽与保存，写入通过 `commit` 回调交给详情页，合并组走 `PUT /data/series/:id/merge/images`（绝对路径数组），单系列走既有的 `images/set`。
 - 浮层与叠层动画细节、命中检测前提、已知限制见 `docs/modules/web/series-merge.md`。
 
 ## 详情页文本编辑

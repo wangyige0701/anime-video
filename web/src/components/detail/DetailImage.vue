@@ -34,6 +34,19 @@
 					></el-image>
 				</template>
 			</div>
+			<!--
+				排序入口贴在海报右上角：单张图片没有顺序可调，因此只在多图时出现。
+				必须 stop 掉 click，否则会同时触发 el-image 的大图预览。
+			-->
+			<button
+				v-if="props.images.length > 1"
+				type="button"
+				class="manage"
+				title="调整图片顺序"
+				@click.stop="$emit('manage')"
+			>
+				<el-icon :size="14"><Sort /></el-icon>
+			</button>
 		</div>
 		<div class="dots" v-if="props.images.length > 1">
 			<span
@@ -50,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import { Sort } from '@element-plus/icons-vue';
 import { getSeriesPath } from '@/utils/series';
 import { getImageUrl } from '~shared/server-route-config';
 
@@ -61,6 +75,10 @@ const props = withDefaults(
 		images: () => [],
 	},
 );
+defineEmits<{
+	/** 请求调整图片顺序，由详情页打开排序面板 */
+	(e: 'manage'): void;
+}>();
 
 let autoChangeIntervalId: number | null = null;
 const status = useVueStatusRef('inside', 'click', 'transition').onTransition();
@@ -169,6 +187,33 @@ function autoChangeImage() {
 	width: 100%;
 	height: 100%;
 	flex: auto;
+}
+
+// 悬停才露出排序入口：常驻会一直压在首图上，排序也不是高频操作
+.manage {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	color: #fff;
+	background-color: rgba(#000, 0.55);
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 0.2s ease;
+	&:hover {
+		background-color: rgba(#000, 0.78);
+	}
+	.image-wrap:hover & {
+		opacity: 1;
+	}
 }
 
 .dots {

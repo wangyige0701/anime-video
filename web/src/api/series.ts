@@ -66,6 +66,25 @@ export function detachSeries(mainId: string, memberId: string) {
 	});
 }
 
+/**
+ * 覆盖合并组内季的最终顺序。
+ *
+ * 入参是**完整顺序**而不是位置号：跨系列拖动无法表达成「移动到第 N 位」。
+ * 返回落库后的顺序（漏传的季会被追加在末尾），调用方用它纠正本地值。
+ */
+export function updateMergedSeasonOrder(seriesId: string, seasonIds: string[]) {
+	return API.put<any, string[]>(`${ServerRoot.DATA}/series/${seriesId}/merge/seasons`, { seasonIds });
+}
+
+/**
+ * 覆盖合并组内图片的最终顺序。
+ *
+ * 入参为图片绝对路径（与 `series.images` 一致），同上返回落库后的顺序。
+ */
+export function updateMergedImageOrder(seriesId: string, images: string[]) {
+	return API.put<any, string[]>(`${ServerRoot.DATA}/series/${seriesId}/merge/images`, { images });
+}
+
 // region 更新系列具体信息
 
 /**

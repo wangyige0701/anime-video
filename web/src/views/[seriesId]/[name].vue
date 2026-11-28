@@ -1,7 +1,7 @@
 <template>
 	<div class="detail">
 		<div class="top">
-			<DetailImage :images="displayImages" />
+			<DetailImage :images="displayImages" @manage="openImageManage" />
 			<div class="info">
 				<div class="title-row">
 					<TextEditor
@@ -27,7 +27,6 @@
 					:active-episode-id="activeEpisodeId"
 					:last-episode-id="lastEpisodeId"
 					:group-title="groupTitleOf.get(season.id) ?? ''"
-					:sortable="seasonSortable"
 					@play="play($event, season, series.value)"
 				></DetailSeason>
 			</template>
@@ -48,8 +47,10 @@ import { WebRoute } from '~shared/web-route-config';
 import router from '@/router';
 import VideoBox from '@/components/detail/VideoBox.vue';
 import BangumiSync from '@/components/detail/BangumiSync.vue';
+import DetailImageManage from '@/components/detail/DetailImageManage.vue';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
-import { mergeUnique } from '@/utils/series';
+import { orderMergedImages, orderMergedSeasons } from '@/utils/seriesMerge';
+import { openDialog } from '@/utils/dialog';
 import { usePlayerStore } from '@/stores/player';
 import { useSettingsStore } from '@/stores/settings';
 import { useDraggable } from 'vue-draggable-plus';
@@ -97,23 +98,26 @@ interface MemberGroup {
 	seasons: Season[];
 	/** 成员系列自己的图片，与主系列的一起展示；存的是绝对路径，可以直接拼接 */
 	images: string[];
+	/** 成员系列实例：排序成功后把子序写回它自己的季/图片数组，脱离后打开它的详情页也是新顺序 */
+	instance: Series;
 }
 
 /**
- * 详情页展示的图片：主系列的在前，被合并系列的按合并顺序追加。
+ * 详情页展示的图片：默认主系列在前、被合并系列按合并顺序追加，
+ * 再应用主系列记录的 `mergedImageOrder`（跨系列排序结果）。
  *
  * `images` 对外是绝对路径（服务端按各自系列目录拼好），跨系列拼接不需要换基准目录；
- * 去重是因为两个系列目录里可能存在同一张图。这里不动数据，脱离合并后成员图片自然消失。
+ * 路径本身就是唯一键，同一张图被两个目录收录时只保留第一次出现。
+ * 这里不动数据，脱离合并后成员图片自然消失。
  */
 const displayImages = computed(() =>
-	mergeUnique(
+	orderMergedImages(
 		[...(series.value.images ?? [])],
 		memberGroups.value.flatMap((group) => group.images),
+		series.value.mergedImageOrder ?? [],
 	),
 );
 
-/** 合并状态下季来自多个系列，跨系列拖动无法用「移动到第 N 位」表达，因此不提供手柄 */
-const seasonSortable = computed(() => memberGroups.value.length === 0);
 /** 成员季的来源系列标题；主系列自己的季不标注，避免每一项都顶一个多余的标签 */
 const groupTitleOf = computed(() => {
 	const map = new Map<string, string>();
@@ -131,16 +135,20 @@ watch(
 	{ immediate: true },
 );
 
-/** 主系列自己的季在前，成员系列按合并顺序依次追加 */
+/** 主系列自己的季在前，成员系列按合并顺序依次追加，最后应用合并组的显式顺序 */
 function rebuildSeasons() {
-	const list = [...(series.value.seasons ?? []), ...memberGroups.value.flatMap((group) => group.seasons)];
+	const list = orderMergedSeasons(
+		[...(series.value.seasons ?? [])],
+		memberGroups.value.flatMap((group) => group.seasons),
+		series.value.mergedSeasonOrder ?? [],
+	);
 	// 原地替换保持数组引用不变，避免拖拽实例持有过期数组
 	seasons.value.splice(0, seasons.value.length, ...list);
 	triggerRef(seasons);
 }
 
 /**
- * 拉取被合并系列的季。
+ * 拉取被合并系列的季与图片。
  *
  * 只对存在的成员生效：数据层的规范化会在下次扫描清理悬空 id，
  * 这里遇到请求失败就跳过，不让一条失效引用把整页拖垮。
@@ -156,6 +164,7 @@ async function loadMembers(current: Series) {
 					title: member.title,
 					seasons: [...member.seasons],
 					images: [...member.images],
+					instance: member,
 				};
 			} catch (error) {
 				console.warn('[merge] 成员季加载失败', id, error);
@@ -190,13 +199,14 @@ useDraggable(
 );
 
 /**
- * 提交季排序。服务端会按“移动到第 N 位”把区间内其它季 ±1 平移，
- * 因此只提交被拖动的那一季，不能逐条提交。
+ * 提交季排序。
+ *
+ * 两种语义按是否合并分流：
+ * - 单系列：服务端按「移动到第 N 位」把区间内其它季 ±1 平移，因此只提交被拖动的那一季；
+ * - 合并组：季跨多个系列，位置号无法表达跨系列落点，提交**完整顺序**，
+ *   服务端把各系列自己的 `sort` 重编为该顺序中的子序，脱离后顺序与合并时一致。
  */
 async function commitSeasonSort(oldIndex?: number, newIndex?: number) {
-	if (!seasonSortable.value) {
-		return;
-	}
 	if (status.sorting || isUndefined(oldIndex) || isUndefined(newIndex) || oldIndex === newIndex) {
 		return;
 	}
@@ -206,11 +216,19 @@ async function commitSeasonSort(oldIndex?: number, newIndex?: number) {
 	}
 	status.onSorting();
 	try {
+		if (memberGroups.value.length) {
+			const success = await series.value.updateMergedSeasonOrder(seasons.value.map((season) => season.id));
+			if (!success) {
+				restoreSeasonSnapshot();
+				return;
+			}
+			syncGroupSeasons();
+			return;
+		}
 		const success = await moved.updateSort(newIndex + 1);
 		if (!success) {
 			// updateSort 已回滚自身 sort，这里把本地顺序恢复成拖拽前的状态
-			seasons.value.splice(0, seasons.value.length, ...seasonSnapshot);
-			triggerRef(seasons);
+			restoreSeasonSnapshot();
 			return;
 		}
 		// 其余季的 sort 已被服务端平移，本地同步镜像避免字段与显示顺序长期不一致
@@ -218,6 +236,101 @@ async function commitSeasonSort(oldIndex?: number, newIndex?: number) {
 		series.value.setSeasons([...seasons.value]);
 	} finally {
 		status.offSorting();
+	}
+}
+
+function restoreSeasonSnapshot() {
+	seasons.value.splice(0, seasons.value.length, ...seasonSnapshot);
+	triggerRef(seasons);
+}
+
+/**
+ * 把合并组的最终顺序拆回各系列。
+ *
+ * 服务端已按子序重写了每个系列的 `sort`，本地只做对齐：季按子序 `syncSort()` 并
+ * 通过 `setSeasons()` 更新各自的季数组（脱离合并后打开成员的详情页也是新顺序），
+ * 图片同理。不做这一步会出现「拖完顺序正确、刷新后成员仍按旧顺序」的不一致。
+ */
+function syncGroupSeasons() {
+	const ownerOf = new Map<Season, MemberGroup>();
+	for (const group of memberGroups.value) {
+		for (const season of group.seasons) {
+			ownerOf.set(season, group);
+		}
+	}
+	const counters = new Map<MemberGroup, number>();
+	const own: Season[] = [];
+	for (const season of seasons.value) {
+		const group = ownerOf.get(season);
+		if (!group) {
+			own.push(season);
+			season.syncSort(own.length);
+			continue;
+		}
+		const next = (counters.get(group) ?? 0) + 1;
+		counters.set(group, next);
+		season.syncSort(next);
+	}
+	for (const group of memberGroups.value) {
+		const sub = seasons.value.filter((season) => ownerOf.get(season) === group);
+		group.seasons = sub;
+		group.instance.setSeasons(sub);
+	}
+	series.value.setSeasons(own);
+}
+
+/**
+ * 打开图片排序面板。
+ *
+ * 面板只负责拖拽与“保存”，真正的写入通过 `commit` 回调走数据层，
+ * 因此合并组与非合并组共用同一个面板，区别只在提交方法。
+ */
+async function openImageManage() {
+	if (status.waiting || status.sorting) {
+		return;
+	}
+	try {
+		await openDialog<string[]>({
+			component: DetailImageManage,
+			title: '调整图片顺序',
+			dialogProps: { width: '720px' },
+			componentProps: {
+				images: [...displayImages.value],
+				merged: memberGroups.value.length > 0,
+				commit: commitImageOrder,
+			},
+		});
+	} catch {
+		// 取消/关闭是正常路径，写入失败由 API 拦截器统一提示
+	}
+}
+
+/**
+ * 写入图片顺序：合并组记录跨系列顺序，单系列直接覆盖自己的图片顺序。
+ *
+ * @returns 请求是否成功；失败时数据层已回滚，面板会保留在打开状态
+ */
+async function commitImageOrder(images: string[]) {
+	if (memberGroups.value.length) {
+		const success = await series.value.updateMergedImageOrder(images);
+		if (success) {
+			syncGroupImages();
+		}
+		return success;
+	}
+	return await series.value.updateImages(images);
+}
+
+/** 把合并组的图片顺序拆回各系列，规则与 `syncGroupSeasons()` 一致 */
+function syncGroupImages() {
+	const ordered = series.value.mergedImageOrder;
+	const ownPaths = new Set(series.value.images);
+	series.value.syncImages(ordered.filter((image) => ownPaths.has(image)));
+	for (const group of memberGroups.value) {
+		const paths = new Set(group.images);
+		const sub = ordered.filter((image) => paths.has(image));
+		group.images = sub;
+		group.instance.syncImages(sub);
 	}
 }
 

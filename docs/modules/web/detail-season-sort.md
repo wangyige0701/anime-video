@@ -12,14 +12,14 @@
 
 ## 2. 与集层的差异
 
-| 维度 | 剧集（季面板内） | 季（详情页列表） |
-| --- | --- | --- |
-| 数据源 | `season.episodes`（`customRef`） | `series.seasons`（`customRef`） |
-| 回写方法 | `season.setEpisodes()` | `series.setSeasons()` |
-| 拖拽容器 | `.episodes` 网格（`div`，模板 ref 直接是元素） | `.el-collapse` 根元素（组件实例，需取 `$el`） |
-| 手柄类名 | `.drag-handle` | `.season-handle` |
-| 加载态挂载点 | 季面板内容 `.episode-panel` | 整个季列表 `.list` |
-| 序号展示 | 卡片内的“第 N 集” | 无序号，顺序即语义 |
+| 维度         | 剧集（季面板内）                               | 季（详情页列表）                              |
+| ------------ | ---------------------------------------------- | --------------------------------------------- |
+| 数据源       | `season.episodes`（`customRef`）               | `series.seasons`（`customRef`）               |
+| 回写方法     | `season.setEpisodes()`                         | `series.setSeasons()`                         |
+| 拖拽容器     | `.episodes` 网格（`div`，模板 ref 直接是元素） | `.el-collapse` 根元素（组件实例，需取 `$el`） |
+| 手柄类名     | `.drag-handle`                                 | `.season-handle`                              |
+| 加载态挂载点 | 季面板内容 `.episode-panel`                    | 整个季列表 `.list`                            |
+| 序号展示     | 卡片内的“第 N 集”                              | 无序号，顺序即语义                            |
 
 **手柄类名必须区分**：季的拖拽容器包含集面板，若两级共用一个类名，抓集手柄会误触发季拖拽。
 
@@ -58,7 +58,7 @@ series.seasons ──watch（原地 splice + triggerRef）──> seasons 本地
 
 - 展开状态的季被拖动时，整块内容（含已展开的集面板）一起移动，这是 SortableJS 的默认行为，未做高度收拢。
 - 季顺序不会写回目录名，也不会改变服务端扫描顺序；刷新页面后以 `sort` 字段为准。
-- 跨系列拖拽需要配置 `group` 并处理两个系列的 `sort` 重排，当前未实现。
+- **合并组的季来自多个系列**，位置号表达不了跨系列落点：详情页改为提交完整顺序给 `PUT /data/series/:id/merge/seasons`，由服务端把各系列的 `sort` 重编为子序。提交后必须把顺序拆回各系列（`syncGroupSeasons()`），否则脱离合并后成员仍按旧数组顺序展示。细节见 [series-merge.md](series-merge.md) 第 5 节。
 
 ## 6. 验证方式
 

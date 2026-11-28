@@ -3,7 +3,7 @@
 		<template #title>
 			<div class="season-title" @click="stopEditClick">
 				<!-- 拖拽季顺序的手柄，独立拦截点击避免触发折叠面板的展开/收起 -->
-				<el-icon v-if="props.sortable" class="season-handle" :size="16" @click.stop><Rank /></el-icon>
+				<el-icon class="season-handle" :size="16" @click.stop><Rank /></el-icon>
 				<TextEditor
 					class="season-name"
 					:value="props.season.title"
@@ -85,19 +85,11 @@ const props = withDefaults(
 		lastEpisodeId?: string;
 		/** 来源系列标题，仅在合并后的系列里传入 */
 		groupTitle?: string;
-		/**
-		 * 是否允许拖动调整季顺序。
-		 *
-		 * 合并后的季来自多个系列，而排序接口只作用于单个系列内部，
-		 * 跨系列拖动无法表达成一次「移动到第 N 位」，因此这种情况下不提供手柄。
-		 */
-		sortable?: boolean;
 	}>(),
 	{
 		activeEpisodeId: '',
 		lastEpisodeId: '',
 		groupTitle: '',
-		sortable: true,
 	},
 );
 defineEmits<{

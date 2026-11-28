@@ -398,6 +398,8 @@ describe('Video Data Config', () => {
 				'date',
 				'types',
 				'mergedIds',
+				'mergedSeasonOrder',
+				'mergedImageOrder',
 				'status',
 			]);
 			const seriesDetail = await series.getValue();
@@ -411,6 +413,8 @@ describe('Video Data Config', () => {
 				'date',
 				'types',
 				'mergedIds',
+				'mergedSeasonOrder',
+				'mergedImageOrder',
 				'status',
 				'seasons',
 			]);
@@ -593,6 +597,128 @@ describe('Video Data Config', () => {
 		} finally {
 			await fs.rm(memberDirectory, { recursive: true, force: true });
 			// 移除目录后重新扫描，规范化会清理掉指向已删除系列的悬空成员 id。
+			await Series.updateSeries();
+			await Series.clearCache();
+		}
+	});
+
+	it('Should reorder seasons and images across the merged group', async () => {
+		const memberName = '合并排序成员';
+		const memberDirectory = path.join(dir, memberName);
+
+		try {
+			await fs.rm(memberDirectory, { recursive: true, force: true });
+			await fs.mkdir(path.join(memberDirectory, '第一季'), { recursive: true });
+			await fs.writeFile(path.join(memberDirectory, '第一季', '1.mp4'), '');
+			await fs.writeFile(path.join(memberDirectory, '封面.png'), '');
+			await Series.clearCache();
+			await Series.setDirectories(dir);
+
+			const all = await Series.getAllSeries(true);
+			const main = all.find((item) => item.getSeriesName() === '视频1')!;
+			const member = all.find((item) => item.getSeriesName() === memberName)!;
+			const mainId = await main.id;
+			const memberId = await member.id;
+			await Series.mergeSeries(memberId, mainId);
+
+			const mainIds = await Promise.all((await main.seasons).map((season) => season.id));
+			const memberIds = await Promise.all((await member.seasons).map((season) => season.id));
+			expect(mainIds.length).toBeGreaterThan(1);
+			expect(memberIds).toHaveLength(1);
+
+			// 跨系列交错：成员季排第一，随后是两个主系列季的倒序
+			const target = [memberIds[0]!, mainIds[1]!, mainIds[0]!];
+			expect(await main.rewriteMergedSeasonOrder(target)).toEqual(target);
+			expect(await main.mergedSeasonOrder).toEqual(target);
+
+			// 各系列按自己在全局顺序中的子序重编号，接口返回顺序与落库一致
+			expect(await Promise.all((await main.seasons).map((season) => season.id))).toEqual([
+				mainIds[1],
+				mainIds[0],
+			]);
+			expect(await Promise.all((await main.seasons).map((season) => season.sort))).toEqual([1, 2]);
+			expect(await Promise.all((await member.seasons).map((season) => season.sort))).toEqual([1]);
+
+			await main.waitDataSave();
+			const seasonData = await getJsonFIle();
+			expect(seasonData.find((item: any) => item.id === mainId)?.mergedSeasonOrder).toEqual(target);
+
+			// 漏传的季按默认顺序追加在末尾，不会丢季
+			expect(await main.rewriteMergedSeasonOrder([memberIds[0]!])).toEqual([
+				memberIds[0]!,
+				mainIds[1]!,
+				mainIds[0]!,
+			]);
+
+			// 不属于合并组与重复的 id 整次拒绝，不落半截数据
+			await expect(main.rewriteMergedSeasonOrder(['not-exist'])).rejects.toThrow('不属于当前合并组');
+			await expect(main.rewriteMergedSeasonOrder([mainIds[0]!, mainIds[0]!])).rejects.toThrow('重复');
+
+			// 图片顺序同样是跨系列交错，元素为绝对路径
+			const mainImages = await main.images;
+			const memberImages = await member.images;
+			expect(mainImages.length).toBeGreaterThan(1);
+			expect(memberImages).toHaveLength(1);
+			const mergedImages = [memberImages[0]!, mainImages[1]!, mainImages[0]!];
+			expect(await main.updateMergedImageOrder(mergedImages)).toEqual(mergedImages);
+			expect(await main.mergedImageOrder).toEqual(mergedImages);
+			expect(await main.images).toEqual([mainImages[1], mainImages[0]]);
+
+			await main.waitDataSave();
+			const imageData = await getJsonFIle();
+			expect(imageData.find((item: any) => item.id === mainId)?.mergedImageOrder).toEqual(mergedImages);
+			expect(imageData.find((item: any) => item.id === mainId)?.images).toEqual([
+				{ path: path.basename(mainImages[1]!), sort: 1 },
+				{ path: path.basename(mainImages[0]!), sort: 2 },
+			]);
+
+			// 不属于合并组或已被删除的路径直接跳过
+			const ghost = path.join(dir, '不存在', 'ghost.png');
+			expect(await main.updateMergedImageOrder([ghost, ...mergedImages])).toEqual(mergedImages);
+
+			// 脱离后各系列自己的顺序必须等于它在合并视图里的子序：
+			// 拖拽时已经把各系列的 sort 重编成子序，脱离不回滚任何一侧。
+			const detachSeasonOrder = [mainIds[0]!, memberIds[0]!, mainIds[1]!];
+			expect(await main.rewriteMergedSeasonOrder(detachSeasonOrder)).toEqual(detachSeasonOrder);
+			const mergedMainSeasonOrder = await Promise.all((await main.seasons).map((season) => season.id));
+			const mergedMemberSeasonOrder = await Promise.all((await member.seasons).map((season) => season.id));
+			const detachImageOrder = [mainImages[0]!, memberImages[0]!, mainImages[1]!];
+			expect(await main.updateMergedImageOrder(detachImageOrder)).toEqual(detachImageOrder);
+			const mergedMainImageOrder = await main.images;
+			const mergedMemberImageOrder = await member.images;
+
+			await Series.detachSeries(mainId, memberId);
+			// 主系列不再保留该成员的顺序记录，重新合并回来不会复活旧位置
+			expect(await main.mergedSeasonOrder).not.toContain(memberIds[0]);
+			expect(await main.mergedImageOrder).not.toContain(memberImages[0]);
+			// 脱离后两边都保持合并时的子序，sort 仍是连续的 1..n
+			expect(await Promise.all((await main.seasons).map((season) => season.id))).toEqual(mergedMainSeasonOrder);
+			expect(await Promise.all((await member.seasons).map((season) => season.id))).toEqual(
+				mergedMemberSeasonOrder,
+			);
+			expect(await Promise.all((await main.seasons).map((season) => season.sort))).toEqual(
+				mergedMainSeasonOrder.map((_, index) => index + 1),
+			);
+			expect(await Promise.all((await member.seasons).map((season) => season.sort))).toEqual(
+				mergedMemberSeasonOrder.map((_, index) => index + 1),
+			);
+			expect(await main.images).toEqual(mergedMainImageOrder);
+			expect(await member.images).toEqual(mergedMemberImageOrder);
+			// 落盘同样保持子序，刷新后不会退回默认顺序
+			await Series.updateSeries();
+			const refreshed = await Series.getAllSeries();
+			const refreshedMain = refreshed.find((item) => item.getSeriesName() === '视频1')!;
+			const refreshedMember = refreshed.find((item) => item.getSeriesName() === memberName)!;
+			expect(await Promise.all((await refreshedMain.seasons).map((season) => season.id))).toEqual(
+				mergedMainSeasonOrder,
+			);
+			expect(await Promise.all((await refreshedMember.seasons).map((season) => season.id))).toEqual(
+				mergedMemberSeasonOrder,
+			);
+			expect(await refreshedMain.images).toEqual(mergedMainImageOrder);
+			expect(await refreshedMember.images).toEqual(mergedMemberImageOrder);
+		} finally {
+			await fs.rm(memberDirectory, { recursive: true, force: true });
 			await Series.updateSeries();
 			await Series.clearCache();
 		}

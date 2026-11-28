@@ -5,6 +5,8 @@
  * 也让「谁被隐藏、叠层显示什么、能不能合并」这些规则只存在一处。
  */
 
+import { applyExplicitOrder } from '~shared/series-order';
+
 /**
  * 参与合并计算的最小字段集合。
  *
@@ -100,4 +102,36 @@ export function getMergeRejection(sourceId: string, targetId: string, owners: Ma
 		return '该系列已被合并，请先脱离';
 	}
 	return null;
+}
+
+/** 参与合并组排序的最小季字段 */
+export interface MergeableSeason {
+	id: string;
+}
+
+/**
+ * 合并组里季的最终顺序。
+ *
+ * 默认顺序是「主系列自己的季在前，成员按 `mergedIds` 顺序追加」；主系列记录的
+ * `mergedSeasonOrder` 覆盖它，未出现在其中的季追加在末尾。跨系列拖拽产生的是
+ * 显式顺序，因此页面刷新后仍按同一规则复原，不会退回默认顺序。
+ *
+ * 与图片共用 `applyExplicitOrder()`：那套规则同时被服务端落库使用，
+ * 两端必须一致，否则「拖完一个顺序、刷新变另一个顺序」。
+ */
+export function orderMergedSeasons<T extends MergeableSeason>(
+	mainSeasons: T[],
+	memberSeasons: T[],
+	order: string[] = [],
+) {
+	return applyExplicitOrder([...mainSeasons, ...memberSeasons], order, (season) => season.id);
+}
+
+/**
+ * 合并组里图片的最终顺序，规则与季一致，键为图片绝对路径。
+ *
+ * 路径本身就是唯一键：不同系列目录下可能存在同名图片，只有路径能区分。
+ */
+export function orderMergedImages(mainImages: string[], memberImages: string[], order: string[] = []) {
+	return applyExplicitOrder([...mainImages, ...memberImages], order, (image) => image);
 }

@@ -49,27 +49,28 @@ export const MATCH_SYSTEM = `你是动画季目录与 Bangumi 条目的匹配助
 
 只输出 JSON，不要解释、不要代码块：{"seasons":[{"alias":"s1","order":1,"subjectIds":[123]}],"notes":""}`;
 
-export const ALIGN_SYSTEM = `你是动画文件校对助手。把本地一个季目录里的每个视频文件，对应到官方剧集列表中的一条，或判定为无对应。
+export const ALIGN_SYSTEM = `你是动画文件校对助手。把本地季目录里的每个视频文件对应到官方剧集（或判定为无对应）；一个文件装了连续几集时，为它合并这几集的标题。
 
 输入（紧凑数组）：
-- f：本地文件 [id, 文件名, 集号(-1=解析不出)]。数组顺序已经是最终播放顺序，由文件名编号升序决定。
-- o：官方剧集 [id, 集号, 标题]；附加特别篇为 [id,"sp",序号,标题]。数组顺序即播出顺序。
-- 集号是季度内连续的真实集号，跨条目连续。集号 0 表示第 0 话，属于正片。
+- f：本地文件 [id, 文件名, 集号(-1=解析不出)]，顺序已是播放顺序（按文件名编号升序）。
+- o：官方剧集 [id, 集号, 标题]；特别篇 [id,"sp",序号,标题]，顺序即播出顺序。集号 0 是第 0 话，属正片。
 
-顺序规则（先读这一节）：
-1. 你只负责「文件 → 官方集」的对应关系，用来取标题，不要参与决定播放顺序。
-2. 播放顺序由本地文件名的编号决定，不要因为官方集号不同就调整对应关系。
-3. 文件名里的编号就是集号：00-特别篇.mp4 的 00 是第 0 集，排在 01 之前，和 01、02 一样属于正片，不是附加特别篇。
-4. 文件名里出现「特别篇 / SP / OVA / OAD / 番外」不代表它是附加特别篇。先看编号：编号在正片序列里连续占位的是正片；没有编号、也不占正片集号的内容才是附加特别篇。
-5. 如果你认为某个文件排错了（例如文件名编号写错），不要靠映射去纠正顺序，把它写进 reason，留给人工处理。
+顺序规则（先读）：
+1. 你只决定「文件 → 官方集」，不决定播放顺序；不要因官方集号不同而改映射。
+2. 文件名编号就是集号：00-特别篇.mp4 是第 0 集，排在 01 前，属正片。
+3. 「特别篇/SP/OVA/OAD/番外」不代表附加特别篇：编号连续占位的是正片，无编号且不占集号的才是特别篇。
+4. 认为某文件排错了写进 reason，不要靠映射纠正顺序。
 
 对应规则：
-1. f 的每个 id 都必须出现在 map 里，值为 o 的 id 或 null。
+1. f 的每个 id 都要出现在 map：单个 o 的 id、id 数组，或 null。
 2. 每个 o 的 id 最多用一次。
 3. 判定顺序：文件名集号 → 方括号标记 → 前缀编号 → 标题语义。
-4. 正片数不等时不要按位置平移。缺失处留空，让后续文件保留各自真实集号。
-5. 不确定就返回 null，并在 reason 指出哪些文件不确定。
-6. 只输出 JSON，不要解释、不要代码块：{"map":{"f1":"k1"},"reason":""}`;
+4. 正片数不等不要按位置平移：缺失处留空，后续文件保留真实集号。
+5. 不确定返回 null，并在 reason 说明。
+6. 是否合并由你判断：文件名确实是连续几集（01-03）且官方集号对得上才用数组，拿不准按单集并写进 reason。
+7. 数组文件要在 titles 给合并标题：保留各集要点、重复作品名只留一次、用「／」连接、不编造，≤80 字。
+
+只输出 JSON，不要解释、不要代码块：{"map":{"f1":"k1"},"titles":{"f1":"..."},"reason":""}`;
 
 export function buildMatchMessages(
 	seriesTitle: string,
@@ -190,9 +191,16 @@ export function parseMatchResult(content: unknown, seasons: LocalSeasonSummary[]
 	return { seasons: result, notes, warnings };
 }
 
+/** 合并标题的长度上限：日语标题本身偏长，只做防御性判断，不做裁剪 */
+const MAX_MERGED_TITLE = 120;
+
 export interface AlignResult {
 	/** 文件名 → 官方剧集；null 表示模型认为无对应 */
 	map: Map<string, OfficialEpisode | null>;
+	/** 合并集：文件名 → 覆盖的多集，仅当一个文件对应 2 集以上时出现 */
+	merged: Map<string, OfficialEpisode[]>;
+	/** 合并集标题：文件名 → 模型给出的合并结果；模型没给标题的合并不在此表 */
+	titles: Map<string, string>;
 	reason: string;
 	warnings: string[];
 }
@@ -202,60 +210,97 @@ export interface AlignResult {
  *
  * 与季映射不同，这里不要求「全部官方集都被用上」——缺集是正常状态，
  * 只要每个文件都有明确结论即可。
+ *
+ * 值可以是单个 k 键、k 键数组或 null。数组表示「这个文件装了连续几集」，
+ * 判断与合并标题都由模型负责；数组里任一项不合法时整条按「无对应」处理，不做部分采纳。
  */
 export function parseAlignResult(content: unknown, files: string[], official: OfficialEpisode[]): AlignResult {
 	const warnings: string[] = [];
 	const map = new Map<string, OfficialEpisode | null>();
+	const merged = new Map<string, OfficialEpisode[]>();
+	const titles = new Map<string, string>();
 	const raw = (content as { map?: unknown })?.map;
 	if (!raw || typeof raw !== 'object') {
-		return { map, reason: '', warnings: ['AI 未返回 map 对象'] };
+		return { map, merged, titles, reason: '', warnings: ['AI 未返回 map 对象'] };
 	}
 	// 模型回传的是 k1..kN，这里先建索引，避免按 id 反查时退化成 O(n²)
-	const byEpisodeId = new Map<string, OfficialEpisode>();
-	official.forEach((episode, index) => byEpisodeId.set(`k${index + 1}`, episode));
+	const byEpisodeKey = new Map<string, OfficialEpisode>();
+	official.forEach((episode, index) => byEpisodeKey.set(`k${index + 1}`, episode));
+	const rawTitles = (content as { titles?: unknown })?.titles;
+	const mergedTitles = (rawTitles && typeof rawTitles === 'object' ? rawTitles : {}) as Record<string, unknown>;
 
-	const byFileId = new Map<string, string>();
+	const byFileId = new Map<string, string[]>();
 	for (const [fileId, value] of Object.entries(raw as Record<string, unknown>)) {
-		if (typeof value !== 'string') {
-			warnings.push(`${fileId} 的返回值不是官方集 id，已忽略`);
+		// null 是提示词约定的「无对应」，不告警
+		if (value === null) {
+			byFileId.set(fileId, []);
 			continue;
 		}
-		byFileId.set(fileId, value);
+		if (typeof value === 'string') {
+			byFileId.set(fileId, [value]);
+			continue;
+		}
+		if (Array.isArray(value) && value.every((item) => typeof item === 'string')) {
+			byFileId.set(fileId, value as string[]);
+			continue;
+		}
+		warnings.push(`${fileId} 的返回值不是官方集 id，已忽略`);
 	}
 
 	const usedEpisode = new Set<string>();
 	for (let index = 0; index < files.length; index++) {
 		const fileId = `f${index + 1}`;
 		const fileName = files[index]!;
-		const episodeKey = byFileId.get(fileId);
-		if (episodeKey === undefined) {
+		const keys = byFileId.get(fileId);
+		if (keys === undefined) {
 			warnings.push(`${fileName} 未出现在 map 中，视为无对应`);
 			map.set(fileName, null);
 			continue;
 		}
-		if (!episodeKey) {
+		if (!keys.length) {
 			map.set(fileName, null);
 			continue;
 		}
-		const matched = byEpisodeId.get(episodeKey);
-		if (!matched) {
-			warnings.push(`${fileName} 指向不存在的官方集 ${episodeKey}，视为无对应`);
+		const episodes: OfficialEpisode[] = [];
+		let invalid = false;
+		for (const key of keys) {
+			const matched = byEpisodeKey.get(key);
+			if (!matched) {
+				warnings.push(`${fileName} 指向不存在的官方集 ${key}，视为无对应`);
+				invalid = true;
+				break;
+			}
+			if (usedEpisode.has(key) || episodes.some((item) => item.episodeId === matched.episodeId)) {
+				warnings.push(`官方集 ${key} 被重复分配，${fileName} 视为无对应`);
+				invalid = true;
+				break;
+			}
+			episodes.push(matched);
+		}
+		if (invalid) {
 			map.set(fileName, null);
 			continue;
 		}
-		if (usedEpisode.has(episodeKey)) {
-			warnings.push(`官方集 ${episodeKey} 被重复分配，${fileName} 视为无对应`);
-			map.set(fileName, null);
-			continue;
+		for (const key of keys) {
+			usedEpisode.add(key);
 		}
-		usedEpisode.add(episodeKey);
-		map.set(fileName, matched);
+		map.set(fileName, episodes[0]!);
+		if (episodes.length > 1) {
+			merged.set(fileName, episodes);
+			const value = mergedTitles[fileId];
+			const title = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+			if (title && title.length <= MAX_MERGED_TITLE) {
+				titles.set(fileName, title);
+			} else {
+				warnings.push(`${fileName} 判定为 ${episodes.length} 集合并，但没有可用的合并标题，将用首集标题`);
+			}
+		}
 	}
 	const reason =
 		typeof (content as { reason?: unknown })?.reason === 'string'
 			? (content as { reason: string }).reason.trim()
 			: '';
-	return { map, reason, warnings };
+	return { map, merged, titles, reason, warnings };
 }
 
 /** 构造集对齐输入：文件名与截图顺序一致，模型用 f1..fN 回传 */
@@ -276,6 +321,6 @@ export function buildAlignMessages(
 	};
 	return [
 		{ role: 'system', content: ALIGN_SYSTEM },
-		{ role: 'user', content: `${JSON.stringify(payload)}\n只输出 {"map":{...},"reason":""}` },
+		{ role: 'user', content: `${JSON.stringify(payload)}\n只输出 {"map":{...},"titles":{...},"reason":""}` },
 	];
 }

@@ -200,4 +200,36 @@ describe('集对齐提示词与结果校验', () => {
 		expect(result.map.size).toBe(0);
 		expect(result.warnings[0]).toContain('未返回 map');
 	});
+
+	it('数组值表示 AI 判定为合并集，并采纳模型给出的合并标题', () => {
+		const result = parseAlignResult(
+			{
+				map: { f1: ['k1', 'k2', 'k3'], f2: null, f3: null },
+				titles: { f1: '  第0话／第1话／SP  ' },
+			},
+			files,
+			official,
+		);
+		expect(result.merged.get('00-特别篇.mp4')!.map((item) => item.title)).toEqual(['第0话', '第1话', 'SP']);
+		expect(result.titles.get('00-特别篇.mp4')).toBe('第0话／第1话／SP');
+		expect(result.warnings).toEqual([]);
+	});
+
+	it('合并但没有可用标题时告警，不伪造标题', () => {
+		const result = parseAlignResult(
+			{ map: { f1: ['k1', 'k2'], f2: null, f3: null }, titles: { f1: '   ' } },
+			files,
+			official,
+		);
+		expect(result.merged.has('00-特别篇.mp4')).toBe(true);
+		expect(result.titles.has('00-特别篇.mp4')).toBe(false);
+		expect(result.warnings.some((warning) => warning.includes('没有可用的合并标题'))).toBe(true);
+	});
+
+	it('数组里重复指向同一集时整条按无对应处理', () => {
+		const result = parseAlignResult({ map: { f1: ['k1', 'k1'], f2: 'k2', f3: 'k3' } }, files, official);
+		expect(result.map.get('00-特别篇.mp4')).toBeNull();
+		expect(result.merged.size).toBe(0);
+		expect(result.map.get('01.mp4')!.title).toBe('第1话');
+	});
 });

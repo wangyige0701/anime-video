@@ -2,6 +2,8 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { createPromise, PromiseReject, PromiseResolve } from '@wang-yige/utils';
 import type { Episode as IEpisode } from '~types/videos';
+import type { EpisodeKind } from '~shared/episode-kind';
+import { isEpisodeKind } from '~shared/episode-kind';
 import type { Season } from './season';
 import { isDirectory, isFileExist } from '~server/src/utils/fs';
 import { Entity, type FieldReaders, type ServerToPromise } from './entity';
@@ -12,7 +14,7 @@ export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromi
 	protected static cache: Map<string, Episode> = new Map();
 
 	/** 对外 DTO 字段，顺序与 `getValue()` 的键顺序一致 */
-	private static readonly VALUE_FIELDS = ['id', 'sort', 'path', 'extension', 'title'] as const;
+	private static readonly VALUE_FIELDS = ['id', 'sort', 'path', 'extension', 'title', 'kind'] as const;
 
 	public static async clearCache() {
 		this.cache.clear();
@@ -159,6 +161,10 @@ export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromi
 	public get title() {
 		return this.field('title');
 	}
+
+	public get kind() {
+		return this.field('kind');
+	}
 	// endregion
 
 	// region 更新集数据
@@ -179,6 +185,15 @@ export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromi
 	public async updateTitle(title: string) {
 		const fallback = path.basename(this.episodeName, path.extname(this.episodeName));
 		await this.write('title', title.trim() || fallback);
+	}
+
+	/**
+	 * 更新集类型（正片 / 特别篇）。
+	 *
+	 * 只影响标注与同步时的分类，不参与排序：集在季里的位置始终由文件名顺序决定。
+	 */
+	public async updateKind(kind: EpisodeKind) {
+		await this.write('kind', isEpisodeKind(kind) ? kind : 'main');
 	}
 	// endregion
 
@@ -212,6 +227,7 @@ export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromi
 				path: baseName,
 				extension: extension,
 				title: fileName,
+				kind: 'main',
 			});
 		}
 		const config = configs.find((config) => config.id === id)!;
@@ -220,6 +236,8 @@ export class Episode extends Entity<IEpisode, IEpisode> implements ServerToPromi
 		config.path = baseName;
 		config.extension = extension;
 		config.title = config.title || fileName;
+		// 历史配置没有 kind，按正片补齐，避免 DTO 漏字段
+		config.kind = isEpisodeKind(config.kind) ? config.kind : 'main';
 		resolve(config);
 	}
 }

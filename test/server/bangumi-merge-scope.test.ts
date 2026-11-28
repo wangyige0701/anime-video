@@ -17,6 +17,7 @@ function fakeEpisode(id: string) {
 		title: '',
 		getEpisodeName: () => `${id}.mp4`,
 		updateTitle: vi.fn(async () => {}),
+		updateKind: vi.fn(async () => {}),
 	};
 }
 
@@ -106,5 +107,23 @@ describe('applyChangeSet 的合并范围', () => {
 		await expect(applyChangeSet(asGroup([main]), { seasons: [{ seasonId: 'ghost' }] })).rejects.toMatchObject({
 			body: expect.stringContaining('不属于该系列'),
 		});
+	});
+
+	it('集类型与标题一起写入，缺省时不改类型', async () => {
+		const withKind = fakeSeason('main-1', '正片', ['m1']);
+		const withoutKind = fakeSeason('main-2', '正片', ['m2']);
+		const main = fakeSeries('主系列', [withKind, withoutKind]);
+
+		await applyChangeSet(asGroup([main]), {
+			seasons: [
+				{ seasonId: 'main-1', episodes: [{ episodeId: 'm1', title: '第一话', kind: 'special' }] },
+				{ seasonId: 'main-2', episodes: [{ episodeId: 'm2', title: '第二话' }] },
+			],
+		});
+
+		expect(withKind.episodes[0]!.updateTitle).toHaveBeenCalledWith('第一话');
+		expect(withKind.episodes[0]!.updateKind).toHaveBeenCalledWith('special');
+		// 未传 kind 表示保持当前类型，不能被默认值覆盖
+		expect(withoutKind.episodes[0]!.updateKind).not.toHaveBeenCalled();
 	});
 });

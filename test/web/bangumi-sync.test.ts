@@ -169,8 +169,26 @@ describe('buildApplyInput', () => {
 				seasonId: 'a',
 				title: '新标题',
 				order: ['e1', 'e2', 'e3'],
-				episodes: [{ episodeId: 'e2', title: '第二话' }],
+				episodes: [{ episodeId: 'e2', title: '第二话', kind: 'main' }],
 			},
+		]);
+	});
+
+	it('特别篇集提交时带上 kind，未匹配的集只写标题', () => {
+		const data = preview([
+			previewSeason('a', [
+				['e1', '第0话'],
+				['e2', '拾遗'],
+			]),
+		]);
+		data.seasons[0]!.episodes[0]!.kind = 'special';
+		data.seasons[0]!.episodes[1]!.kind = 'unmatched';
+		const selection = createSelection(data);
+		selection.seasons[0]!.episodes = { e1: true, e2: true };
+		const input = buildApplyInput(data, selection);
+		expect(input.seasons?.[0]?.episodes).toEqual([
+			{ episodeId: 'e1', title: '第0话', kind: 'special' },
+			{ episodeId: 'e2', title: '拾遗' },
 		]);
 	});
 

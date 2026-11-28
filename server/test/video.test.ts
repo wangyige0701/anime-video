@@ -372,12 +372,21 @@ describe('Video Data Config', () => {
 			expect(await episode.sort).toBe(2);
 			expect(await episode2.sort).toBe(1);
 			expect(await episode.title).toBe('1');
+			// 历史配置没有 kind，读取时按正片补齐
+			expect(await episode.kind).toBe('main');
 			// DTO 出口由字段表派生，键集合与顺序必须与接口契约一致。
 			const episodeDetail = await episode.getValue();
-			expect(Object.keys(episodeDetail)).toEqual(['id', 'sort', 'path', 'extension', 'title']);
+			expect(Object.keys(episodeDetail)).toEqual(['id', 'sort', 'path', 'extension', 'title', 'kind']);
 			const seasonDetail = await season.getValue();
 			expect(Object.keys(seasonDetail)).toEqual(['id', 'sort', 'path', 'title', 'episodes']);
-			expect(Object.keys(seasonDetail.episodes[0]!)).toEqual(['id', 'sort', 'path', 'extension', 'title']);
+			expect(Object.keys(seasonDetail.episodes[0]!)).toEqual([
+				'id',
+				'sort',
+				'path',
+				'extension',
+				'title',
+				'kind',
+			]);
 			const seriesSummary = await series.getValueOmitSeasons();
 			expect(Object.keys(seriesSummary)).toEqual([
 				'id',

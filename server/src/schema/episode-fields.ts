@@ -13,3 +13,8 @@ export const episodeTitleSchema = z.object({
 export const episodeSortSchema = z.object({
 	sort: z.number().int().min(1, '排序必须从 1 开始'),
 });
+
+/** 集类型只有正片与特别篇两种；缺省值由数据层补 `main`，接口不接受空值 */
+export const episodeKindSchema = z.object({
+	kind: z.enum(['main', 'special']),
+});

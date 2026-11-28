@@ -1,7 +1,9 @@
 import type { Episode as IEpisode } from '~types/videos';
+import type { EpisodeKind } from '~shared/episode-kind';
+import { isEpisodeKind } from '~shared/episode-kind';
 import { ref } from 'vue';
 import { Common, patchField, serverTitle, type FieldRefs } from './common';
-import { updateEpisodeSort, updateEpisodeTitle } from '@/api/episode';
+import { updateEpisodeKind, updateEpisodeSort, updateEpisodeTitle } from '@/api/episode';
 
 export class Episode extends Common implements IEpisode {
 	protected static cache: Map<string, Episode> = new Map();
@@ -12,9 +14,10 @@ export class Episode extends Common implements IEpisode {
 		path: ref(''),
 		extension: ref(''),
 		title: ref(''),
+		kind: ref<EpisodeKind>('main'),
 	};
 
-	private requestStatus = this.createStatus('title', 'sort');
+	private requestStatus = this.createStatus('title', 'sort', 'kind');
 
 	constructor(episode: IEpisode) {
 		if (Episode.cache.has(episode.id)) {
@@ -26,6 +29,8 @@ export class Episode extends Common implements IEpisode {
 		for (const key of Object.keys(this.values) as Array<keyof IEpisode>) {
 			(this.values[key] as Ref<unknown>).value = episode[key];
 		}
+		// 历史数据没有 kind，按正片兜底，避免界面出现空白标记
+		this.values.kind.value = isEpisodeKind(episode.kind) ? episode.kind : 'main';
 
 		Episode.cache.set(episode.id, this);
 	}
@@ -51,6 +56,10 @@ export class Episode extends Common implements IEpisode {
 	public get title() {
 		return this.values.title.value;
 	}
+
+	public get kind() {
+		return this.values.kind.value;
+	}
 	// endregion
 
 	// region 属性更新时的响应式状态
@@ -60,6 +69,10 @@ export class Episode extends Common implements IEpisode {
 
 	public get sortRef() {
 		return this.requestStatus.get('sort');
+	}
+
+	public get kindRef() {
+		return this.requestStatus.get('kind');
 	}
 	// endregion
 
@@ -96,6 +109,20 @@ export class Episode extends Common implements IEpisode {
 	 */
 	public syncSort(sort: number) {
 		this.values.sort.value = sort;
+	}
+	// endregion
+
+	// region 更新集类型
+	/** 切换正片 / 特别篇；只影响标注，不改变集在季内的顺序 */
+	public async updateKind(kind: EpisodeKind) {
+		return await patchField(
+			this.values,
+			this.requestStatus,
+			'kind',
+			kind,
+			() => updateEpisodeKind(this.id, kind),
+			(result) => (isEpisodeKind(result) ? result : undefined),
+		);
 	}
 	// endregion
 }

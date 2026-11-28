@@ -1,4 +1,5 @@
 import type { Episode } from '~types/videos';
+import type { EpisodeKind } from '~shared/episode-kind';
 import { AxiosRequest } from 'axios-useful';
 import { ServerRoot } from '~shared/server-route-config';
 import { API } from '@/api';
@@ -46,6 +47,19 @@ export function updateEpisodeTitle(episodeId: string, title: string) {
 	return API.put<any, string>(
 		`${ServerRoot.DATA}/episode/${episodeId}/title`,
 		{ title },
+		{
+			single: {
+				type: AxiosRequest.Single.PREV,
+			},
+		},
+	);
+}
+
+/** 更新集类型（正片 / 特别篇），返回服务端实际值 */
+export function updateEpisodeKind(episodeId: string, kind: EpisodeKind) {
+	return API.put<any, EpisodeKind>(
+		`${ServerRoot.DATA}/episode/${episodeId}/kind`,
+		{ kind },
 		{
 			single: {
 				type: AxiosRequest.Single.PREV,

@@ -30,6 +30,18 @@
 							<!-- 手柄独立拦截点击，避免拖动结束时误触发播放 -->
 							<el-icon class="drag-handle" :size="16" @click.stop><Rank /></el-icon>
 							第 {{ index + 1 }} 集
+							<!--
+								集类型切换：特别篇常驻显示，正片只在悬停时露出提示，
+								避免每张卡片都挂一个「标为特别篇」显得吵。
+							-->
+							<span
+								class="kind"
+								:class="{ 'kind--special': episode.kind === 'special', 'kind--busy': episode.kindRef }"
+								:title="episode.kind === 'special' ? '点击标为正片' : '点击标为特别篇'"
+								@click.stop="toggleEpisodeKind(episode)"
+							>
+								{{ episode.kind === 'special' ? '特别篇' : '+ 特别篇' }}
+							</span>
 						</span>
 						<div class="episode-title" @click="stopEditClick">
 							<TextEditor
@@ -155,6 +167,19 @@ async function updateEpisodeTitle(episode: Episode, value: string) {
 		return;
 	}
 	await episode.updateTitle(title);
+}
+
+/**
+ * 切换正片 / 特别篇。
+ *
+ * 卡片整体点击是播放，标签必须独立拦截点击；请求期间按 `kindRef` 禁点，
+ * 失败时数据层已回滚，界面不需要额外提示。
+ */
+async function toggleEpisodeKind(episode: Episode) {
+	if (episode.kindRef) {
+		return;
+	}
+	await episode.updateKind(episode.kind === 'special' ? 'main' : 'special');
 }
 
 /**
@@ -313,6 +338,46 @@ async function commitSort(oldIndex?: number, newIndex?: number) {
 		display: inline-flex;
 		align-items: center;
 		gap: 5px;
+		width: 100%;
+	}
+
+	/**
+	 * 集类型标签。
+	 *
+	 * 尺寸按「最小可点」控制：10px 字、圆角胶囊只比文字高一点，
+	 * 避免在集号行里挤出一块显眼的按钮。正片态只露「+ 特别篇」的虚线提示，
+	 * 特别篇态换成实线亮边；两者宽度接近，悬停时不会跳变。
+	 */
+	.kind {
+		flex-shrink: 0;
+		margin-left: auto;
+		padding: 0 5px;
+		border: 1px dashed map.get(token.$theme, 'l-2');
+		border-radius: 999px;
+		color: map.get(token.$theme, 'l-7');
+		font-size: 0.625rem;
+		line-height: 1.6;
+		white-space: nowrap;
+		opacity: 0;
+		transition: opacity 0.2s ease;
+	}
+
+	&:hover .kind,
+	&.active .kind {
+		opacity: 1;
+	}
+
+	.kind--special {
+		opacity: 1;
+		border-style: solid;
+		border-color: map.get(token.$theme, 'l-3');
+		background-color: map.get(token.$theme, 'd-2');
+		color: map.get(token.$theme, 'l-9');
+	}
+
+	.kind--busy {
+		pointer-events: none;
+		opacity: 0.6;
 	}
 	.episode-title {
 		flex: 1;

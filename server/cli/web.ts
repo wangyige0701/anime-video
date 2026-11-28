@@ -5,8 +5,11 @@ import Koa from 'koa';
 import server from 'koa-static';
 import { historyApiFallback } from 'koa2-connect-history-api-fallback';
 import config from '~shared/config-parser';
+import { CSRF_META_NAME, CSRF_TOKEN_PLACEHOLDER } from '~shared/csrf';
+import { injectCsrfHtml } from '~shared/csrf-secret';
 import { createPromise } from '@wang-yige/utils';
 import { runtimePath } from '~shared/runtime';
+import { getDataDirectory } from '~server/src/utils/user-data-dir';
 import { createShutdownHandler } from './shutdown';
 
 // @ts-expect-error
@@ -68,16 +71,29 @@ export default function getInstance() {
 	app.use(historyApiFallback());
 
 	const injectConfig = JSON.stringify(__APP_CONFIG__);
-	let replaceHtml = '';
-	// 注入全局配置到 index.html
+	/**
+	 * 注入 CSRF 令牌。
+	 *
+	 * 令牌随 `index.html` 下发，不开接口：别的站点读不到这份文档，也就拿不到令牌。
+	 * 模板只读一次并缓存，占位符按请求替换成新签发的令牌，因此进程长期不重启也不会
+	 * 发出过期令牌。签发逻辑与 Vite 开发服务共用 `injectCsrfHtml()`。
+	 */
+	const dataDirectory = getDataDirectory();
+	let templateHtml = '';
+	// 注入全局配置与 CSRF 占位符到 index.html
 	app.use(async (ctx, next) => {
 		if ((ctx.method === 'GET' || ctx.method === 'HEAD') && ctx.path === '/index.html') {
 			ctx.type = 'html';
-			if (!replaceHtml) {
+			ctx.set('Cache-Control', 'no-store');
+			if (!templateHtml) {
 				const html = await readFile(resolve(staticDir, 'index.html'), 'utf-8');
-				replaceHtml = html.replace('</head>', `<script>window.__APP_CONFIG__=${injectConfig};</script></head>`);
+				const meta = `<meta name="${CSRF_META_NAME}" content="${CSRF_TOKEN_PLACEHOLDER}">`;
+				templateHtml = html.replace(
+					'</head>',
+					`<script>window.__APP_CONFIG__=${injectConfig};</script>${meta}</head>`,
+				);
 			}
-			ctx.body = replaceHtml;
+			ctx.body = injectCsrfHtml(templateHtml, dataDirectory);
 			return;
 		}
 		await next();

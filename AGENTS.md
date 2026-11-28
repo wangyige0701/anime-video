@@ -201,7 +201,7 @@ pnpm --dir hls run build:q
 
 共享目录职责如下：
 
-- `shared/` 保存配置解析、配置类型及 `series-status.ts`、`series-types.ts` 系列枚举、`series-order.ts` 序列合并顺序规则，以及 `http-status.ts` HTTP 请求响应状态码，不保存组件局部状态。系列枚举与 `applyExplicitOrder()` 供两端复用，必须保持纯函数；`config-parser.ts` 依赖 Node，只供服务端和构建工具使用，不能导入浏览器运行时代码。
+- `shared/` 保存配置解析、配置类型及 `series-status.ts`、`series-types.ts` 系列枚举、`series-order.ts` 序列合并顺序规则、`csrf.ts` 的 CSRF 头与 meta 名称约定，以及 `http-status.ts` HTTP 请求响应状态码，不保存组件局部状态。系列枚举与 `applyExplicitOrder()` 供两端复用，必须保持纯函数；`config-parser.ts`、`csrf-secret.ts` 依赖 Node（文件系统、`node:crypto`），只供服务端与构建工具使用，不能导入浏览器运行时代码。
 - `shared/server-route-config.ts` 保存 API 根路径、URL 生成函数和服务端地址；`shared/web-route-config.ts` 保存前端路由名称。
 - `types/` 保存网络 DTO 与跨端类型，不能依赖浏览器或 Node 专属实现。
 

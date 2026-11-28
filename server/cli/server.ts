@@ -10,10 +10,11 @@ import { createShutdownHandler } from './shutdown';
 // @ts-expect-error
 globalThis.__APP_CONFIG__ = config;
 
-const [{ response }, { error }, { closeLogger, createLogger, logger, requestLog }] = await Promise.all([
+const [{ response }, { error }, { closeLogger, createLogger, logger, requestLog }, { csrf }] = await Promise.all([
 	import('~server/middlewares/response'),
 	import('~server/middlewares/error'),
 	import('~server/middlewares/logger'),
+	import('~server/src/security/csrf'),
 ]);
 
 const SERVER = __APP_CONFIG__.server;
@@ -34,6 +35,8 @@ export default function getInstance() {
 		.use(error())
 		.use(body())
 		.use(response())
+		// CSRF 必须在路由之前：拒绝要发生在进入 controller 与数据层之前
+		.use(csrf())
 		.use(decorator.middleware())
 		.use(decorator.allowedMethods());
 

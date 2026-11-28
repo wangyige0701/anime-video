@@ -20,6 +20,9 @@ server/www/
 # 开发态的用户设置（含密钥）：开发时落在服务目录，与安装版互不覆盖
 server/settings.json
 
+# CSRF 签名密钥：每台机器唯一，不得提交
+.csrf-secret
+
 # 本地调试配置（含密钥，禁止提交）；运行时已不再读取，迁移见 scripts/migrate-env.ts
 .env
 .env.*

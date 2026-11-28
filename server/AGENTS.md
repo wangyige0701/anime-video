@@ -76,7 +76,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `cli-launcher.mjs`：pnpm 开发入口，还原 Windows `pnpm run` 产生的一层参数反斜杠转义，并预加载 `cli-userinfo-fallback.cjs` 处理 Windows `uv_os_get_passwd` 的 `ENOMEM` 系统故障，再通过 Node 的 `--import tsx` 在同一进程启动 `cli.ts`；manager/worker 继承加载参数，发布产物不使用该启动器。
 - `cli/directories.ts`：目录管理 CLI 子命令，负责目录参数校验、真实路径规范化、索引解析和目录排序；通过 `Series` 读写目录配置并在变更后刷新系列缓存。
 - `cli/server.ts`：API 实现，创建 Koa 和装饰器路由扫描器，按顺序注册请求日志、错误、body、响应辅助和路由中间件。
-- `cli/web.ts`：静态 Web 实现，托管构建产物并提供 history fallback；相对静态目录基于该模块所在目录解析。
+- `cli/web.ts`：静态 Web 实现，托管构建产物并提供 history fallback；相对静态目录基于该模块所在目录解析。返回 `index.html` 时注入运行时配置与 CSRF 令牌（令牌随页面下发，不开接口）。
 - `cli/shutdown.ts`：注册进程信号处理，关闭 HTTP 连接并调用服务的关闭回调；独立开发入口的关闭回调会退出进程，未来管理 worker 需复用资源关闭步骤但由 worker 入口决定是否退出。
 - `cli/worker.ts`：管理器派生的服务 worker 入口，只动态导入目标服务并处理 ready、IPC shutdown 和 manager 断开。
 - `cli/manager/`：CLI 管理器的本地 IPC 客户端、常驻 daemon、协议和运行端点；不参与 HTTP 请求路由。`status` 在管理器端点不存在时返回停止状态且不启动 daemon。停止 worker 先通过 IPC 优雅关闭；超时后 Windows 使用 `taskkill /T /F` 终止整个 worker 进程树，避免 tsx 子进程继续占用服务端口。
@@ -85,6 +85,7 @@ TS 缓存按分片索引保存 `Promise<Buffer>`，同索引请求共享正在�
 - `middlewares/`：请求日志、统一异常映射和 JSON 响应辅助。
 - `data/`：扫描允许的视频目录，构建 Series/Season/Episode 数据树，维护实例缓存、排序及 `.video.json` 配置持久化；`data/entity.ts` 提供字段派生、写入与失效的公共基类。
 - `src/hls.ts`：原生 HLS 实例、分片预加载、TS/图片缓存和生命周期管理。
+- `src/security/csrf.ts`：CSRF 来源规则与令牌校验中间件；令牌签发在 `shared/csrf-secret.ts`。
 - `src/error/`：`ApiError`、`NotFoundError` 等 HTTP 错误类型。
 - `src/integrations/`：外部服务整合层。`http.ts` 是共用的 HTTP 基础设施，`bangumi/` 与 `ai/` 是两个互不引用的独立模块，配置都从 `src/settings/store.ts` 读取。
 - `src/utils/`：文件系统和通用判断工具；`user-data-dir.ts` 是应用数据目录（`settings.json` 与目录白名单）的唯一解析入口。
@@ -271,7 +272,8 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 2. `error()`：捕获 `ApiError` 和未知异常，映射状态、类型与响应体。
 3. `koa-body`：解析请求体。
 4. `response()`：挂载 `ctx.Success()`、`ctx.Failed()` 等统一 JSON 响应辅助。
-5. `decorator.middleware()` 与 `allowedMethods()`：执行自动扫描到的装饰器路由和方法检查。
+5. `csrf()`：来源与 CSRF 令牌校验，必须在路由之前，详见「CSRF 防护」。
+6. `decorator.middleware()` 与 `allowedMethods()`：执行自动扫描到的装饰器路由和方法检查。
 
 中间件顺序影响日志、异常和 context 扩展的可用性，除非需求明确涉及全局请求链路，不要调整顺序。
 
@@ -287,6 +289,19 @@ Season 排序由所属 Series 的 `seasonSortQueue` 串行处理，Episode 排�
 - 普通 API 返回 `ctx.Success(data)` 等统一结构；媒体、SSE、文件流等协议响应按现有接口直接返回或操作 ctx。
 
 参数校验应在进入数据/HLS 核心逻辑前完成。可复用校验放入装饰器或明确的校验函数；业务不存在使用 `ApiError`/`NotFoundError` 交给 error 中间件，不能在每个接口里自行拼接不同格式的错误响应。
+
+## CSRF 防护
+
+本项目没有鉴权，任何站点都能直接向本机 API 发请求，因此写操作必须证明「请求来自本应用的页面」。中间件在 `src/security/csrf.ts`，注册在路由之前（`server/cli/server.ts`），分两层：
+
+1. **来源校验**：`Origin`（缺失时退回 `Referer`）必须满足「主机与访问 API 的 `Host` 相同，或两者都是回环别名（`localhost` / `127.0.0.1` / `::1`）」，且端口属于 `web.port`、`web.devWebPort`、`server.port` 或 http/https 默认端口。跨站页面无法伪造这两个头，这是本机服务的实际边界。`Origin: null`、`file://`、扩展协议一律拒绝。
+2. **令牌校验**：`GET`/`HEAD`/`OPTIONS` 之外的方法必须带 `x-csrf-token`，否则 403。令牌由 `shared/csrf-secret.ts` 用安装级密钥做 HMAC 签名，无状态、可跨进程校验。
+
+- **令牌随页面下发，不提供令牌接口**：`cli/web.ts` 在每次返回 `index.html` 时把令牌写进 `<meta name="csrf-token">`（模板缓存一次，占位符按请求替换）；Vite 开发服务通过 `injectCsrfHtml()` 走同一个函数，保证开发与发布签出的令牌互认。开一个 `GET /csrf` 等于把钥匙挂在门上，能不开就不开。
+- **密钥文件**：应用数据目录下的 `.csrf-secret`（与 `settings.json` 同级），先启动的进程创建、其余进程读取，权限 0600。不要写进 `config.yaml`（随包分发）或提交到仓库；删除后自动重建，代价是旧令牌全部失效、页面刷新即可。
+- **非浏览器客户端**（无 `Origin` / `Referer`）来源校验放行，但写操作仍要带令牌：先 `curl` 页面源码取 meta，或直接读密钥文件签名。不要为此加白名单绕过，那会让整层失效。
+- **错误响应**：拒绝时抛 `ApiError(403)`，文案分别为「请求来源不被允许」与「CSRF 令牌无效或已过期」。令牌拒绝会补 `Access-Control-Allow-Origin`，前端才能读到原因；来源拒绝不回 CORS 头，跨站脚本读不到任何内容。
+- 新增写接口不需要额外处理，中间件按方法统一校验；新增页面模板（例如另开一个入口 HTML）时必须同样注入 meta，否则该页面的写操作会被拒绝。
 
 ## 日志规范
 

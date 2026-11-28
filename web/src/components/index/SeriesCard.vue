@@ -143,10 +143,13 @@ const cover = computed(() => coverUrl(mergeCovers.value.cover));
  */
 const panelVisible = ref(false);
 
-/** 叠层每层是该系列在最终顺序里的首图，最多三层；无图的成员保留空串占位 */
-const stackImages = computed(() =>
-	props.members.slice(0, MERGE_STACK_LIMIT).map((member) => coverUrl(mergeCovers.value.covers[member.id])),
-);
+/**
+ * 叠层：除封面来源之外的每个系列各取一张首图，最多三层。
+ *
+ * 封面已经由卡片本体显示，同一系列再压一层就是重复海报；封面来自成员时，
+ * 主系列的首图补到最靠近卡片的一层。无图的系列保留空串占位。
+ */
+const stackImages = computed(() => mergeCovers.value.stack.slice(0, MERGE_STACK_LIMIT).map((image) => coverUrl(image)));
 
 function coverUrl(image: string | undefined) {
 	return image ? getSeriesCoverUrl({ images: [image] }) : '';

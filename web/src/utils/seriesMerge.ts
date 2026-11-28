@@ -75,12 +75,16 @@ export function getGroupMembers<T extends MergeableSeries>(main: T, byId: Map<st
  * 列表页卡片的封面与叠层首图。
  *
  * 必须和详情页用同一套顺序：卡片封面是**整个合并组**在最终顺序里的第一张，
- * 它可能属于任何一个成员；叠层每一层是该系列在最终顺序里的首图。若只取各自的
- * `images[0]`，用户把成员图片拖到最前面后，详情页换了首图而列表页不动。
+ * 它可能属于任何一个成员；若只取各自的 `images[0]`，用户把成员图片拖到最前面后，
+ * 详情页换了首图而列表页不动。
  *
- * 没有合并（`members` 为空）时结果等价于「取自己的第一张」，因此调用方不必分支。
+ * 叠层是「除封面来源之外的每个系列，各取它在最终顺序里的首图」：封面已经由卡片本体
+ * 显示，同一个系列再压一层就是重复。所以封面落在成员上时，主系列的首图补到最近的一层。
  *
- * @returns `cover` 为整组首图，`covers` 为成员 id → 该系列在最终顺序里的首图（无图为空串）
+ * 没有合并（`members` 为空）时 `cover` 等于自己的第一张，调用方不必分支。
+ *
+ * @returns `cover` 整组首图；`covers` 成员 id → 该系列在最终顺序里的首图；
+ *          `stack` 叠层路径，主系列在前、其余按合并顺序，已排除封面来源
  */
 export function getMergeCovers(main: MergeableSeries, members: MergeableSeries[]) {
 	const ordered = orderMergedImages(
@@ -88,12 +92,25 @@ export function getMergeCovers(main: MergeableSeries, members: MergeableSeries[]
 		members.flatMap((member) => member.images),
 		main.mergedImageOrder ?? [],
 	);
+	/** 某系列在最终顺序里的首图；它的图一张都不在顺序里时为空串 */
+	const firstOf = (series: MergeableSeries) => {
+		const own = new Set(series.images);
+		return ordered.find((image) => own.has(image)) ?? '';
+	};
+
 	const covers: Record<string, string> = {};
 	for (const member of members) {
-		const own = new Set(member.images);
-		covers[member.id] = ordered.find((image) => own.has(image)) ?? '';
+		covers[member.id] = firstOf(member);
 	}
-	return { cover: ordered[0] ?? '', covers };
+
+	const cover = ordered[0] ?? '';
+	// 封面没有任何图时归主系列，此时叠层就是全部成员
+	const coverOwner = cover ? (members.find((member) => member.images.includes(cover))?.id ?? main.id) : main.id;
+	const stack = [main, ...members]
+		.filter((series) => series.id !== coverOwner)
+		.map((series) => (series.id === main.id ? firstOf(main) : covers[series.id]!));
+
+	return { cover, covers, stack };
 }
 
 /**

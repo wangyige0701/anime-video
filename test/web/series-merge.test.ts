@@ -76,33 +76,45 @@ describe('getMergeCovers', () => {
 		{ id: 'c', title: 'C', images: ['c1.png'] },
 	];
 
-	it('没有显式顺序时封面取主系列首图，成员各取自己的首图', () => {
+	it('没有显式顺序时封面取主系列首图，叠层是各成员首图', () => {
 		const result = getMergeCovers(main, members);
 		expect(result.cover).toBe('a1.png');
 		expect(result.covers).toEqual({ b: 'b1.png', c: 'c1.png' });
+		expect(result.stack).toEqual(['b1.png', 'c1.png']);
 	});
 
-	it('成员图片排到最前时，封面与该成员的叠层首图一起换掉', () => {
+	it('成员图片排到最前时，该成员让出封面与叠层，主系列补到最前一层', () => {
 		const result = getMergeCovers({ ...main, mergedImageOrder: ['b2.png', 'a1.png'] }, members);
 		expect(result.cover).toBe('b2.png');
 		expect(result.covers).toEqual({ b: 'b2.png', c: 'c1.png' });
+		expect(result.stack).toEqual(['a1.png', 'c1.png']);
+	});
+
+	it('只剩两个系列时，封面来自成员则叠层只保留主系列一张', () => {
+		const result = getMergeCovers({ ...main, images: ['a1.png'], mergedImageOrder: ['b1.png'] }, [
+			{ id: 'b', title: 'B', images: ['b1.png'] },
+		]);
+		expect(result.cover).toBe('b1.png');
+		expect(result.stack).toEqual(['a1.png']);
 	});
 
 	it('显式顺序里的失效路径被跳过，未覆盖的图按默认顺序续在末尾', () => {
 		const result = getMergeCovers({ ...main, mergedImageOrder: ['gone.png', 'c1.png'] }, members);
 		expect(result.cover).toBe('c1.png');
 		expect(result.covers).toEqual({ b: 'b1.png', c: 'c1.png' });
+		expect(result.stack).toEqual(['a1.png', 'b1.png']);
 	});
 
 	it('成员没有图片时该层为空串，封面仍取有图的系列', () => {
 		const result = getMergeCovers(main, [{ id: 'd', title: 'D', images: [] }]);
 		expect(result.covers.d).toBe('');
 		expect(result.cover).toBe('a1.png');
+		expect(result.stack).toEqual(['']);
 	});
 
-	it('没有合并时退化为自己的首图，完全没有图片时为空串', () => {
-		expect(getMergeCovers(main, [])).toEqual({ cover: 'a1.png', covers: {} });
-		expect(getMergeCovers({ id: 'x', title: 'X', images: [] }, [])).toEqual({ cover: '', covers: {} });
+	it('没有合并时退化为自己的首图，叠层为空', () => {
+		expect(getMergeCovers(main, [])).toEqual({ cover: 'a1.png', covers: {}, stack: [] });
+		expect(getMergeCovers({ id: 'x', title: 'X', images: [] }, [])).toEqual({ cover: '', covers: {}, stack: [] });
 	});
 });
 

@@ -91,7 +91,7 @@ const emit = defineEmits<{
 	(e: 'update:modelValue', value: SeriesDateRange | null): void;
 }>();
 
-const viewport = useTemplateRef<HTMLElement>('viewport');
+const viewport = useTemplateRef('viewport');
 /** 可视区宽度，用于把刻度数量换算成刻度宽度 */
 const viewportWidth = ref(0);
 /** 可见窗口，`count` 为 0 表示还没测量到宽度 */

@@ -34,7 +34,7 @@ const arrowLoopPath =
 	'M6.8 5.5H5.8a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5h10.45A3.75 3.75 0 0 0 20 14.75v-5.5A3.75 3.75 0 0 0 16.25 5.5H6.8';
 const arrowPath = 'M1.85-3c.6 0 .95.48.95 1.05v3.9c0 .57-.35 1.05-.95 1.05L-2.75.7c-.6-.35-.6-1.05 0-1.4z';
 let animationFrame: number | undefined;
-const loopGuide = useTemplateRef<SVGPathElement>('loopGuide');
+const loopGuide = useTemplateRef('loopGuide');
 
 function trigger() {
 	if (animationFrame !== undefined) {

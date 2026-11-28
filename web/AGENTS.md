@@ -405,6 +405,18 @@ tooltip 使用实现 `Measurable` 的 `virtualTrigger`，位置来源于鼠标�
 
 首屏链路、失败处理、服务端扫描优化与实测数据见 [docs/modules/web/first-load.md](../docs/modules/web/first-load.md)。
 
+## 路由与滚动位置
+
+主滚动容器是 `App.vue` 里常驻的 `el-scrollbar`（`.el-scrollbar__wrap`），**不是 `window`**：`.container` 与 `.main` 都是 `overflow: hidden`。这决定了滚动恢复只能自己做。
+
+- **vue-router 的 `scrollBehavior` / `savedPosition` 对本项目无效**：其实现最终只调 `window.scrollTo()`，`{ el, top }` 里的 `el` 也只是「滚到该元素」，不会去改元素内部的 `scrollTop`。不要为了用它改成让 window 滚动——固定头部与 sticky 过滤栏都依赖当前结构。
+- 位置记忆在 `router/scroll.ts`：`beforeEach` 存、`afterEach` 取，key 用 `history.state.position`。同一路径会被多次访问，按 `fullPath` 记会把不同次访问串在一起。
+- **不能用 `history.state.position` 判断「要离开的页面」**：后退时浏览器已经把 history 切到目标页，`beforeEach` 读到的就是目标页的序号，保存动作会把要恢复的值覆盖成 0。用 `currentPosition` 跟踪上一次导航结束时的序号。
+- 恢复要 `await nextTick()` 之后再做；内容还没渲染够高时 `scrollTop` 会被截断，`restore()` 会逐帧重试（上限 20 帧）。
+- 同一序号换了地址（replace，如搜索页跳详情）不算回退：删掉该序号的记录并回到顶部。
+- 容器由 `App.vue` 挂载后经 `setScrollTarget()` 注入，直接写原生 `wrap.scrollTop`：同步生效并照常派发 `scroll` 事件；实例的 `setScrollTop` 是异步的，逐帧重试会读不到刚设进去的值。
+- **首页必须被缓存**：`<keep-alive :include="[WebRoute.INDEX]">` 按组件名严格比较，而 `<script setup>` 默认用文件名推断出 `index`，因此 `views/index.vue` 显式 `defineOptions({ name: WebRoute.INDEX })`。不匹配时后退会重建列表、分页回到第一页，翻到第 N 页的位置就再也恢复不了。
+
 ## Vue 组件规范
 
 ### 提取组合式逻辑

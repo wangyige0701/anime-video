@@ -11,7 +11,7 @@
 				</div>
 			</el-header>
 			<el-main class="main">
-				<el-scrollbar view-class="main-container" @end-reached="endReached">
+				<el-scrollbar ref="scrollbar" view-class="main-container" @end-reached="endReached">
 					<div class="scroll-container">
 						<router-view v-slot="{ Component }">
 							<keep-alive :include="[WebRoute.INDEX]">
@@ -33,7 +33,7 @@
 <script setup lang="ts">
 import type { ScrollbarDirection } from 'element-plus';
 import zhCn from 'element-plus/es/locale/lang/zh-cn';
-import { onBeforeMount, onBeforeUnmount } from 'vue';
+import { onBeforeMount, onBeforeUnmount, onMounted, useTemplateRef } from 'vue';
 import { WebRoute } from '~shared/web-route-config';
 import { useVideoStore } from './stores/video';
 import { useDeviceStore } from './stores/device';
@@ -41,10 +41,40 @@ import { endReachedEmitter } from './events/end-reached';
 import { useThemeStore } from './stores/theme';
 import { useSystemStore } from './stores/system';
 import { routeLoading } from './router/loading';
+import { setScrollTarget } from './router/scroll';
 
 useThemeStore().initialize();
 const systemStore = useSystemStore();
 const videoStore = useVideoStore();
+
+const scrollbarRef = useTemplateRef('scrollbar');
+
+/**
+ * 把主滚动容器交给路由层，供返回时恢复位置。
+ *
+ * 直接改原生 wrap 的 `scrollTop`：同步生效并照常派发 scroll 事件，
+ * el-scrollbar 的滚动条与内部状态随之更新；用实例的 `setScrollTop` 是异步的，
+ * 恢复时的逐帧重试会读不到刚设进去的值而反复重试。
+ */
+onMounted(() => {
+	const scrollbar = scrollbarRef.value;
+	if (!scrollbar) {
+		return;
+	}
+	setScrollTarget({
+		get: () => scrollbar.wrapRef?.scrollTop ?? 0,
+		set: (top) => {
+			const wrap = scrollbar.wrapRef;
+			if (wrap) {
+				wrap.scrollTop = top;
+			}
+		},
+	});
+});
+
+onBeforeUnmount(() => {
+	setScrollTarget(null);
+});
 
 /**
  * 全局遮罩的提示文案。

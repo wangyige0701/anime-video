@@ -98,6 +98,7 @@ simple 模式的三个状态各自要能一眼分辨，且都不能出现「纯�
 - 只适配了深色主题。`root.scss` 里没有亮色分支，新增亮色主题时这一层要整体过一遍。
 - `el-select` 的 `is-focused` 仍用主色描边（`primary`），没有改成 `l-*` 梯度——主色在深色底上是可辨识的，且能表达「当前焦点」。
 - `el-tag` 只在 `.el-select` 内部做了深色适配，其它位置的彩色标签仍走 Element 的状态色。
+- `el-date-picker-panel` 不在这一层：它嵌在 `detail-metadata-popover` 里，需要透明底与成套文字色，覆盖写在 `components/detail/DetailDate.vue` 的 scoped 块中。选中态的底色与文字必须成对指定（主题最亮底 + 最深字），不能只依赖 `--el-datepicker-active-color`——该变量是输入文字色，跟着走会得到白底白字。
 
 ## 9. 验证方式
 

@@ -35,6 +35,7 @@
 import type { Series } from '@/data/series';
 import { DETAIL_SERIES_DATA } from '@/config/symbol';
 import { isNumber } from '@wang-yige/utils';
+import { toMonthDate } from '@/utils/date';
 import { RefreshLeft } from '@element-plus/icons-vue';
 
 const popover = useTemplateRef('popover');
@@ -45,7 +46,8 @@ const date = ref<[number?, number?]>([]);
 const isPlaceholder = computed(() => !isNumber(date.value[0]) || !isNumber(date.value[1]));
 const bindDate = computed({
 	get() {
-		return [date.value[0] ?? 0, date.value[1] ?? 0];
+		// 面板只认 Date：传 [年, 月] 元组会被解析成 Invalid Date，选中态与初始年月都会失效
+		return toMonthDate(date.value);
 	},
 	set(newDate: Date) {
 		date.value[0] = newDate.getFullYear();
@@ -156,6 +158,20 @@ async function removeDate() {
 				font-weight: normal;
 			}
 		}
+	}
+
+	/**
+	 * 选中月份 / 年份。
+	 *
+	 * Element Plus 的选中态是「底色 = --el-datepicker-active-color、文字 = 白」，
+	 * 而这里把 active-color 设成了白色（输入框文字用色），只跟着变量走就是白底白字。
+	 * 因此成对指定：主题最亮色做底、最深色做字，五个主题下都清楚。
+	 */
+	:deep(.el-month-table td.current:not(.disabled) .el-date-table-cell__text),
+	:deep(.el-year-table td.current:not(.disabled) .el-date-table-cell__text) {
+		color: map.get(token.$theme, 'd-9');
+		background-color: map.get(token.$theme, 'l-9');
+		font-weight: 500;
 	}
 }
 </style>

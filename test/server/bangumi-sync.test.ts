@@ -116,14 +116,25 @@ describe('季摘要', () => {
 
 describe('单季预览', () => {
 	it('规则命中时按文件名顺序编号，官方标题生效', () => {
-		const preview = buildSeasonPreview(localSeason(['00-特别篇.mp4', '01.mp4', '02.mp4', 'SP.mp4']), official);
+		const preview = buildSeasonPreview(localSeason(['00.mp4', '01.mp4', '02.mp4']), official);
 		expect(preview.alignment).toBe('rule');
 		expect(preview.episodes.map((item) => [item.position, item.kind, item.title])).toEqual([
 			[1, 'main', '第0话'],
 			[2, 'main', '第1话'],
 			[3, 'main', '第2话'],
-			[4, 'special', 'SP'],
 		]);
+	});
+
+	it('文件名带特别篇标记时不下结论，保留其余可确证的文件', () => {
+		const preview = buildSeasonPreview(localSeason(['00-特别篇.mp4', '01.mp4', '02.mp4', 'SP.mp4']), official);
+		expect(preview.alignment).toBe('partial');
+		// 00-特别篇 与 SP 的编号不足以确证归属，留空等 AI 或人工；01/02 仍然确定
+		expect(preview.episodes.filter((item) => item.kind === 'unmatched').map((item) => item.fileName)).toEqual([
+			'00-特别篇.mp4',
+			'SP.mp4',
+		]);
+		expect(preview.episodes.find((item) => item.fileName === '01.mp4')!.kind).toBe('main');
+		expect(preview.notes.some((note) => note.includes('特别篇标记'))).toBe(true);
 	});
 
 	it('未匹配的文件排在末尾并保留文件名标题', () => {

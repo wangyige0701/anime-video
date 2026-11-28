@@ -235,8 +235,8 @@ export function summarizeSeason(season: LocalSeasonInput, alias: string): LocalS
 /**
  * 生成单季预览。
  *
- * 顺序始终取自本地文件名。规则能给出唯一归属且文件数与官方集数一致时用规则结果；
- * 否则用 AI 的对应关系——合并集只可能来自 AI，由模型判断哪几个文件装了几集。
+ * 顺序始终取自本地文件名。规则只在能确证时生效（见 `alignByRules`）；否则用 AI 的
+ * 对应关系——特别篇归属与合并集都只可能来自 AI，由模型判断哪个文件对应哪条官方集。
  * 未匹配的文件保留在列表末尾并带原文件名标题，不会被静默丢弃。
  */
 export function buildSeasonPreview(
@@ -268,9 +268,13 @@ export function buildSeasonPreview(
 			}
 		}
 		alignment = 'ai';
-		notes.push(ruled.resolved ? '本地文件数与官方集数不一致，对应关系由 AI 确认' : `规则无法对齐：${ruled.reason}`);
+		notes.push(
+			ruled.resolved
+				? '本地文件数与官方集数不一致，对应关系由 AI 确认'
+				: `规则无法对齐：${ruled.reason}；改用 AI 的对应关系`,
+		);
 	} else if (!ruled.resolved) {
-		notes.push(`规则无法对齐：${ruled.reason}；请手动确认`);
+		notes.push(`规则只确证了 ${ruled.assignments.size} 个文件：${ruled.reason}；其余请手动确认`);
 		alignment = 'partial';
 	}
 
@@ -316,6 +320,12 @@ export function buildSeasonPreview(
 		warnings.push('存在未对应到官方剧集的文件，已排在末尾并保留原文件名，请手动确认');
 	}
 
+	// missing 按最终采用的对应关系重算：AI 生效时规则结论已作废，不能沿用它的 missing
+	const usedIds = new Set([...assignments.values()].map((episode) => episode.episodeId));
+	const missing = official
+		.filter((episode) => episode.kind === 'main' && !usedIds.has(episode.episodeId))
+		.map((episode) => ({ kind: episode.kind, sort: episode.sort, title: episode.title }));
+
 	return {
 		seasonId: season.seasonId,
 		path: season.path,
@@ -323,7 +333,7 @@ export function buildSeasonPreview(
 		title: season.title,
 		alignment,
 		episodes,
-		missing: ruled.missing.map((episode) => ({ kind: episode.kind, sort: episode.sort, title: episode.title })),
+		missing,
 		notes,
 		warnings,
 	};
@@ -515,19 +525,27 @@ export async function runPreview(mapping: SeasonMappingInput[], seasons: LocalSe
 			season.episodes.map((episode) => episode.fileName),
 			official,
 		);
-		// 合并集会减少文件数，所以只有「文件数少于官方集数」时才需要模型判断哪几个文件装了几集；
-		// 其余情况规则已给出唯一归属，不额外花一次请求
+		// 规则只在能确证时 resolved（见 alignByRules），false 一律交给模型；另外合并集会减少
+		// 文件数，规则看不出一个文件覆盖了几集，所以「文件数少于官方正片数」也要额外确认
 		const mainCount = official.filter((episode) => episode.kind === 'main').length;
 		if (!ruled.resolved || season.episodes.length < mainCount) {
 			const files = orderLocalFiles(season.episodes.map((episode) => episode.fileName));
-			const { content } = await chatJson(buildAlignMessages(season.path, files, official, parseEpisodeNumber));
-			const parsed = parseAlignResult(extractJsonObject(content), files, official);
-			aiAlign = parsed.map;
-			aiMerged = parsed.merged;
-			aiTitles = parsed.titles;
-			warnings.push(...parsed.warnings.map((warning) => `${season.path}：${warning}`));
-			if (parsed.reason) {
-				warnings.push(`${season.path}：AI 备注 ${parsed.reason}`);
+			try {
+				const { content } = await chatJson(
+					buildAlignMessages(season.path, files, official, parseEpisodeNumber),
+				);
+				const parsed = parseAlignResult(extractJsonObject(content), files, official);
+				aiAlign = parsed.map;
+				aiMerged = parsed.merged;
+				aiTitles = parsed.titles;
+				warnings.push(...parsed.warnings.map((warning) => `${season.path}：${warning}`));
+				if (parsed.reason) {
+					warnings.push(`${season.path}：AI 备注 ${parsed.reason}`);
+				}
+			} catch (error) {
+				// 模型不可用不该让整季作废：保留规则已确证的部分，其余留空等人工确认
+				const message = error instanceof Error ? error.message : String(error);
+				warnings.push(`${season.path}：AI 对齐失败（${message}），仅保留能确证的文件，其余请手动确认`);
 			}
 		}
 

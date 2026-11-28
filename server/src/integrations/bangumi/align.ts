@@ -6,8 +6,10 @@
  * 2. 分类只看 `type`：0 是本篇（含第 0 话），1 是附加特别篇，其余丢弃。
  * 3. `ep` 永远不用：它跨条目重复，且 SP 的 `ep` 恒为 0。
  *
- * 规则能给出唯一归属时不调用模型；只有集号重复、文件名无编号且剩余候选不唯一、
- * 或本地集号在官方找不到时才需要模型介入——而这些情况模型也只能猜，最终仍需人工确认。
+ * 规则只做**确证**，不做推断：只有文件名不带特别篇标记、集号可解析、且每个集号在
+ * 官方正片里唯一存在时才给结论。文件名来自发布组时（`[组名] 作品名 - 05 [1080p][AVC]`），
+ * 里面的数字属于发布组习惯，未必等于官方 sort，带「特别篇」字样的更是如此。
+ * 任何一处对不上都交回给模型判定，宁可多一次请求，也不拿编号当事实。
  */
 import { isUndefined } from '@wang-yige/utils';
 import type { BangumiEpisode } from './types';
@@ -108,15 +110,21 @@ export function orderLocalFiles(files: string[]): string[] {
 }
 
 /**
- * 用集号做唯一映射。
+ * 用集号做确证式映射。
  *
  * 与「按位置顺延」的区别：本地缺集时后续文件仍保留各自真实集号，不会整体错位。
  * 缺集属于正常状态（用户没下载），只记录到 `missing`，不阻断对齐。
+ *
+ * 返回 `resolved: false` 表示规则不敢下结论，而不是「一个都对不上」：`assignments` 里
+ * 仍然保留能被确证的文件，供模型不可用时兜底展示。四种情形会放弃——文件名带特别篇
+ * 标记、集号解析不出、集号重复、集号在官方正片里不存在。最后一种同时覆盖了合并集、
+ * 编号体系不同、以及集号其实是特别篇。
  */
 export function alignByRules(files: string[], official: OfficialEpisode[]): RuleAlignment {
 	const notes: string[] = [];
 	const missing: OfficialEpisode[] = [];
 	const assignments = new Map<string, OfficialEpisode>();
+	const reasons: string[] = [];
 
 	const mainBySort = new Map<number, OfficialEpisode>();
 	for (const episode of official) {
@@ -125,50 +133,58 @@ export function alignByRules(files: string[], official: OfficialEpisode[]): Rule
 		}
 	}
 
-	const numbers = files.map((fileName) => parseEpisodeNumber(fileName)).filter((n): n is number => !isUndefined(n));
-	const duplicated = [...new Set(numbers.filter((number, index) => numbers.indexOf(number) !== index))];
-	if (duplicated.length) {
-		return { resolved: false, reason: `本地集号重复：${duplicated.join('、')}`, assignments, missing, notes };
-	}
-
-	const leftover: string[] = [];
+	// 先分三类，再逐类判定：只有「无标记 + 集号唯一 + 官方正片里存在」三条同时满足才落归属
+	const marked: string[] = [];
+	const unparsed: string[] = [];
+	const numbered: Array<{ fileName: string; number: number }> = [];
 	for (const fileName of files) {
-		const number = parseEpisodeNumber(fileName);
-		const episode = isUndefined(number) ? void 0 : mainBySort.get(number);
-		if (episode) {
-			assignments.set(fileName, episode);
+		// 走了 AI 反而更准：文件名写了特别篇，编号与官方分类就不再是等值关系
+		if (hasSpecialMarker(fileName)) {
+			marked.push(fileName);
 			continue;
 		}
-		leftover.push(fileName);
+		const number = parseEpisodeNumber(fileName);
+		if (isUndefined(number)) {
+			unparsed.push(fileName);
+			continue;
+		}
+		numbered.push({ fileName, number });
 	}
 
-	// 剩余文件归属附加特别篇：先按官方序号精确匹配，再退到「唯一剩余 + 文件名带标记」
-	const remainingSpecial = official.filter((episode) => episode.kind === 'special');
-	for (const fileName of leftover) {
-		const number = parseEpisodeNumber(fileName);
-		const matched = isUndefined(number) ? void 0 : remainingSpecial.find((episode) => episode.sort === number);
-		if (matched) {
-			assignments.set(fileName, matched);
-			remainingSpecial.splice(remainingSpecial.indexOf(matched), 1);
+	const counts = new Map<number, number>();
+	for (const item of numbered) {
+		counts.set(item.number, (counts.get(item.number) ?? 0) + 1);
+	}
+	const duplicated = [...counts].filter(([, count]) => count > 1).map(([number]) => number);
+
+	const unknown: string[] = [];
+	for (const item of numbered) {
+		// 同号文件谁都不认：无法判断哪一个是真正的第 N 集
+		if (duplicated.includes(item.number)) {
 			continue;
 		}
-		if (hasSpecialMarker(fileName) && remainingSpecial.length === 1) {
-			assignments.set(fileName, remainingSpecial[0]!);
-			remainingSpecial.splice(0, 1);
+		const episode = mainBySort.get(item.number);
+		if (!episode) {
+			unknown.push(`${item.fileName}(${item.number})`);
 			continue;
 		}
-		return {
-			resolved: false,
-			reason: `${fileName} 集号在官方剧集中不存在，无法用规则归属`,
-			assignments,
-			missing,
-			notes,
-		};
+		assignments.set(item.fileName, episode);
 	}
 
-	const usedMain = new Set(
-		[...assignments.values()].filter((episode) => episode.kind === 'main').map((episode) => episode.episodeId),
-	);
+	if (marked.length) {
+		reasons.push(`文件名带特别篇标记，归属交由模型判定：${marked.join('、')}`);
+	}
+	if (unparsed.length) {
+		reasons.push(`无法从文件名解析集号：${unparsed.join('、')}`);
+	}
+	if (duplicated.length) {
+		reasons.push(`本地集号重复：${duplicated.join('、')}`);
+	}
+	if (unknown.length) {
+		reasons.push(`集号在官方正片里不存在：${unknown.join('、')}`);
+	}
+
+	const usedMain = new Set([...assignments.values()].map((episode) => episode.episodeId));
 	for (const episode of official) {
 		if (episode.kind === 'main' && !usedMain.has(episode.episodeId)) {
 			missing.push(episode);
@@ -179,9 +195,11 @@ export function alignByRules(files: string[], official: OfficialEpisode[]): Rule
 			`官方 ${missing.length} 集在本地没有文件：${missing.map((item) => `${item.sort}「${item.title}」`).join('、')}`,
 		);
 	}
-	for (const episode of remainingSpecial) {
-		notes.push(`官方特别篇「${episode.title}」本地没有文件`);
+	// 特别篇不参与规则匹配：官方有、本地也可能有，归属需要语义判断，这里只提示数量
+	const specialCount = official.filter((episode) => episode.kind === 'special').length;
+	if (specialCount) {
+		notes.push(`官方另有 ${specialCount} 个特别篇，未参与本次匹配`);
 	}
 
-	return { resolved: true, reason: '', assignments, missing, notes };
+	return { resolved: reasons.length === 0, reason: reasons.join('；'), assignments, missing, notes };
 }

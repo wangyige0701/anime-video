@@ -1,9 +1,11 @@
 /**
  * 本地视频文件名解析。
  *
- * 顺序的唯一依据是文件名里的编号：`00-特别篇.mp4` 的 00 就是第 0 集，
- * `[Studio GreenTea] ... S3 [09]` 的 09 就是第 9 集。纯字符串排序不可用 ——
- * 方括号开头的文件名会被排到数字文件名之前，混排目录整季错位。
+ * 解析出的编号只用于**排序**和给模型当提示，不能当作官方集号：磁力原名里的 `- 00`
+ * 可能是第 0 话，也可能只是发布组的编号习惯。归属判定一律交给模型。
+ *
+ * 顺序的依据仍然是编号：`00-特别篇.mp4` 的 00 会让它排在 01 之前。
+ * 纯字符串排序不可用 —— 方括号开头的文件名会被排到数字文件名之前，混排目录整季错位。
  */
 
 const RESOLUTION = /^(480|576|720|1080|1440|2160)p$/i;
@@ -24,6 +26,8 @@ function isNumberNoise(value: string, raw: string) {
 /**
  * 从文件名解析集号，解析不到返回 undefined。
  *
+ * 只负责「取出文件名里的编号」，不保证等于官方集号。
+ *
  * 规则按可靠性从高到低排列：标准 SxxEyy → 「第 N 话」→ 方括号/圆括号编号 →
  * 「 - N」→ 前缀编号。前缀编号这条同时覆盖了 `00-特别篇.mp4` 这种第 0 话，
  * 因此不能只认空格分隔，`-` 也算分隔符。
@@ -33,8 +37,8 @@ export function parseEpisodeNumber(fileName: string): number | undefined {
 	const rules = [
 		/\bS\d{1,2}\s*E(?:P)?\s*(\d{1,4})\b/i,
 		/[第]\s*(\d{1,4})\s*[话話集回]/,
-		/[（(\[]\s*(\d{1,3})(?:v\d)?\s*[)）\]]/g,
-		/\s-\s*(\d{1,3})(?:v\d)?(?:\s|$)/,
+		/[（(\[]\s*(\d{1,4})(?:v\d)?\s*[)）\]]/g,
+		/\s-\s*(\d{1,4})(?:v\d)?(?:\s|$)/,
 	];
 	for (const rule of rules) {
 		if (rule.global) {
@@ -50,7 +54,7 @@ export function parseEpisodeNumber(fileName: string): number | undefined {
 			return Number(match[1]);
 		}
 	}
-	const bare = name.match(/^(\d{1,3})(?:v\d)?(?:[\s.\-_]|$)/);
+	const bare = name.match(/^(\d{1,4})(?:v\d)?(?:[\s.\-_]|$)/);
 	if (bare && !isNumberNoise(bare[1]!, bare[1]!)) {
 		return Number(bare[1]);
 	}
